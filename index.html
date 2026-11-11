@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrbitaCasa Mobile – L'app Android per spese e promemoria</title>
+<meta name="description" content="OrbitaCasa Mobile: l'app Android di OrbitaCasa. Funziona da sola, offline, con i dati sul telefono. Sincronizza con il desktop tramite zip e registra le spese dalle notifiche della banca.">
+<link rel="canonical" href="https://renato-4132.github.io/OrbitaCasa/android.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="OrbitaCasa Mobile – L'app Android">
+<meta property="og:description" content="OrbitaCasa in tasca: dati sul telefono, zero cloud, sincronizzazione con il desktop tramite zip.">
+<meta property="og:url" content="https://renato-4132.github.io/OrbitaCasa/android.html">
+<meta property="og:locale" content="it_IT">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,700;0,900;1,700;1,900&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0e1a;--card:#111827;--border:#1e293b;--accent:#4f46e5;--accent2:#6366f1;--green:#3ddc84;--text:#e2e8f0;--muted:#94a3b8}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;color:#fff;line-height:1.05}
+a{color:#a5b4fc}
+a:focus-visible,summary:focus-visible,.btn:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+.top{padding:14px 0;border-bottom:1px solid var(--border);font-size:.85rem}
+.top .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top a{color:var(--muted);text-decoration:none}
+.top a:hover{color:#fff}
+.hero{padding:56px 0 48px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;left:50%;top:0;width:80%;height:100%;transform:translateX(-50%);background:rgba(79,70,229,.07);filter:blur(120px);pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.25fr .75fr;gap:40px;align-items:center}
+.ver{display:inline-block;font-size:.8rem;font-weight:700;color:var(--green);border:1px solid rgba(61,220,132,.4);border-radius:999px;padding:3px 12px;margin-bottom:16px}
+.hero h1{font-size:clamp(2.8rem,8vw,5.2rem);font-weight:900;font-style:italic;text-transform:uppercase;margin-bottom:6px}
+.hero h1 span{color:var(--green)}
+.hero .lead{font-size:1.2rem;color:var(--muted);font-weight:300;max-width:34ch;margin:14px 0 26px}
+.btns{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:10px;font-weight:700;text-decoration:none;color:#fff;background:var(--accent);transition:background .2s}
+.btn:hover{background:var(--accent2)}
+.btn.alt{background:transparent;border:1px solid #334155;color:var(--text)}
+.btn.alt:hover{border-color:var(--accent2)}
+.req{margin-top:14px;font-size:.85rem;color:var(--muted)}
+.qr{background:#fff;border-radius:18px;padding:16px;max-width:260px;justify-self:center;text-align:center}
+.qr svg{width:100%;height:auto;display:block}
+.qr p{color:#0a0e1a;font-size:.82rem;font-weight:700;margin-top:10px;line-height:1.3}
+section{padding:44px 0;border-top:1px solid var(--border)}
+h2{font-size:clamp(1.9rem,4.5vw,2.8rem);font-weight:700;font-style:italic;margin-bottom:10px}
+.sub{color:var(--muted);max-width:62ch;margin-bottom:26px}
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.pillar{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+.pillar h3{font-size:1.35rem;font-weight:700;margin-bottom:4px}
+.pillar p{font-size:.92rem;color:var(--muted)}
+.steps{list-style:none;padding:0;counter-reset:s;display:grid;gap:12px;max-width:720px}
+.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.steps li::before{content:counter(s);flex:0 0 28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem}
+.note{background:rgba(245,158,11,.1);border:1px solid #f59e0b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:.92rem;max-width:720px}
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.group{border-radius:14px;padding:18px 20px;background:var(--card);border:1px solid var(--border);border-left-width:4px}
+.group h3{font-size:1.4rem;margin-bottom:8px}
+.group ul{padding-left:18px;font-size:.92rem;color:var(--muted)}
+.group li{margin:4px 0}
+.group li b{color:#fff;font-weight:500}
+.g1{border-left-color:#f97316}.g2{border-left-color:#22c55e}.g3{border-left-color:#3b82f6}.g4{border-left-color:#eab308}.g5{border-left-color:#a855f7}.g6{border-left-color:var(--green)}
+.notif{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+.notif ul{padding-left:18px;color:var(--muted);font-size:.95rem}
+.notif li{margin:7px 0}
+.notif li b{color:#fff;font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:.92rem;max-width:760px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:#fff;font-weight:500;width:32%}
+td{color:var(--muted)}
+details{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 16px;margin-bottom:10px;max-width:760px}
+summary{cursor:pointer;padding:14px 0;font-weight:500;color:#fff}
+details p{padding-bottom:14px;color:var(--muted);font-size:.93rem}
+.eco{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.eco a{display:block;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-decoration:none;color:var(--muted);font-size:.92rem}
+.eco a:hover{border-color:var(--accent2)}
+.eco strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;color:#fff;font-style:italic;margin-bottom:4px}
+footer{padding:32px 0;border-top:1px solid var(--border);text-align:center;font-size:.8rem;color:#64748b}
+footer a{color:#818cf8}
+@media (max-width:760px){.hero .wrap,.notif{grid-template-columns:1fr}.qr{max-width:220px}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap">
+<a href="index.html">← OrbitaCasa per desktop</a>
+<a href="https://github.com/Renato-4132/OrbitaCasa-Android">Codice su GitHub</a>
+</div></div>
+
+<header class="hero"><div class="wrap">
+<div>
+<span class="ver">Versione 1.0.55 · Android 8.0+</span>
+<h1>Orbita<span>Casa</span> Mobile</h1>
+<p class="lead">OrbitaCasa in tasca. Funziona da sola, con i dati sul telefono, e si sincronizza con il desktop quando vuoi.</p>
+<div class="btns">
+<a class="btn" href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">Scarica l'APK</a>
+<a class="btn alt" href="#installa">Come si installa</a>
+</div>
+<p class="req">Gratuita, senza account, senza abbonamento e senza pubblicità.</p>
+</div>
+<div class="qr" role="img" aria-label="QR code per scaricare l'ultima versione dell'APK">
+<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="39" height="39" class="segno"><path fill="#fff" d="M0 0h39v39h-39z"/><path class="qrline" stroke="#0a0e1a" d="M1 1.5h7m1 0h2m1 0h1m2 0h3m2 0h3m3 0h3m2 0h7m-37 1h1m5 0h1m2 0h1m3 0h2m2 0h3m1 0h4m1 0h1m1 0h1m1 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m3 0h2m2 0h4m3 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h3m4 0h1m2 0h1m3 0h1m2 0h4m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h2m1 0h2m4 0h1m2 0h3m1 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m1 0h4m2 0h1m1 0h2m1 0h2m3 0h1m5 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-29 1h2m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m1 0h2m1 0h1m-27 1h1m3 0h1m1 0h3m5 0h3m2 0h2m3 0h1m2 0h7m2 0h1m-37 1h2m3 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h3m3 0h2m1 0h1m-36 1h2m1 0h1m1 0h3m2 0h2m3 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m4 0h3m-35 1h4m1 0h1m3 0h3m1 0h1m1 0h7m1 0h1m2 0h2m2 0h1m3 0h2m-33 1h1m2 0h1m1 0h1m3 0h1m1 0h1m2 0h1m3 0h1m7 0h3m1 0h4m-37 1h1m1 0h1m1 0h2m1 0h3m2 0h4m5 0h3m2 0h2m4 0h2m-31 1h1m1 0h2m2 0h2m2 0h1m1 0h1m1 0h1m2 0h1m2 0h2m1 0h3m2 0h4m-34 1h1m2 0h1m4 0h1m1 0h3m1 0h6m1 0h2m4 0h1m2 0h2m1 0h3m-37 1h1m2 0h1m2 0h2m1 0h4m5 0h1m3 0h1m1 0h1m4 0h2m2 0h3m-35 1h4m4 0h5m2 0h1m2 0h2m3 0h1m1 0h3m3 0h1m2 0h1m-35 1h1m1 0h9m2 0h1m1 0h3m1 0h2m1 0h1m2 0h2m1 0h5m-34 1h2m1 0h2m6 0h3m3 0h1m3 0h4m1 0h1m1 0h1m2 0h2m1 0h2m-36 1h3m1 0h3m2 0h3m1 0h3m1 0h1m1 0h3m2 0h1m1 0h1m2 0h3m2 0h1m-35 1h1m6 0h5m3 0h5m2 0h2m1 0h5m1 0h2m-32 1h2m3 0h1m2 0h2m1 0h4m2 0h1m1 0h4m3 0h1m2 0h5m-35 1h1m3 0h1m4 0h1m1 0h1m1 0h1m2 0h1m2 0h3m2 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-35 1h1m2 0h4m2 0h1m1 0h2m1 0h1m1 0h1m3 0h1m2 0h1m4 0h4m1 0h2m1 0h1m-37 1h2m1 0h2m2 0h1m2 0h1m1 0h1m1 0h1m3 0h2m2 0h2m3 0h2m2 0h4m-32 1h1m2 0h1m1 0h1m2 0h2m1 0h2m1 0h1m1 0h1m1 0h7m-26 1h1m1 0h1m2 0h1m3 0h2m1 0h8m4 0h4m1 0h1m2 0h1m-35 1h9m2 0h4m1 0h1m3 0h2m2 0h2m2 0h5m1 0h1m1 0h1m-29 1h1m1 0h1m2 0h4m1 0h1m1 0h4m1 0h1m1 0h2m3 0h1m3 0h1m-37 1h7m1 0h2m1 0h1m2 0h2m1 0h1m5 0h2m1 0h1m1 0h1m1 0h1m1 0h1m-33 1h1m5 0h1m8 0h5m2 0h3m3 0h1m3 0h3m-35 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h2m4 0h2m2 0h1m5 0h8m-36 1h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m2 0h2m2 0h1m1 0h2m2 0h3m2 0h1m1 0h1m-37 1h1m1 0h3m1 0h1m2 0h1m1 0h2m1 0h1m1 0h1m3 0h1m1 0h4m1 0h1m1 0h2m3 0h1m-35 1h1m5 0h1m5 0h2m3 0h2m2 0h1m1 0h2m2 0h1m4 0h1m1 0h2m-36 1h7m1 0h1m1 0h2m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h3m2 0h3"/></svg>
+<p>Inquadra dal telefono per scaricare sempre l'ultima versione</p>
+</div>
+</div></header>
+
+<main>
+<section><div class="wrap">
+<h2>Dati tuoi, sul tuo telefono</h2>
+<p class="sub">Non serve il PC acceso, né un server o una connessione. L'app legge e scrive gli stessi file di OrbitaCasa desktop, senza perdere i campi che non conosce.</p>
+<div class="pillars">
+<div class="pillar"><h3>Zero cloud</h3><p>I dati restano sul telefono. Il backup automatico di Android è disattivato.</p></div>
+<div class="pillar"><h3>Offline</h3><p>Nessun server, nessun account. Internet serve solo per Gemini e per cercare aggiornamenti.</p></div>
+<div class="pillar"><h3>Sync con uno zip</h3><p>Importi lo zip di OrbitaCasa sul telefono e lo riesporti indietro con un tocco.</p></div>
+<div class="pillar"><h3>Blocco app</h3><p>Impronta, volto o PIN del dispositivo.</p></div>
+</div>
+</div></section>
+
+<section id="installa"><div class="wrap">
+<h2>Installazione</h2>
+<p class="sub">L'app non è sul Play Store: si scarica da GitHub.</p>
+<ol class="steps">
+<li><span>Apri la pagina delle <a href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">release</a> dal telefono, oppure inquadra il QR qui sopra.</span></li>
+<li><span>Scarica l'APK dell'ultima versione e aprilo. Se Android lo chiede, consenti l'installazione da questa fonte.</span></li>
+<li><span>Apri l'app e importa i dati da OrbitaCasa desktop (Home → Strumenti → Importa dati), oppure parti da zero aggiungendo il primo conto.</span></li>
+<li><span>Quando torni al PC, esporta lo zip e riportalo in OrbitaCasa desktop. Esportarne uno ogni tanto serve anche come backup.</span></li>
+</ol>
+<div class="note"><strong>Aggiornamenti.</strong> Da Home → Strumenti → Aggiornamenti l'app controlla l'ultima release e ti porta al download. Il nuovo APK deve avere la stessa firma di quello installato.</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Le spese arrivano da sole</h2>
+<p class="sub">La lettura delle notifiche trasforma i messaggi di banche e carte in movimenti, direttamente nell'app.</p>
+<div class="notif">
+<ul>
+<li><b>Interruttore generale, spento di default.</b> Da spento il servizio non legge nulla. Il permesso viene chiesto solo quando lo accendi.</li>
+<li><b>Regole per app:</b> parole da includere ed escludere, giorni, fascia oraria, conto, metodo e tag.</li>
+<li><b>Registrazione automatica</b> se la regola la prevede e l'app trova la categoria. Altrimenti la spesa resta in «Da confermare».</li>
+<li><b>Prova testo:</b> incolli una notifica e vedi cosa ne capirebbe l'app, senza registrare nulla.</li>
+</ul>
+<ul>
+<li><b>Importo e tipo</b> riconosciuti con le stesse regole del desktop. Gli importi dopo «saldo», «disponibile» o «residuo» vengono ignorati.</li>
+<li><b>Doppioni scartati:</b> stessa descrizione e stesso importo nello stesso giorno.</li>
+<li><b>Gemini come ripiego</b> solo se lo attivi con un interruttore separato: il testo della notifica viene inviato a Google.</li>
+<li>Con OrbitaNotify attiva sulla stessa regola, la notifica verrebbe gestita due volte: lascia accesa una sola app.</li>
+</ul>
+</div>
+<div class="note">Su Android 13 o superiore, un APK installato fuori dal Play Store può avere l'accesso alle notifiche bloccato. Se la schermata del permesso è grigia: Info app di OrbitaCasa → tre puntini → «Consenti impostazioni con restrizioni».</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Cosa puoi fare dal telefono</h2>
+<p class="sub">Le stesse funzioni di tutti i giorni del desktop, pensate per lo schermo piccolo.</p>
+<div class="groups">
+<div class="group g1"><h3>Movimenti e pianificazione</h3><ul>
+<li><b>Movimenti del mese</b> con entrate, uscite e saldo</li><li><b>Calendario</b> dei movimenti per giorno</li><li><b>Cerca operazioni</b> con filtri e tag</li><li><b>Pianifica</b> una spesa in quote</li><li><b>Ricorrenze</b> come affitto e abbonamenti</li><li><b>Promemoria</b> con avviso all'ora e riepilogo del giorno</li></ul></div>
+<div class="group g2"><h3>Analisi e controllo</h3><ul>
+<li><b>Grafici</b> di entrate e uscite</li><li><b>Previsione fine mese</b> per categoria</li><li><b>Checkout:</b> le categorie abituali che questo mese mancano</li><li><b>Categorie e Target</b> con classi 50/30/20</li><li><b>SmartCat:</b> suggerisce la categoria dallo storico</li></ul></div>
+<div class="group g3"><h3>Conti e finanze</h3><ul>
+<li><b>Conti:</b> fino a 10, con saldo iniziale e IBAN</li><li><b>Trasferimenti</b> tra conti</li><li><b>Finanziamenti</b> con piano di ammortamento</li><li><b>Fondo Risparmio</b> e obiettivi</li><li><b>FairShare:</b> spese divise tra più persone</li></ul></div>
+<div class="group g4"><h3>Casa e beni</h3><ul>
+<li><b>Documenti contabili</b> collegati ai movimenti</li><li><b>Documenti personali</b> con scadenze</li><li><b>Utenze:</b> letture e consumi su 12 mesi</li><li><b>AutoPark</b> e <b>ImmoBil</b></li><li><b>Pet Care</b></li></ul></div>
+<div class="group g5"><h3>Strumenti</h3><ul>
+<li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave</li><li><b>Barra di navigazione</b> personalizzabile</li><li><b>Tema</b> chiaro e scuro</li></ul></div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Privacy e permessi</h2>
+<p class="sub">I dati non escono dal telefono, a meno che tu non attivi una funzione che lo richiede. Nessun account, nessuna telemetria.</p>
+<table>
+<tr><th>Biometria</th><td>Blocco app (opzionale)</td></tr>
+<tr><th>Notifiche</th><td>Avvisi dei promemoria e esito delle spese rilevate</td></tr>
+<tr><th>Accesso alle notifiche</th><td>Lettura delle notifiche di banche e carte. Si attiva solo con l'interruttore</td></tr>
+<tr><th>Avvio del dispositivo</th><td>Riprogrammare gli avvisi dopo un riavvio o un aggiornamento</td></tr>
+<tr><th>Internet</th><td>Solo per Gemini (con la tua chiave) e per cercare aggiornamenti su GitHub</td></tr>
+</table>
+<p class="sub" style="margin-top:14px">La chiave Gemini resta nelle impostazioni private dell'app.</p>
+</div></section>
+
+<section><div class="wrap">
+<h2>Domande frequenti</h2>
+<details><summary>Android mi avvisa che l'app non è sicura. È normale?</summary><p>L'app non passa dal Play Store e Play Protect può segnalarla. Il codice è pubblico su GitHub e puoi controllarlo. Se tieni attiva la lettura delle notifiche, il sistema può essere ancora più cauto.</p></details>
+<details><summary>Devo avere OrbitaCasa sul PC?</summary><p>No. L'app funziona da sola. Il desktop serve solo se vuoi portare i dati sul telefono o riportarli indietro con lo zip.</p></details>
+<details><summary>Che differenza c'è con OrbitaWeb?</summary><p>OrbitaCasa Mobile funziona da sola, con i dati sul telefono. OrbitaWeb si collega a un OrbitaCasa acceso sul tuo PC o server. Puoi usarle insieme.</p></details>
+<details><summary>Il QR porta sempre all'ultima versione?</summary><p>Sì, porta alla pagina «ultima release» su GitHub, che si aggiorna a ogni nuova versione.</p></details>
+</div></section>
+
+<section><div class="wrap">
+<h2>Il resto della famiglia</h2>
+<p class="sub">Scegli quello che ti serve, si possono usare insieme.</p>
+<div class="eco">
+<a href="index.html"><strong>OrbitaCasa</strong>L'app desktop completa per Windows, macOS e Linux.</a>
+<a href="https://github.com/Renato-4132/OrbitaWeb"><strong>OrbitaWeb</strong>Collega il telefono al server web di OrbitaCasa.</a>
+<a href="https://github.com/Renato-4132/OrbitaNotify"><strong>OrbitaNotify</strong>Trasforma le notifiche di banca e carte in spese da confermare.</a>
+</div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+<p>Assistenza tecnica: <a href="mailto:helporbitacasa@gmail.com">helporbitacasa@gmail.com</a></p>
+<p style="margin-top:8px">OrbitaCasa 2026 – licenza: vedi il file LICENSE del repository.</p>
+</div></footer>
+</body>
+</html>
