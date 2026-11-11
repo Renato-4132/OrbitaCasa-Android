@@ -68,7 +68,7 @@ object Lock {
 
 class MainActivity : AppCompatActivity() {
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -158,6 +158,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.RICERCA -> dialogFiltriRicerca()
                 Pagina.PREVISIONE -> mostra(Pagina.CATEGORIE)
                 Pagina.PROMEMORIA -> dialogProm(null, LocalDate.now())
+                Pagina.NOTIFICHE -> dialogNotifRegola(null)
                 Pagina.AUTOPARK, Pagina.IMMOBIL, Pagina.PET -> {
                     val aperto = schedaAperta?.let { sc.per(it) }
                     if (aperto == null) dialogNuovaScheda() else dialogMovScheda(aperto, null)
@@ -174,6 +175,8 @@ class MainActivity : AppCompatActivity() {
                 dialogImportiFondo()
             } else if (pagina == Pagina.PROMEMORIA) {
                 dialogAvvisi()
+            } else if (pagina == Pagina.NOTIFICHE) {
+                dialogNotifProva()
             } else if (pagina == Pagina.FAIRSHARE) {
                 dialogFiltriFs()
             } else if (pagina == Pagina.CHECKOUT) {
@@ -241,7 +244,9 @@ class MainActivity : AppCompatActivity() {
             mostraBlocco(false)
         }
         if (intent?.getStringExtra("apri") == "promemoria") mostra(Pagina.PROMEMORIA)
+        if (intent?.getStringExtra("apri") == "notifiche") mostra(Pagina.NOTIFICHE)
         Avvisi.iniziaDa(applicationContext)
+        Notif.applicaStato(applicationContext)
         if (savedInstanceState == null) controllaAggiornamentiAvvio()
     }
 
@@ -249,6 +254,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getStringExtra("apri") == "promemoria") mostra(Pagina.PROMEMORIA)
+        if (intent.getStringExtra("apri") == "notifiche") mostra(Pagina.NOTIFICHE)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -262,16 +268,19 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         ultimoStop = SystemClock.elapsedRealtime()
+        Notif.osservatore = null
     }
 
     override fun onResume() {
         super.onResume()
         controllaFineMese()
         Avvisi.pianifica(applicationContext)
+        if (pagina == Pagina.NOTIFICHE) renderLista()
     }
 
     override fun onStart() {
         super.onStart()
+        Notif.osservatore = { runOnUiThread { if (pagina == Pagina.NOTIFICHE || pagina == Pagina.HOME) refresh() } }
         if (Repo.lockOn && sbloccata && ultimoStop > 0 &&
             SystemClock.elapsedRealtime() - ultimoStop > 30_000
         ) {
@@ -327,7 +336,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -360,6 +369,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🗓️", "Calendario") { mostra(Pagina.CALENDARIO) },
                 Tessera("📌", "Pianifica") { mostra(Pagina.PIANIFICA) },
                 Tessera("🔔", "Promemoria" + Prom.conteggio().totale.let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.PROMEMORIA) },
+                Tessera("📩", "Notifiche" + Notif.nAttesa().let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.NOTIFICHE) },
                 Tessera("🔎", "Cerca operazioni") { mostra(Pagina.RICERCA) },
             )
         )
@@ -423,6 +433,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.RICORRENZE, "🔁", "Ricorrenze"),
         Dest(Pagina.PIANIFICA, "📌", "Pianifica"),
         Dest(Pagina.PROMEMORIA, "🔔", "Promemoria"),
+        Dest(Pagina.NOTIFICHE, "📩", "Notifiche"),
         Dest(Pagina.FINANZIAMENTI, "💶", "Finanz."),
         Dest(Pagina.FONDO, "💰", "Fondo"),
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
@@ -1023,6 +1034,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.RICERCA -> renderRicerca()
             Pagina.PREVISIONE -> renderPrevisione()
             Pagina.PROMEMORIA -> renderPromemoria()
+            Pagina.NOTIFICHE -> renderNotifiche()
             else -> {}
         }
     }
@@ -5281,6 +5293,377 @@ class MainActivity : AppCompatActivity() {
             aviso("Avvisi salvati")
             if (pagina == Pagina.PROMEMORIA) renderLista()
         }
+    }
+
+    private fun renderNotifiche() {
+        intestaLista("📩 Notifiche → spese", "➕  Nuova regola", "🧪  Prova testo")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val on = Notif.attive(this)
+        riga(
+            cont, "Lettura notifiche",
+            if (on) "Le notifiche che passano le regole diventano spese" else "Spenta: l'app non legge nessuna notifica",
+            if (on) "ON" else "OFF", if (on) verde else null
+        ) { cambiaLetturaNotif() }
+        if (on && !Notif.accessoConcesso(this)) {
+            riga(
+                cont, "🔕 Accesso alle notifiche non concesso",
+                "Tocca per aprire le impostazioni del telefono e consentirlo", "", rosso
+            ) { dialogNotifAccesso() }
+        }
+        val gem = Notif.geminiAttivo(this)
+        riga(
+            cont, "Ripiego Gemini",
+            if (gem) "Se le regole fisse non capiscono, chiede a Gemini" else "Spento: nessun testo viene inviato a Google",
+            if (gem) "ON" else "OFF", if (gem) verde else null
+        ) { cambiaGeminiNotif() }
+
+        val attesa = Notif.inAttesa()
+        sezione(cont, "DA CONFERMARE (" + attesa.size + ")")
+        if (attesa.isEmpty()) vuoto(cont, "Nessuna spesa in attesa.")
+        val fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        for (p in attesa) {
+            val sotto = listOf(p.app, Notif.dataDi(p).format(fmt), p.tipo, if (p.fonte == "gemini") "Gemini" else "")
+                .filter { it.isNotEmpty() }.joinToString(" · ")
+            val entrata = p.tipo == "Entrata"
+            riga(cont, p.desc, sotto, (if (entrata) "+" else "−") + euro(p.importo), if (entrata) verde else rosso) {
+                dialogNotifConferma(p)
+            }
+        }
+        if (attesa.size > 1) {
+            riga(cont, "🧹 Scarta tutte", "Svuota l'elenco delle spese da confermare", "", null) {
+                OcBuilder(this)
+                    .setTitle("Scartare tutte?")
+                    .setMessage("Le " + attesa.size + " spese in attesa verranno scartate.")
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Scarta") { _, _ -> Notif.scartaTutte(); refresh() }
+                    .show()
+            }
+        }
+
+        val regole = Notif.regoleLista()
+        sezione(cont, "REGOLE (" + regole.size + ")")
+        if (regole.isEmpty()) vuoto(cont, "Nessuna regola: senza regole non viene letto nulla. Tocca «Nuova regola».")
+        for (r in regole) {
+            riga(cont, (if (r.attiva) "" else "⏸ ") + r.appLabel, r.riassunto(), "", null) { dialogNotifRegola(r) }
+        }
+    }
+
+    private fun cambiaLetturaNotif() {
+        val on = !Notif.attive(this)
+        Notif.impostaAttive(this, on)
+        if (on) {
+            if (!Notif.accessoConcesso(this)) dialogNotifAccesso()
+            chiediNotifiche()
+        }
+        refresh()
+    }
+
+    private fun cambiaGeminiNotif() {
+        if (Notif.geminiAttivo(this)) {
+            Notif.impostaGemini(this, false)
+            refresh()
+            return
+        }
+        if (Gemini.chiave(this).isEmpty()) {
+            aviso("Imposta prima la chiave Gemini (Strumenti)")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Attivare il ripiego Gemini?")
+            .setMessage(
+                "Quando le regole fisse non riconoscono un pagamento ma nel testo c'è un importo in euro, " +
+                    "il testo della notifica viene inviato a Gemini (Google) per capirlo. " +
+                    "Vale per le notifiche che passano le tue regole."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Attiva") { _, _ -> Notif.impostaGemini(this, true); refresh() }
+            .show()
+    }
+
+    private fun dialogNotifAccesso() {
+        OcBuilder(this)
+            .setTitle("Accesso alle notifiche")
+            .setMessage(
+                "Per leggere le notifiche Android chiede un permesso speciale: apri l'elenco, scegli OrbitaCasa e attivalo. " +
+                    "Se il telefono dice che l'impostazione è limitata, apri Info app di OrbitaCasa, tocca i tre puntini in alto " +
+                    "e scegli «Consenti impostazioni con restrizioni», poi riprova."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Apri impostazioni") { _, _ ->
+                try {
+                    startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                } catch (_: Exception) {
+                    aviso("Apri a mano: Impostazioni → Notifiche → Accesso alle notifiche")
+                }
+            }
+            .show()
+    }
+
+    private fun oraInMinuti(t: String): Int? {
+        val m = Regex("""^(\d{1,2})(?::(\d{2}))?$""").find(t.trim()) ?: return null
+        val h = m.groupValues[1].toInt()
+        val mi = m.groupValues[2].ifEmpty { "0" }.toInt()
+        return if (h in 0..23 && mi in 0..59) h * 60 + mi else null
+    }
+
+    private fun sceltaAppNotif(ok: (String, String) -> Unit) {
+        val pm = packageManager
+        val lancio = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val app = pm.queryIntentActivities(lancio, 0)
+            .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+            .filter { it.first != packageName }
+            .distinctBy { it.first }
+            .sortedBy { it.second.lowercase() }
+        val tutte = listOf(RegolaNotif.TUTTE to "Tutte le app") + app
+        OcBuilder(this)
+            .setTitle("Scegli l'app")
+            .setItems(tutte.map { it.second }.toTypedArray()) { _, i -> ok(tutte[i].first, tutte[i].second) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dialogNotifRegola(r: RegolaNotif?) {
+        var pkg = r?.pkg ?: RegolaNotif.TUTTE
+        var appLabel = r?.appLabel ?: "Tutte le app"
+        var giorni = r?.giorni ?: 127
+        var fascia = r?.usaFascia ?: false
+        var auto = r?.auto ?: Notif.AUTO_NO
+        var conto = r?.conto ?: ""
+        var metodo = r?.metodo ?: ""
+        var attiva = r?.attiva ?: true
+
+        val (view, corpo) = corpoDialogo()
+        val lpBtn = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpBtn.topMargin = 16
+        val btnApp = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnApp.text = "App: $appLabel"
+        btnApp.setOnClickListener {
+            sceltaAppNotif { p, l ->
+                pkg = p
+                appLabel = l
+                btnApp.text = "App: $l"
+            }
+        }
+        corpo.addView(btnApp, lpBtn)
+        val etInc = campoTesto(corpo, "Inoltra solo se contiene (parole separate da virgola)", r?.include ?: "", InputType.TYPE_CLASS_TEXT, 200)
+        val etExc = campoTesto(corpo, "Ignora se contiene (parole separate da virgola)", r?.exclude ?: "", InputType.TYPE_CLASS_TEXT, 200)
+
+        val btnGiorni = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        fun testoGiorni() {
+            btnGiorni.text = "Giorni: " + if (giorni == 127) "tutti" else
+                RegolaNotif.NOMI_GIORNI.filterIndexed { i, _ -> giorni and (1 shl i) != 0 }.joinToString(" ")
+        }
+        testoGiorni()
+        btnGiorni.setOnClickListener {
+            val sel = BooleanArray(7) { giorni and (1 shl it) != 0 }
+            OcBuilder(this)
+                .setTitle("Giorni attivi")
+                .setMultiChoiceItems(RegolaNotif.NOMI_GIORNI.toTypedArray(), sel) { _, i, on -> sel[i] = on }
+                .setNegativeButton("Annulla", null)
+                .setPositiveButton("OK") { _, _ ->
+                    var g = 0
+                    sel.forEachIndexed { i, on -> if (on) g = g or (1 shl i) }
+                    if (g == 0) {
+                        aviso("Seleziona almeno un giorno")
+                    } else {
+                        giorni = g
+                        testoGiorni()
+                    }
+                }
+                .show()
+        }
+        corpo.addView(btnGiorni, lpBtn)
+
+        val orari = listOf("Tutto il giorno", "Solo in una fascia oraria")
+        campoMenu(corpo, "Orario", orari, orari[if (fascia) 1 else 0]) { fascia = it == 1 }
+        val etDa = campoTesto(corpo, "Fascia: dalle (es. 08:00)", RegolaNotif.fmtOra(r?.daMin ?: 480), InputType.TYPE_CLASS_TEXT, 5)
+        val etA = campoTesto(corpo, "Fascia: alle (es. 20:00)", RegolaNotif.fmtOra(r?.aMin ?: 1200), InputType.TYPE_CLASS_TEXT, 5)
+
+        val nomiConti = listOf("(nessuno)") + Repo.conti().map { it.nome }.let { l -> if (conto.isNotEmpty() && conto !in l) l + conto else l }
+        campoMenu(corpo, "Conto", nomiConti, if (conto.isNotEmpty()) conto else nomiConti[0]) { conto = if (it == 0) "" else nomiConti[it] }
+        val nomiMetodi = listOf("(nessuno)") + Repo.METODI.map { it.first }.let { l -> if (metodo.isNotEmpty() && metodo !in l) l + metodo else l }
+        campoMenu(corpo, "Metodo di pagamento", nomiMetodi, if (metodo.isNotEmpty()) metodo else nomiMetodi[0]) { metodo = if (it == 0) "" else nomiMetodi[it] }
+        val etTag = campoTesto(corpo, "Tag (uno solo, es. casa)", r?.tag ?: "", InputType.TYPE_CLASS_TEXT, 40)
+
+        val autoVoci = listOf(
+            Notif.AUTO_NO to "No, da confermare a mano",
+            Notif.AUTO_REGOLE to "Sì, se riconosciuta dalle regole fisse",
+            Notif.AUTO_TUTTO to "Sì, sempre (anche con Gemini)",
+        )
+        campoMenu(corpo, "Registra in automatico", autoVoci.map { it.second }, (autoVoci.firstOrNull { it.first == auto } ?: autoVoci[0]).second) {
+            auto = autoVoci[it].first
+        }
+        val stati = listOf("Attiva", "Disattivata")
+        campoMenu(corpo, "Stato della regola", stati, if (attiva) stati[0] else stati[1]) { attiva = it == 0 }
+
+        val b = OcBuilder(this)
+            .setTitle(if (r == null) "Nuova regola" else "Modifica regola")
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+        if (r != null) b.setNeutralButton("Elimina", null)
+        val dlg = b.create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val da = oraInMinuti(etDa.text.toString())
+            val a = oraInMinuti(etA.text.toString())
+            if (fascia && (da == null || a == null)) {
+                aviso("Orario non valido (es. 08:00)")
+                return@setOnClickListener
+            }
+            val nuova = (r ?: RegolaNotif()).copy(
+                pkg = pkg,
+                appLabel = appLabel,
+                include = etInc.text.toString().trim(),
+                exclude = etExc.text.toString().trim(),
+                giorni = giorni,
+                usaFascia = fascia,
+                daMin = da ?: (r?.daMin ?: 480),
+                aMin = a ?: (r?.aMin ?: 1200),
+                conto = conto,
+                metodo = metodo,
+                auto = auto,
+                tag = etTag.text.toString().trim().trimStart('#'),
+                attiva = attiva,
+            )
+            Notif.salvaRegola(nuova)
+            dlg.dismiss()
+            aviso("Regola salvata")
+            refresh()
+        }
+        if (r != null) {
+            dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                dlg.dismiss()
+                OcBuilder(this)
+                    .setTitle("Eliminare la regola?")
+                    .setMessage(r.appLabel + "\n" + r.riassunto())
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Elimina") { _, _ ->
+                        Notif.eliminaRegola(r.id)
+                        refresh()
+                        aviso("Regola eliminata")
+                    }
+                    .show()
+            }
+        }
+    }
+
+    private fun dialogNotifConferma(p: Proposta) {
+        var tipo = p.tipo
+        val cats = Repo.categorie()
+        val sug = Notif.categoriaSuggerita(p)
+        var cat = if (sug in cats) sug else if ("Generica" in cats) "Generica" else (cats.firstOrNull() ?: "")
+        var conto = Notif.contoPredefinito(p)
+        var metodo = Notif.metodoPredefinito(p)
+        val nomiConti = listOf("(nessuno)") + Repo.conti().map { it.nome }
+        val nomiMetodi = listOf("(nessuno)") + Repo.METODI.map { it.first }
+
+        val (view, corpo) = corpoDialogo()
+        val etDesc = campoTesto(corpo, "Descrizione", p.desc, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 60)
+        val etImp = campoTesto(corpo, "Importo (€)", String.format(Locale.ITALY, "%.2f", p.importo), TIPO_DECIMALE, 12)
+        val tipi = listOf("Uscita", "Entrata")
+        campoMenu(corpo, "Tipo", tipi, if (tipo in tipi) tipo else tipi[0]) { tipo = tipi[it] }
+        if (cats.isNotEmpty()) campoMenu(corpo, "Categoria", cats, cat) { cat = cats[it] }
+        campoMenu(corpo, "Conto", nomiConti, if (conto.isNotEmpty()) conto else nomiConti[0]) { conto = if (it == 0) "" else nomiConti[it] }
+        campoMenu(corpo, "Metodo di pagamento", nomiMetodi, if (metodo.isNotEmpty()) metodo else nomiMetodi[0]) { metodo = if (it == 0) "" else nomiMetodi[it] }
+        val etTag = campoTesto(corpo, "Tag", Notif.tagPredefiniti(p).joinToString(" "), InputType.TYPE_CLASS_TEXT, 60)
+
+        val originale = (p.titolo + "\n" + p.testo).trim().take(300)
+        val dlg = OcBuilder(this)
+            .setTitle("Conferma la spesa")
+            .setMessage(originale)
+            .setView(view)
+            .setPositiveButton("Registra", null)
+            .setNegativeButton("Annulla", null)
+            .setNeutralButton("Scarta", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val desc = etDesc.text.toString().trim()
+            if (desc.isEmpty()) {
+                etDesc.error = "Inserisci una descrizione"
+                return@setOnClickListener
+            }
+            val imp = importoOk(etImp.text.toString())
+            if (imp == null) {
+                etImp.error = "Importo non valido"
+                return@setOnClickListener
+            }
+            if (cat.isEmpty()) {
+                aviso("Nessuna categoria disponibile")
+                return@setOnClickListener
+            }
+            val ok = Notif.registra(p, cat, desc, imp, tipo, conto, metodo, Notif.normalizzaTag(etTag.text.toString()), true)
+            dlg.dismiss()
+            refresh()
+            aviso(if (ok) "Spesa registrata" else "Doppione scartato: era già presente")
+        }
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            Notif.scarta(p.id)
+            dlg.dismiss()
+            refresh()
+        }
+    }
+
+    private fun dialogNotifProva() {
+        val (view, corpo) = corpoDialogo()
+        val etT = campoTesto(corpo, "Titolo della notifica", "", InputType.TYPE_CLASS_TEXT, 200)
+        val etX = campoTesto(
+            corpo, "Testo della notifica", "",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE, 1000
+        )
+        val dlg = OcBuilder(this)
+            .setTitle("Prova il riconoscimento")
+            .setMessage("Incolla titolo e testo di una notifica per vedere cosa ne capirebbe l'app. Non registra nulla.")
+            .setView(view)
+            .setPositiveButton("Prova", null)
+            .setNegativeButton("Chiudi", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val t = etT.text.toString()
+            val x = etX.text.toString()
+            if (t.isBlank() && x.isBlank()) {
+                etX.error = "Inserisci il testo"
+                return@setOnClickListener
+            }
+            val gem = Notif.geminiAttivo(this)
+            thread {
+                val e = Notif.estrai(applicationContext, t, x, gem)
+                runOnUiThread { esitoProvaNotif(t, x, e) }
+            }
+        }
+    }
+
+    private fun esitoProvaNotif(titolo: String, testo: String, e: NotifEstrai.Estratto?) {
+        if (e == null) {
+            OcBuilder(this)
+                .setTitle("Non riconosciuta")
+                .setMessage("Non sembra un pagamento o un incasso: verrebbe scartata.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        val prova = Proposta(
+            "prova", LocalDate.now().atStartOfDay().toString(), "", titolo, testo,
+            e.importo, e.tipo, e.desc, e.fonte, "attesa", "", "", "", emptyList(),
+        )
+        val cat = Notif.categoriaSuggerita(prova)
+        val valida = cat.isNotEmpty() && !cat.equals("Generica", true) && cat in Repo.categorie()
+        val righe = listOf(
+            "Importo: " + euro(e.importo),
+            "Tipo: " + e.tipo,
+            "Descrizione: " + e.desc,
+            "Riconosciuta da: " + if (e.fonte == "gemini") "Gemini" else "regole fisse",
+            "Categoria: " + if (valida) cat else "non trovata, da scegliere a mano",
+        ).joinToString("\n")
+        OcBuilder(this)
+            .setTitle("Riconosciuta")
+            .setMessage(righe + "\n\nLa registrazione automatica scatta solo se la regola la prevede e la categoria è stata trovata.")
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun importaZip(uri: Uri) {

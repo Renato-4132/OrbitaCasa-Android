@@ -181,6 +181,7 @@ object Repo {
         Doc.init(dir)
         Utenze.init(dir)
         Prom.init(dir)
+        Notif.init(dir)
         prefs = ctx.getSharedPreferences("orbita", Context.MODE_PRIVATE)
         lockOn = prefs.getBoolean("lock", false)
         load()

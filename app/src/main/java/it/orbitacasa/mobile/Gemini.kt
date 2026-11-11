@@ -59,17 +59,14 @@ object Gemini {
         return l
     }
 
-    private fun chiama(chiave: String, modello: String, mime: String, b64: String, prompt: String, cfg: JSONObject): String {
+    private fun chiama(chiave: String, modello: String, mime: String?, b64: String?, prompt: String, cfg: JSONObject): String {
+        val parti = JSONArray()
+        if (mime != null && b64 != null) {
+            parti.put(JSONObject().put("inline_data", JSONObject().put("mime_type", mime).put("data", b64)))
+        }
+        parti.put(JSONObject().put("text", prompt))
         val corpo = JSONObject()
-            .put(
-                "contents", JSONArray().put(
-                    JSONObject().put(
-                        "parts", JSONArray()
-                            .put(JSONObject().put("inline_data", JSONObject().put("mime_type", mime).put("data", b64)))
-                            .put(JSONObject().put("text", prompt))
-                    )
-                )
-            )
+            .put("contents", JSONArray().put(JSONObject().put("parts", parti)))
             .put("generationConfig", cfg)
         val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modello:generateContent")
         val conn = url.openConnection() as HttpURLConnection
@@ -98,18 +95,26 @@ object Gemini {
 
     /** Bloccante: va chiamata fuori dal thread principale. */
     fun analizza(ctx: Context, file: File, prompt: String): JSONObject {
+        if (chiave(ctx).isEmpty()) throw Errore("Imposta la chiave API Gemini")
+        if (file.length() > MAX_BYTES) throw Errore("File troppo grande per l'analisi (max 14 MB)")
+        val b64 = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+        return esegui(ctx, mimeDi(file), b64, prompt)
+    }
+
+    /** Bloccante: va chiamata fuori dal thread principale. */
+    fun analizzaTesto(ctx: Context, prompt: String): JSONObject = esegui(ctx, null, null, prompt)
+
+    private fun esegui(ctx: Context, mime: String?, b64: String?, prompt: String): JSONObject {
         val chiave = chiave(ctx)
         if (chiave.isEmpty()) throw Errore("Imposta la chiave API Gemini")
-        if (file.length() > MAX_BYTES) throw Errore("File troppo grande per l'analisi (max 14 MB)")
         val modello = modello(ctx)
-        val b64 = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
         val cfgs = configurazioni(modello)
         var i = 0
         var tent = 0
         var testo: String
         while (true) {
             try {
-                testo = chiama(chiave, modello, mimeDi(file), b64, prompt, cfgs[i])
+                testo = chiama(chiave, modello, mime, b64, prompt, cfgs[i])
                 break
             } catch (e: Exception) {
                 val m = e.message ?: ""
