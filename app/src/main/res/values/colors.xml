@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="oc_bg">#F5F5F0</color>
+    <color name="oc_surface">#FFFFFF</color>
+    <color name="oc_surface2">#F0EFE8</color>
+    <color name="oc_surface3">#E8E7DF</color>
+    <color name="oc_border">#E1E0D8</color>
+    <color name="oc_gold">#B8902A</color>
+    <color name="oc_gold_dark">#8A6820</color>
+    <color name="oc_blue">#3D7FD4</color>
+    <color name="oc_green">#3A9068</color>
+    <color name="oc_red">#CC3333</color>
+    <color name="oc_orange">#C98314</color>
+    <color name="oc_text">#1A1A1A</color>
+    <color name="oc_text_dim">#999999</color>
+    <color name="oc_text_mid">#555555</color>
+    <color name="oc_on_gold">#000000</color>
+    <color name="oc_icon_bg">#8A6820</color>
+    <color name="oc_outline_strong">#8A8A80</color>
+</resources>

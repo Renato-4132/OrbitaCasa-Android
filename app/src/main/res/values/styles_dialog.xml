@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="OcDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorOutline">@color/oc_outline_strong</item>
+        <item name="colorOnSurface">@color/oc_text</item>
+        <item name="colorOnSurfaceVariant">@color/oc_text_mid</item>
+        <item name="colorPrimary">@color/oc_gold</item>
+        <item name="colorSecondaryContainer">@color/oc_gold</item>
+        <item name="colorOnSecondaryContainer">@color/oc_on_gold</item>
+        <item name="buttonBarPositiveButtonStyle">@style/OcBtnPositivo</item>
+        <item name="buttonBarNegativeButtonStyle">@style/OcBtnNegativo</item>
+        <item name="buttonBarNeutralButtonStyle">@style/OcBtnElimina</item>
+    </style>
+
+    <style name="OcBtnPositivo" parent="Widget.Material3.Button">
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="backgroundTint">@color/oc_gold</item>
+        <item name="android:textColor">@color/oc_on_gold</item>
+    </style>
+
+    <style name="OcBtnNegativo" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="strokeColor">@color/oc_outline_strong</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/oc_text</item>
+    </style>
+
+    <style name="OcBtnElimina" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="strokeColor">@color/oc_red</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/oc_red</item>
+    </style>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/oc_gold</item>
+        <item name="colorOnPrimary">@color/oc_on_gold</item>
+        <item name="colorSurface">@color/oc_surface</item>
+        <item name="colorOnSurface">@color/oc_text</item>
+        <item name="colorOutline">@color/oc_border</item>
+        <item name="android:colorBackground">@color/oc_bg</item>
+        <item name="colorOnBackground">@color/oc_text</item>
+        <item name="android:statusBarColor">@color/oc_bg</item>
+        <item name="android:navigationBarColor">@color/oc_bg</item>
+        <item name="materialAlertDialogTheme">@style/OcDialog</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
