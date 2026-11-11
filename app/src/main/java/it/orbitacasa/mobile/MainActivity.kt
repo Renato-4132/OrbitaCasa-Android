@@ -1054,6 +1054,7 @@ class MainActivity : AppCompatActivity() {
     private fun intestaLista(titolo: String, azione: String, azione2: String? = null) {
         vista<TextView>(R.id.tvTitoloLista).text = titolo
         vista<TextView>(R.id.tvAddGen).text = azione
+        vista<View>(R.id.btnAddGen).visibility = if (azione.isEmpty()) View.GONE else View.VISIBLE
         val b2 = vista<MaterialButton>(R.id.btnAddGen2)
         b2.visibility = if (azione2 == null) View.GONE else View.VISIBLE
         if (azione2 != null) b2.text = azione2
@@ -1990,7 +1991,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderRicerca() {
-        intestaLista("🔎 Ricerca operazioni", "⚙️  Filtri avanzati", "📤  Condividi")
+        intestaLista("🔎 Ricerca operazioni", "", "📤  Condividi")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val til = layoutInflater.inflate(R.layout.view_campo, cont, false) as TextInputLayout
         til.hint = "Cerca in categoria, descrizione, importo, conto, tag…"
@@ -2023,7 +2024,11 @@ class MainActivity : AppCompatActivity() {
             boxTot.removeAllViews()
             boxRis.removeAllViews()
             val desc = Ricerca.descrizioneFiltri(rc)
-            if (Ricerca.attivo(rc)) vuoto(boxFiltri, "⚙️ Filtri attivi: " + desc.joinToString(", "))
+            riga(
+                boxFiltri, "Filtri avanzati",
+                if (Ricerca.attivo(rc)) "filtri attivi: " + desc.joinToString(", ") else "nessun filtro attivo",
+                "⚙️", if (Ricerca.attivo(rc)) oro else null
+            ) { dialogFiltriRicerca() }
 
             val voci = Repo.voci()
             val ris = Ricerca.cerca(voci, rcTesto, rcFuturi, rc)

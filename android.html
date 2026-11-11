@@ -80,11 +80,32 @@ footer{padding:32px 0;border-top:1px solid var(--border);text-align:center;font-
 footer a{color:#818cf8}
 @media (max-width:760px){.hero .wrap,.notif{grid-template-columns:1fr}.qr{max-width:220px}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+
+.shots{display:grid;grid-template-columns:1fr minmax(240px,300px);gap:40px;align-items:center;max-width:820px;margin:0 auto}
+.shots-cap{order:1}
+.shots-num{font-size:.75rem;font-weight:700;letter-spacing:.18em;color:var(--accent2);text-transform:uppercase;margin-bottom:6px}
+.shots-title{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(1.8rem,4.5vw,2.6rem);color:#fff;line-height:1.05;margin-bottom:10px}
+.shots-desc{color:var(--muted);font-size:1rem;max-width:36ch;min-height:4.8em}
+.shots-dots{display:flex;flex-wrap:wrap;gap:7px;margin-top:20px;max-width:340px}
+.shots-dot{width:9px;height:9px;border-radius:50%;background:#334155;cursor:pointer;border:0;padding:0;transition:background .2s,transform .2s}
+.shots-dot.active{background:var(--green);transform:scale(1.25)}
+.shots-dot:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.phone{order:2;position:relative;border-radius:34px;padding:9px;background:#000;border:1px solid #334155;box-shadow:0 20px 60px rgba(79,70,229,.18);aspect-ratio:9/20}
+.phone-view{position:relative;width:100%;height:100%;border-radius:26px;overflow:hidden;background:#000}
+.phone-track{display:flex;width:100%;height:100%;transition:transform .55s cubic-bezier(.4,0,.2,1);will-change:transform}
+.phone-slide{flex:0 0 100%;height:100%}
+.phone-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.phone-prog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--green);z-index:2}
+.shots-btn{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.8);border:1px solid rgba(99,102,241,.45);color:#a5b4fc;font-size:1.1rem;cursor:pointer;z-index:3;line-height:1}
+.shots-btn:hover{background:rgba(79,70,229,.8);color:#fff}
+.shots-btn.prev{left:-18px}.shots-btn.next{right:-18px}
+@media (max-width:760px){.shots{grid-template-columns:1fr;gap:22px;justify-items:center;text-align:center}.shots-cap{order:2}.phone{order:1;width:min(260px,70vw)}.shots-desc{margin:0 auto;min-height:5.5em}.shots-dots{justify-content:center;margin-left:auto;margin-right:auto}.shots-btn.prev{left:-14px}.shots-btn.next{right:-14px}}
+@media (prefers-reduced-motion:reduce){.phone-track{transition:none}}
 </style>
 </head>
 <body>
 <div class="top"><div class="wrap">
-<a href="index.html">← OrbitaCasa per desktop</a>
+<a href="https://renato-4132.github.io/OrbitaCasa/">← OrbitaCasa per desktop</a>
 <a href="https://github.com/Renato-4132/OrbitaCasa-Android">Codice su GitHub</a>
 </div></div>
 
@@ -95,15 +116,37 @@ footer a{color:#818cf8}
 <p class="lead">OrbitaCasa in tasca. Funziona da sola, con i dati sul telefono, e si sincronizza con il desktop quando vuoi.</p>
 <div class="btns">
 <a class="btn" href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">Scarica l'APK</a>
+<a class="btn alt" href="#schermate">Guarda le schermate</a>
 <a class="btn alt" href="#installa">Come si installa</a>
 </div>
 <p class="req">Gratuita, senza account, senza abbonamento e senza pubblicità.</p>
 </div>
 <div class="qr" role="img" aria-label="QR code per scaricare l'ultima versione dell'APK">
-<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="39" height="39" class="segno"><path fill="#fff" d="M0 0h39v39h-39z"/><path class="qrline" stroke="#0a0e1a" d="M1 1.5h7m1 0h2m1 0h1m2 0h3m2 0h3m3 0h3m2 0h7m-37 1h1m5 0h1m2 0h1m3 0h2m2 0h3m1 0h4m1 0h1m1 0h1m1 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m3 0h2m2 0h4m3 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h3m4 0h1m2 0h1m3 0h1m2 0h4m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h2m1 0h2m4 0h1m2 0h3m1 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m1 0h4m2 0h1m1 0h2m1 0h2m3 0h1m5 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-29 1h2m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m1 0h2m1 0h1m-27 1h1m3 0h1m1 0h3m5 0h3m2 0h2m3 0h1m2 0h7m2 0h1m-37 1h2m3 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h3m3 0h2m1 0h1m-36 1h2m1 0h1m1 0h3m2 0h2m3 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m4 0h3m-35 1h4m1 0h1m3 0h3m1 0h1m1 0h7m1 0h1m2 0h2m2 0h1m3 0h2m-33 1h1m2 0h1m1 0h1m3 0h1m1 0h1m2 0h1m3 0h1m7 0h3m1 0h4m-37 1h1m1 0h1m1 0h2m1 0h3m2 0h4m5 0h3m2 0h2m4 0h2m-31 1h1m1 0h2m2 0h2m2 0h1m1 0h1m1 0h1m2 0h1m2 0h2m1 0h3m2 0h4m-34 1h1m2 0h1m4 0h1m1 0h3m1 0h6m1 0h2m4 0h1m2 0h2m1 0h3m-37 1h1m2 0h1m2 0h2m1 0h4m5 0h1m3 0h1m1 0h1m4 0h2m2 0h3m-35 1h4m4 0h5m2 0h1m2 0h2m3 0h1m1 0h3m3 0h1m2 0h1m-35 1h1m1 0h9m2 0h1m1 0h3m1 0h2m1 0h1m2 0h2m1 0h5m-34 1h2m1 0h2m6 0h3m3 0h1m3 0h4m1 0h1m1 0h1m2 0h2m1 0h2m-36 1h3m1 0h3m2 0h3m1 0h3m1 0h1m1 0h3m2 0h1m1 0h1m2 0h3m2 0h1m-35 1h1m6 0h5m3 0h5m2 0h2m1 0h5m1 0h2m-32 1h2m3 0h1m2 0h2m1 0h4m2 0h1m1 0h4m3 0h1m2 0h5m-35 1h1m3 0h1m4 0h1m1 0h1m1 0h1m2 0h1m2 0h3m2 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-35 1h1m2 0h4m2 0h1m1 0h2m1 0h1m1 0h1m3 0h1m2 0h1m4 0h4m1 0h2m1 0h1m-37 1h2m1 0h2m2 0h1m2 0h1m1 0h1m1 0h1m3 0h2m2 0h2m3 0h2m2 0h4m-32 1h1m2 0h1m1 0h1m2 0h2m1 0h2m1 0h1m1 0h1m1 0h7m-26 1h1m1 0h1m2 0h1m3 0h2m1 0h8m4 0h4m1 0h1m2 0h1m-35 1h9m2 0h4m1 0h1m3 0h2m2 0h2m2 0h5m1 0h1m1 0h1m-29 1h1m1 0h1m2 0h4m1 0h1m1 0h4m1 0h1m1 0h2m3 0h1m3 0h1m-37 1h7m1 0h2m1 0h1m2 0h2m1 0h1m5 0h2m1 0h1m1 0h1m1 0h1m1 0h1m-33 1h1m5 0h1m8 0h5m2 0h3m3 0h1m3 0h3m-35 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h2m4 0h2m2 0h1m5 0h8m-36 1h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m2 0h2m2 0h1m1 0h2m2 0h3m2 0h1m1 0h1m-37 1h1m1 0h3m1 0h1m2 0h1m1 0h2m1 0h1m1 0h1m3 0h1m1 0h4m1 0h1m1 0h2m3 0h1m-35 1h1m5 0h1m5 0h2m3 0h2m2 0h1m1 0h2m2 0h1m4 0h1m1 0h2m-36 1h7m1 0h1m1 0h2m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h3m2 0h3"/></svg>
+<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 39 39" shape-rendering="crispEdges" class="segno"><path fill="#fff" d="M0 0h39v39h-39z"/><path class="qrline" stroke="#0a0e1a" d="M1 1.5h7m1 0h2m1 0h1m2 0h3m2 0h3m3 0h3m2 0h7m-37 1h1m5 0h1m2 0h1m3 0h2m2 0h3m1 0h4m1 0h1m1 0h1m1 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m3 0h2m2 0h4m3 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h3m4 0h1m2 0h1m3 0h1m2 0h4m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h2m1 0h2m4 0h1m2 0h3m1 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m1 0h4m2 0h1m1 0h2m1 0h2m3 0h1m5 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-29 1h2m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m1 0h2m1 0h1m-27 1h1m3 0h1m1 0h3m5 0h3m2 0h2m3 0h1m2 0h7m2 0h1m-37 1h2m3 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h3m3 0h2m1 0h1m-36 1h2m1 0h1m1 0h3m2 0h2m3 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m4 0h3m-35 1h4m1 0h1m3 0h3m1 0h1m1 0h7m1 0h1m2 0h2m2 0h1m3 0h2m-33 1h1m2 0h1m1 0h1m3 0h1m1 0h1m2 0h1m3 0h1m7 0h3m1 0h4m-37 1h1m1 0h1m1 0h2m1 0h3m2 0h4m5 0h3m2 0h2m4 0h2m-31 1h1m1 0h2m2 0h2m2 0h1m1 0h1m1 0h1m2 0h1m2 0h2m1 0h3m2 0h4m-34 1h1m2 0h1m4 0h1m1 0h3m1 0h6m1 0h2m4 0h1m2 0h2m1 0h3m-37 1h1m2 0h1m2 0h2m1 0h4m5 0h1m3 0h1m1 0h1m4 0h2m2 0h3m-35 1h4m4 0h5m2 0h1m2 0h2m3 0h1m1 0h3m3 0h1m2 0h1m-35 1h1m1 0h9m2 0h1m1 0h3m1 0h2m1 0h1m2 0h2m1 0h5m-34 1h2m1 0h2m6 0h3m3 0h1m3 0h4m1 0h1m1 0h1m2 0h2m1 0h2m-36 1h3m1 0h3m2 0h3m1 0h3m1 0h1m1 0h3m2 0h1m1 0h1m2 0h3m2 0h1m-35 1h1m6 0h5m3 0h5m2 0h2m1 0h5m1 0h2m-32 1h2m3 0h1m2 0h2m1 0h4m2 0h1m1 0h4m3 0h1m2 0h5m-35 1h1m3 0h1m4 0h1m1 0h1m1 0h1m2 0h1m2 0h3m2 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-35 1h1m2 0h4m2 0h1m1 0h2m1 0h1m1 0h1m3 0h1m2 0h1m4 0h4m1 0h2m1 0h1m-37 1h2m1 0h2m2 0h1m2 0h1m1 0h1m1 0h1m3 0h2m2 0h2m3 0h2m2 0h4m-32 1h1m2 0h1m1 0h1m2 0h2m1 0h2m1 0h1m1 0h1m1 0h7m-26 1h1m1 0h1m2 0h1m3 0h2m1 0h8m4 0h4m1 0h1m2 0h1m-35 1h9m2 0h4m1 0h1m3 0h2m2 0h2m2 0h5m1 0h1m1 0h1m-29 1h1m1 0h1m2 0h4m1 0h1m1 0h4m1 0h1m1 0h2m3 0h1m3 0h1m-37 1h7m1 0h2m1 0h1m2 0h2m1 0h1m5 0h2m1 0h1m1 0h1m1 0h1m1 0h1m-33 1h1m5 0h1m8 0h5m2 0h3m3 0h1m3 0h3m-35 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h2m4 0h2m2 0h1m5 0h8m-36 1h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m2 0h2m2 0h1m1 0h2m2 0h3m2 0h1m1 0h1m-37 1h1m1 0h3m1 0h1m2 0h1m1 0h2m1 0h1m1 0h1m3 0h1m1 0h4m1 0h1m1 0h2m3 0h1m-35 1h1m5 0h1m5 0h2m3 0h2m2 0h1m1 0h2m2 0h1m4 0h1m1 0h2m-36 1h7m1 0h1m1 0h2m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h3m2 0h3"/></svg>
 <p>Inquadra dal telefono per scaricare sempre l'ultima versione</p>
 </div>
 </div></header>
+
+<section id="schermate"><div class="wrap">
+<h2>L'app, schermata per schermata</h2>
+<p class="sub">Un giro tra le schermate principali. Scorri con le frecce, con il dito o con la tastiera.</p>
+<div class="shots" id="shots" aria-roledescription="carousello" aria-label="Schermate dell'app">
+<div class="shots-cap">
+<div class="shots-num" id="shotsNum"></div>
+<div class="shots-title" id="shotsTitle"></div>
+<p class="shots-desc" id="shotsDesc" aria-live="polite"></p>
+<div class="shots-dots" id="shotsDots"></div>
+</div>
+<div class="phone">
+<div class="phone-view" id="shotsView">
+<div class="phone-track" id="shotsTrack"></div>
+<div class="phone-prog" id="shotsProg"></div>
+</div>
+<button class="shots-btn prev" id="shotsPrev" aria-label="Schermata precedente">&#8249;</button>
+<button class="shots-btn next" id="shotsNext" aria-label="Schermata successiva">&#8250;</button>
+</div>
+</div>
+</div></section>
 
 <main>
 <section><div class="wrap">
@@ -162,7 +205,7 @@ footer a{color:#818cf8}
 <div class="group g4"><h3>Casa e beni</h3><ul>
 <li><b>Documenti contabili</b> collegati ai movimenti</li><li><b>Documenti personali</b> con scadenze</li><li><b>Utenze:</b> letture e consumi su 12 mesi</li><li><b>AutoPark</b> e <b>ImmoBil</b></li><li><b>Pet Care</b></li></ul></div>
 <div class="group g5"><h3>Strumenti</h3><ul>
-<li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave</li><li><b>Barra di navigazione</b> personalizzabile</li><li><b>Tema</b> chiaro e scuro</li></ul></div>
+<li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave</li><li><b>Modalità demo:</b> dati di esempio da provare, con uscita quando vuoi e i tuoi dati al sicuro</li><li><b>Barra di navigazione</b> personalizzabile</li><li><b>Tema</b> chiaro e scuro</li></ul></div>
 </div>
 </div></section>
 
@@ -191,7 +234,7 @@ footer a{color:#818cf8}
 <h2>Il resto della famiglia</h2>
 <p class="sub">Scegli quello che ti serve, si possono usare insieme.</p>
 <div class="eco">
-<a href="index.html"><strong>OrbitaCasa</strong>L'app desktop completa per Windows, macOS e Linux.</a>
+<a href="https://renato-4132.github.io/OrbitaCasa/"><strong>OrbitaCasa</strong>L'app desktop completa per Windows, macOS e Linux.</a>
 <a href="https://github.com/Renato-4132/OrbitaWeb"><strong>OrbitaWeb</strong>Collega il telefono al server web di OrbitaCasa.</a>
 <a href="https://github.com/Renato-4132/OrbitaNotify"><strong>OrbitaNotify</strong>Trasforma le notifiche di banca e carte in spese da confermare.</a>
 </div>
@@ -202,5 +245,75 @@ footer a{color:#818cf8}
 <p>Assistenza tecnica: <a href="mailto:helporbitacasa@gmail.com">helporbitacasa@gmail.com</a></p>
 <p style="margin-top:8px">OrbitaCasa 2026 – licenza: vedi il file LICENSE del repository.</p>
 </div></footer>
+<script>
+(function(){
+var BASE='screenshots/android/';
+var S=[
+['01-home','Home','Il riepilogo del mese in un colpo d\'occhio e tutte le funzioni raggruppate in sezioni.'],
+['02-nuova-operazione','Nuova operazione','Registri un\'uscita o un\'entrata in pochi tocchi. SmartCat propone la categoria dallo storico.'],
+['03-movimenti','Movimenti del mese','Entrate, uscite e saldo del mese, con ricerca e navigazione tra i mesi.'],
+['04-calendario','Calendario','Ogni giorno con i suoi movimenti: tocca una data per vedere il dettaglio.'],
+['05-pianifica','Pianifica','Dilaziona una spesa in quote mensili e vedi quanto accantonare e quanto hai già messo da parte.'],
+['06-promemoria','Promemoria','Un\'agenda con avvisi all\'ora giusta e il riepilogo del giorno.'],
+['07-notifiche','Notifiche → spese','Le notifiche di banche e carte diventano movimenti, con regole per app e prova del testo.'],
+['08-ricerca','Cerca operazioni','Ricerca per testo e filtri avanzati, anche per tag, con totali e condivisione dei risultati.'],
+['09-grafici','Grafici e statistiche','Andamento di entrate e uscite, in vista annuale, mensile e per spese.'],
+['10-checkout','Checkout','Le categorie in cui spendi di solito ma che questo mese non hai ancora registrato.'],
+['11-previsione','Previsione fine mese','Per categoria: speso finora, previsione a fine mese e budget.'],
+['12-conti','Conti','Fino a 10 conti con saldo e tipo, e trasferimenti tra un conto e l\'altro.'],
+['13-categorie','Categorie','Le spese del mese per categoria, con budget e classe 50/30/20.'],
+['14-target','Target','Target di spesa mensile e annuale e budget per categoria, con barre di avanzamento.'],
+['15-ricorrenze','Ricorrenze','Affitto, abbonamenti, stipendio: li inserisci una volta sola.'],
+['16-finanziamenti','Finanziamenti','Rate e piano di ammortamento, con calcolatori: simulazione, rata sostenibile, estinzione anticipata.'],
+['17-fondo','Fondo Risparmio','Fondo di emergenza con obiettivi a 3, 6 e 12 mesi e risparmio degli ultimi 365 giorni.'],
+['18-doc-contabili','Documenti contabili','L\'archivio dei documenti collegati ai movimenti, raggruppati per anno.'],
+['19-doc-personali','Documenti personali','Un profilo per persona, con categorie e scadenze evidenziate.'],
+['20-utenze','Utenze','Letture e consumi su 12 mesi, con il confronto sull\'anno precedente.'],
+['21-fairshare','FairShare','Spese divise tra più persone: chi deve a chi, con i debiti compensati.'],
+['22-autopark','AutoPark','I veicoli con le scadenze (bollo, assicurazione, revisione) e i costi.'],
+['23-immobil','ImmoBil','Gli immobili con contratti, scadenze, canoni e voci di spesa.'],
+['24-petcare','Pet Care','Gli animali con vaccinazioni, antiparassitari e spese del veterinario.'],
+['25-strumenti','Strumenti','Importa ed esporta lo zip, chiave Gemini, aggiornamenti e modalità demo.']
+];
+var INTERVAL=6000,cur=0,timer=null;
+var track=document.getElementById('shotsTrack'),dots=document.getElementById('shotsDots'),prog=document.getElementById('shotsProg');
+var num=document.getElementById('shotsNum'),tit=document.getElementById('shotsTitle'),desc=document.getElementById('shotsDesc');
+var box=document.getElementById('shots');
+S.forEach(function(s,i){
+var d=document.createElement('div');d.className='phone-slide';
+var im=document.createElement('img');im.src=BASE+s[0]+'.jpg';im.alt='Schermata '+s[1]+' di OrbitaCasa Mobile';
+im.width=540;im.height=1200;im.decoding='async';im.loading=i<2?'eager':'lazy';
+d.appendChild(im);track.appendChild(d);
+var b=document.createElement('button');b.className='shots-dot'+(i===0?' active':'');b.setAttribute('aria-label','Vai alla schermata '+(i+1)+': '+s[1]);
+b.addEventListener('click',function(){go(i);start();});dots.appendChild(b);
+});
+function bar(){
+prog.style.transition='none';prog.style.width='0%';
+if(window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+requestAnimationFrame(function(){requestAnimationFrame(function(){prog.style.transition='width '+INTERVAL+'ms linear';prog.style.width='100%';});});
+}
+function go(n){
+cur=((n%S.length)+S.length)%S.length;
+track.style.transform='translateX(-'+(cur*100)+'%)';
+num.textContent=String(cur+1).padStart(2,'0')+'  /  '+S.length;
+tit.textContent=S[cur][1];desc.textContent=S[cur][2];
+Array.prototype.forEach.call(dots.children,function(d,i){d.classList.toggle('active',i===cur);});
+bar();
+}
+function start(){clearInterval(timer);if(window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;timer=setInterval(function(){go(cur+1);},INTERVAL);bar();}
+document.getElementById('shotsPrev').addEventListener('click',function(){go(cur-1);start();});
+document.getElementById('shotsNext').addEventListener('click',function(){go(cur+1);start();});
+box.addEventListener('mouseenter',function(){clearInterval(timer);prog.style.transition='none';});
+box.addEventListener('mouseleave',start);
+var x0=0,y0=0;
+box.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;y0=e.touches[0].clientY;},{passive:true});
+box.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>35){go(cur+(dx<0?1:-1));start();}},{passive:true});
+document.addEventListener('keydown',function(e){
+var r=box.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight)return;
+if(e.key==='ArrowLeft'){go(cur-1);start();}if(e.key==='ArrowRight'){go(cur+1);start();}
+});
+go(0);start();
+})();
+</script>
 </body>
 </html>
