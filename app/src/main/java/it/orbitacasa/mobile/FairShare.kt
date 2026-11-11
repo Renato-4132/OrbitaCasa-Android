@@ -413,7 +413,7 @@ object FairShare {
                 if (soci != null) {
                     val resto = JSONArray()
                     for (j in 0 until soci.length()) if (soci.optString(j) != nome) resto.put(soci.optString(j))
-                    if (resto.length() == 0) continue // contenitore rimasto senza soci
+                    if (resto.length() == 0) continue
                     o.put("soci", resto)
                 }
             }

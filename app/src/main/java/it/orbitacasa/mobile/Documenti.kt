@@ -201,8 +201,6 @@ object Doc {
         act.startActivity(Intent.createChooser(i, "Condividi documento"))
     }
 
-    // ───────────── Scrittura: stessa logica dei moduli desktop ─────────────
-
     val CAT_PERSONALI = listOf(
         "Atto Notarile", "Altro", "Assicurazione", "Carta d'Identità",
         "Certificato", "Codice Fiscale", "Contratto", "Curriculum",
@@ -246,7 +244,6 @@ object Doc {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** Copia il file scelto in una cartella temporanea, mantenendone l'estensione. */
     fun prepara(act: Activity, uri: Uri): File {
         var nome = ""
         act.contentResolver.query(uri, null, null, null, null)?.use { c ->
@@ -283,7 +280,6 @@ object Doc {
     fun descCompatibili(a: String, b: String): Boolean =
         a == b || senzaAll(a) == senzaAll(b) || parole(a) == parole(b)
 
-    /** sanitizza_stringa del desktop (compreso il suo comportamento sul troncamento). */
     private fun sanC(s: String, max: Int): String {
         val t = s.trim().replace(' ', '_').replace(Regex("[^\\p{L}\\p{N}_.-]"), "")
         return if (t.length > max) t.substring(0, max) else t.uppercase()
@@ -300,7 +296,6 @@ object Doc {
     private fun regContabile() = File(dir, "documenti_archiviati.json")
     private fun cartellaContabili() = File(dir, "documenti")
 
-    /** Chiave di un documento già archiviato con lo stesso contenuto, se c'è. */
     fun duplicato(tmp: File): String? {
         val reg = leggiOggetto(regContabile()) ?: return null
         val h = sha256(tmp)
@@ -352,7 +347,6 @@ object Doc {
         scrivi(regContabile(), reg.toString(4))
     }
 
-    /** Movimento collegato al documento: stessa data, importo e tipo; a parità vince la descrizione compatibile. */
     fun spesaCollegata(d: Item): Voce? {
         val data = d.data ?: return null
         val imp = d.importo ?: return null
@@ -360,7 +354,6 @@ object Doc {
         return c.firstOrNull { descCompatibili(it.descrizione, d.titolo) } ?: c.firstOrNull()
     }
 
-    /** Documento archiviato collegato a una spesa «ALL·» (stessa data, importo e tipo), come sul desktop. */
     fun documentoDiSpesa(v: Voce): Item? {
         if (!v.descrizione.contains("ALL·")) return null
         val c = archiviati().filter {
@@ -368,8 +361,6 @@ object Doc {
         }
         return c.firstOrNull { descCompatibili(it.titolo, v.descrizione) } ?: c.firstOrNull()
     }
-
-    // ───────────── Documenti personali ─────────────
 
     private fun radicePers() = File(dir, "documenti_personali")
     private fun dirProfilo(p: String) = File(radicePers(), p)
@@ -389,7 +380,6 @@ object Doc {
 
     fun nomiProfili(): List<String> = personali().map { it.first }
 
-    /** null se creato, altrimenti il motivo del rifiuto. */
     fun nuovoProfilo(nome: String): String? {
         val n = nome.trim()
         if (n.isEmpty()) return "Inserisci un nome."

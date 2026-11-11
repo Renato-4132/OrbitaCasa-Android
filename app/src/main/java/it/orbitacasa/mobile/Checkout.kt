@@ -129,7 +129,7 @@ object Checkout {
 
     class RigaAnn(
         val cat: String, val mese: Int, val media: Double, val nAnni: Int,
-        val stato: Int, // 0 registrata, 1 mese futuro, 2 mancante
+        val stato: Int,
         val anni: List<Int>, val occ: Int, val min: Double, val max: Double,
     )
 

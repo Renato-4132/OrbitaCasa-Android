@@ -1317,7 +1317,7 @@ object Repo {
                     zip.closeEntry()
                     n++
                 }
-                // Cartelle dei documenti: contabili (documenti/) e personali (documenti_personali/<profilo>/...)
+
                 for (cartella in listOf("documenti", "documenti_personali")) {
                     val radice = File(dir, cartella)
                     if (!radice.isDirectory) continue

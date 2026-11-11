@@ -14,10 +14,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 
-/**
- * Promemoria (agenda): stesso file e stesse chiavi del desktop (gestisci_promemoria.py).
- * Le voci restano JSONObject, così le chiavi che l'app non usa (rrule, modificata, seq...) non si perdono.
- */
 object Prom {
     const val FILE = "promemoria.json"
 
@@ -53,8 +49,6 @@ object Prom {
     }
 
     fun fmtData(d: LocalDate): String = d.format(FMT)
-
-    // ---------- lettura / scrittura ----------
 
     private fun radice(): JSONObject {
         errore = null
@@ -94,7 +88,6 @@ object Prom {
         return v
     }
 
-    /** Voci proprie dell'agenda (quelle modificabili). */
     fun agenda(): List<JSONObject> {
         val a = radice().optJSONArray("agenda") ?: return emptyList()
         return (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { normalizza(it) } }
@@ -115,7 +108,6 @@ object Prom {
         Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
     }
 
-    /** Applica una modifica all'elenco e salva. Ritorna un messaggio d'errore oppure null. */
     private fun modifica(blocco: (MutableList<JSONObject>) -> String?): String? {
         val root = radice()
         errore?.let { return it }
@@ -137,8 +129,6 @@ object Prom {
         v.put("seq", v.optInt("seq", 0) + 1)
         v.put("modificata", java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")))
     }
-
-    // ---------- helper sui campi ----------
 
     fun data(v: JSONObject): LocalDate = LocalDate.parse(v.optString("data"))
 
@@ -173,8 +163,6 @@ object Prom {
         if (n < 1 || n > 99 || u !in UNITA_SING) return null
         return n to u
     }
-
-    // ---------- ripetizioni (ics_agenda.py) ----------
 
     private class Rr(
         val freq: String, val n: Int, val byday: List<Pair<Int, Int>>, val bymd: List<Int>,
@@ -297,7 +285,6 @@ object Prom {
         return t + if (det.isNotEmpty()) " (" + det.joinToString("; ") + ")" else ""
     }
 
-    /** Giorni della settimana (0 = lunedì) se la regola è un semplice "settimanale nei giorni X". */
     private fun giorniDaRrule(s: String): List<Int>? {
         if (s.isEmpty()) return null
         val R = parseRrule(s)
@@ -306,8 +293,6 @@ object Prom {
         ) return null
         return R.byday.map { it.second }.toSortedSet().toList()
     }
-
-    // ---------- occorrenze ----------
 
     fun occorreInizio(v: JSONObject, d: LocalDate): Boolean {
         val d0 = try { data(v) } catch (_: Exception) { return false }
@@ -387,7 +372,6 @@ object Prom {
         return res.sortedWith(ordine)
     }
 
-    /** Voci con preavviso: la prima occorrenza entro i giorni di preavviso, non ancora fatta. */
     fun anticipi(agenda: List<JSONObject>, oggi: LocalDate): List<Occ> {
         val res = ArrayList<Occ>()
         for (v in agenda) {
@@ -402,8 +386,6 @@ object Prom {
         }
         return res.sortedWith(ordine)
     }
-
-    // ---------- testi ----------
 
     fun fmtEur(x: Double): String = String.format(Locale.ITALY, "%,.2f", x) + " €"
 
@@ -420,7 +402,6 @@ object Prom {
         return t.toDoubleOrNull()
     }
 
-    /** "18", "18:30", "1830" -> "18:30"; vuoto -> ""; non valido -> null. */
     fun normalizzaOra(testo: String): String? {
         val s = testo.trim().replace('.', ':').replace(',', ':').replace(" ", "")
         if (s.isEmpty()) return ""
@@ -492,7 +473,6 @@ object Prom {
         return riga
     }
 
-    /** Stesso testo che il desktop scrive nella chiave "promemoria" (serve all'assistente IA). */
     fun testoAgenda(agenda: List<JSONObject>, giorni: Int, oggi: LocalDate = LocalDate.now()): String {
         val righe = ArrayList<String>()
         val ritardo = scaduti(agenda, oggi)
@@ -519,8 +499,6 @@ object Prom {
         return blocchi.joinToString("\n\n")
     }
 
-    // ---------- conteggi per le notifiche ----------
-
     class Conteggio(val oggi: Int, val scaduti: Int, val inArrivo: Int) {
         val totale get() = oggi + scaduti + inArrivo
     }
@@ -530,8 +508,6 @@ object Prom {
         val n = a.count { occorre(it, oggi) && !fatta(it, oggi) }
         return Conteggio(n, scaduti(a, oggi).size, anticipi(a, oggi).size)
     }
-
-    // ---------- operazioni ----------
 
     fun alternaFatto(id: String, d: LocalDate): String? = modifica { voci ->
         val v = voci.firstOrNull { it.optString("id") == id } ?: return@modifica "Voce non trovata."
@@ -547,10 +523,6 @@ object Prom {
         if (!voci.removeAll { it.optString("id") == id }) "Voce non trovata." else null
     }
 
-    /**
-     * Crea (id == null) o aggiorna una voce. `campi` contiene solo i campi scelti nel modulo;
-     * quelli che l'app non gestisce (rrule avanzata, rip_n...) restano come sono se la ripetizione non cambia.
-     */
     fun salva(id: String?, campi: JSONObject): String? = modifica { voci ->
         if (id == null) {
             val v = JSONObject(campi.toString())
@@ -576,7 +548,6 @@ object Prom {
         null
     }
 
-    /** Posticipa come il desktop: voce singola spostata; voce ripetuta: copia singola e occorrenza di oggi segnata fatta. */
     fun posticipa(id: String, d: LocalDate, modo: String): Pair<LocalDateTime?, String?> {
         var risultato: LocalDateTime? = null
         val err = modifica { voci ->

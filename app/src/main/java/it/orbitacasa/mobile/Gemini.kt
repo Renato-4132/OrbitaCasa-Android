@@ -10,11 +10,6 @@ import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/**
- * Estrazione automatica dei dati dai documenti con Gemini, stessa logica dei moduli desktop
- * (archivi_pdf.py e documenti_personali.py): stessi prompt, stessi campi, stessi tentativi.
- * La chiave API resta solo sul telefono (SharedPreferences private, backup disattivato).
- */
 object Gemini {
     const val MODELLO_DEFAULT = "gemini-2.5-flash"
     private const val MAX_BYTES = 14L * 1024 * 1024
@@ -41,7 +36,6 @@ object Gemini {
         else -> "image/jpeg"
     }
 
-    /** Configurazioni da provare in ordine, come sul desktop (thinking ridotto, poi senza). */
     private fun configurazioni(modello: String): List<JSONObject> {
         val l = ArrayList<JSONObject>()
         val m = Regex("gemini-(\\d+)(?:\\.(\\d+))?").find(modello.lowercase())
@@ -93,7 +87,6 @@ object Gemini {
         }
     }
 
-    /** Bloccante: va chiamata fuori dal thread principale. */
     fun analizza(ctx: Context, file: File, prompt: String): JSONObject {
         if (chiave(ctx).isEmpty()) throw Errore("Imposta la chiave API Gemini")
         if (file.length() > MAX_BYTES) throw Errore("File troppo grande per l'analisi (max 14 MB)")
@@ -101,7 +94,6 @@ object Gemini {
         return esegui(ctx, mimeDi(file), b64, prompt)
     }
 
-    /** Bloccante: va chiamata fuori dal thread principale. */
     fun analizzaTesto(ctx: Context, prompt: String): JSONObject = esegui(ctx, null, null, prompt)
 
     private fun esegui(ctx: Context, mime: String?, b64: String?, prompt: String): JSONObject {
@@ -136,7 +128,6 @@ object Gemini {
         }
     }
 
-    /** Messaggio per l'utente, senza mai includere la chiave. */
     fun messaggio(e: Throwable): String {
         val m = e.message ?: ""
         return when {
@@ -155,8 +146,6 @@ object Gemini {
         if (j.isNull(k)) "" else j.optString(k, "").trim().let { if (it.equals("null", true)) "" else it }
 
     private val F_ITA = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-
-    // ───────────── Documenti contabili (archivi_pdf.py) ─────────────
 
     class DatiContabile(
         val importo: Double, val descrizione: String, val data: LocalDate,
@@ -195,8 +184,6 @@ object Gemini {
         val cat = if (c in categorie) c else if ("Generica" in categorie) "Generica" else null
         return DatiContabile(imp, desc, data, tipo, cat)
     }
-
-    // ───────────── Documenti personali (documenti_personali.py) ─────────────
 
     class DatiPers(val descrizione: String, val categoria: String?, val scadenza: LocalDate?)
 

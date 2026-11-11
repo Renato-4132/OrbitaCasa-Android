@@ -2957,7 +2957,6 @@ class MainActivity : AppCompatActivity() {
 
     private val sc: Scheda get() = schedaDi(pagina) ?: Park
 
-    /** Fisarmonica condivisa dalle due pagine documenti: un solo gruppo aperto alla volta. */
     private fun gruppoDocumenti(
         cont: LinearLayout, aggiorna: ArrayList<() -> Unit>, chiave: String, titolo: String,
         riempi: (LinearLayout) -> Unit,
@@ -2992,7 +2991,6 @@ class MainActivity : AppCompatActivity() {
         apriDocumento.launch(arrayOf("application/pdf", "image/*"))
     }
 
-    /** Documenti contabili: l'archivio collegato ai movimenti (documenti_archiviati.json). */
     private fun renderDocumenti() {
         intestaLista("🧾 Documenti contabili", "➕  Nuovo documento", "🔎  Filtri")
         val cont = vista<LinearLayout>(R.id.listaGen)
@@ -3068,7 +3066,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Documenti personali: un profilo per persona, con categoria, scadenza e note. */
     private fun renderDocPers() {
         intestaLista("🪪 Documenti personali", "➕  Nuovo documento", "👤  Profili")
         val cont = vista<LinearLayout>(R.id.listaGen)
@@ -3090,7 +3087,6 @@ class MainActivity : AppCompatActivity() {
             }
             return t to (if (gg < 0) rosso else if (gg <= 30) arancio else null)
         }
-        // Scadenze imminenti di tutti i profili (scaduti o entro 30 giorni), come sul desktop.
         val urgenti = pers.flatMap { (p, l) ->
             l.filter { d -> d.scadenza != null && java.time.temporal.ChronoUnit.DAYS.between(oggi, d.scadenza) <= 30 }.map { p to it }
         }.sortedBy { it.second.scadenza }
@@ -3203,10 +3199,6 @@ class MainActivity : AppCompatActivity() {
         return btn
     }
 
-    /**
-     * Estrazione automatica con Gemini: parte da sola se la chiave è impostata; altrimenti il tocco chiede la chiave.
-     * Tenendo premuto si cambia o si rimuove la chiave.
-     */
     private fun collegaIa(
         btn: MaterialButton, file: java.io.File, prompt: String, vivo: () -> Boolean,
         applica: (org.json.JSONObject) -> Unit,
@@ -3276,7 +3268,6 @@ class MainActivity : AppCompatActivity() {
     private fun parseTags(t: String): List<String> =
         t.split(Regex("[\\s,;]+")).map { it.trimStart('#') }.filter { it.isNotEmpty() }
 
-    /** Nuovo documento contabile (con file scelto) o modifica di uno esistente. */
     private fun dialogDocContabile(d: Doc.Item?) {
         val staged = if (d == null) docStaged else null
         if (d == null && staged == null) return
@@ -3491,7 +3482,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Nuovo documento personale (con file scelto) o modifica di uno esistente. */
     private fun dialogDocPers(d: Doc.Item?) {
         val staged = if (d == null) docStaged else null
         if (d == null && staged == null) return
@@ -3618,7 +3608,6 @@ class MainActivity : AppCompatActivity() {
             Utenze.TIPI.joinToString(" · ") { it + ": " + (Utenze.categoriaBollette(it).ifEmpty { "—" }) },
             "", null
         ) { dialogCategorieBollette() }
-        // Fisarmonica come nella home: una sola utenza aperta alla volta.
         val aggiornaUtenze = ArrayList<() -> Unit>()
         for (u in Utenze.TIPI) {
             val anni = Utenze.anni(u)
@@ -3987,7 +3976,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Dettaglio contabile: in più la spesa collegata (stessa data, importo e tipo), come sul desktop. */
     private fun dialogDocumentoContabile(d: Doc.Item) {
         val sp = Doc.spesaCollegata(d)
         val extra = ArrayList<String>()
@@ -4006,7 +3994,6 @@ class MainActivity : AppCompatActivity() {
         b.show()
     }
 
-    /** Dettaglio documento personale. */
     private fun dialogDocumento(d: Doc.Item) {
         val b = OcBuilder(this)
             .setTitle(d.titolo)
@@ -4974,8 +4961,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------- Promemoria ----------
-
     private var chiestoNotifiche = false
 
     private val richiediPermNotifiche =
@@ -5240,7 +5225,6 @@ class MainActivity : AppCompatActivity() {
             campi.put("preavviso", pre)
             campi.put("anticipo_min", ant)
             if (v != null) {
-                // una voce su più giorni conserva la sua durata quando la sposto
                 val gg = Prom.durataGg(v)
                 campi.put("data_fine", if (gg > 0) data.plusDays(gg.toLong()).toString() else "")
                 campi.put("ora_fine", if (ora.isEmpty()) "" else v.optString("ora_fine", ""))

@@ -19,13 +19,6 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
-/**
- * Notifiche dei promemoria. Due tipi, come sul desktop:
- *  - avviso all'ora: per le voci con un'ora, "anticipo_min" minuti prima;
- *  - riepilogo del giorno: quanti promemoria in agenda oggi, scaduti e in arrivo (preavviso).
- * Un solo allarme alla volta: il prossimo evento in programma. Quando scatta, il ricevitore
- * manda ciò che è dovuto e programma il successivo.
- */
 object Avvisi {
     private const val CANALE_ORA = "promemoria_ora"
     private const val CANALE_GIORNO = "promemoria_giorno"
@@ -69,8 +62,6 @@ object Avvisi {
             }
         )
     }
-
-    // ---------- cosa è in programma ----------
 
     private class Evento(val quando: LocalDateTime, val chiave: String, val titolo: String, val testo: String, val canale: String)
 
@@ -121,8 +112,6 @@ object Avvisi {
         return parti.joinToString(", ")
     }
 
-    // ---------- invio ----------
-
     private fun inviati(ctx: Context): MutableSet<String> =
         (prefs(ctx).getStringSet(K_INVIATI, null) ?: emptySet<String>()).toMutableSet()
 
@@ -156,7 +145,6 @@ object Avvisi {
         }
     }
 
-    /** Manda quello che è dovuto adesso (con un ritardo tollerato) e riprogramma il prossimo allarme. */
     fun controlla(ctx: Context) {
         try {
             creaCanali(ctx)
@@ -183,15 +171,12 @@ object Avvisi {
         }
     }
 
-    // ---------- allarme ----------
-
     private fun intentAllarme(ctx: Context): PendingIntent =
         PendingIntent.getBroadcast(
             ctx, REQ_ALLARME, Intent(ctx, AvvisiReceiver::class.java).setAction("it.orbitacasa.mobile.AVVISI"),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-    /** Programma un solo allarme: il prossimo evento non ancora inviato (o fra un giorno, per rileggere l'agenda). */
     fun pianifica(ctx: Context) {
         try {
             val am = ctx.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
@@ -223,7 +208,6 @@ class AvvisiReceiver : BroadcastReceiver() {
 }
 
 class AvviReceiver : BroadcastReceiver() {
-    /** Dopo il riavvio del telefono o l'aggiornamento dell'app gli allarmi vanno riprogrammati. */
     override fun onReceive(context: Context, intent: Intent?) {
         Avvisi.iniziaDa(context)
         Avvisi.controlla(context)

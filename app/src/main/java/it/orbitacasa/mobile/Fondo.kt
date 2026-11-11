@@ -120,7 +120,7 @@ object Fondo {
     fun analizza(voci: List<Voce>, obiettivoAnnuale: Double, obiettivi: List<Obiettivo>): Analisi {
         val oggi = LocalDate.now()
         val inizio = oggi.minusDays(364)
-        val mesiDati = LinkedHashMap<YearMonth, DoubleArray>() // [entrate, uscite]
+        val mesiDati = LinkedHashMap<YearMonth, DoubleArray>()
         var e365 = 0.0
         var u365 = 0.0
         for (v in voci) {

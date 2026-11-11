@@ -13,7 +13,6 @@ object Utenze {
     val TIPI = listOf("Acqua", "Luce", "Gas")
     val ICONE = mapOf("Acqua" to "💧", "Luce" to "💡", "Gas" to "🔥")
     val UNITA = mapOf("Acqua" to "m³", "Luce" to "kWh", "Gas" to "Smc")
-    /** Stessi campi e stesse chiavi dell'anagrafica del desktop (utenze.py). */
     val CAMPI_CONTRATTO = listOf(
         "Ragione sociale", "Telefono", "Email", "Numero contratto",
         "Codice Cliente", "Codice Utenza / Fornitura", "POD / PDR", "Note",
@@ -24,7 +23,6 @@ object Utenze {
     val CAMPI_ASSISTENZA = listOf("Pronto Intervento", "Modalita Pagamento", "IBAN")
     val CAMPI = CAMPI_CONTRATTO + CAMPI_OFFERTA + CAMPI_ASSISTENZA
 
-    /** Etichetta mostrata; la chiave nel JSON resta quella del desktop. */
     val ETICHETTE = mapOf(
         "Costo Unitario" to "Costo unitario tutto incluso (€/unità)",
         "Quota Fissa" to "Quota fissa (info, non nel calcolo)",
@@ -83,7 +81,6 @@ object Utenze {
         return m
     }
 
-    /** Come leggi(), ma per scrivere: se il file esiste e non si legge, lo copia in .corrotto e si ferma. */
     private fun leggiPerScrittura(): JSONObject {
         val f = File(dir, FILE)
         if (!f.exists()) return JSONObject()
@@ -98,7 +95,6 @@ object Utenze {
         }
     }
 
-    /** Salva i campi dell'anagrafica; le chiavi interne del desktop (_import_auto, _categoria_bollette...) restano intatte. */
     fun salvaAnagrafica(utenza: String, valori: Map<String, String>) {
         val base = leggiPerScrittura()
         if (base.optJSONObject("letture_salvate") == null) base.put("letture_salvate", JSONObject())
@@ -115,7 +111,6 @@ object Utenze {
         leggi()?.optJSONObject("anagrafiche")?.optJSONObject(utenza)
             ?.optString("Costo Unitario", "")?.trim()?.replace(',', '.')?.toDoubleOrNull()
 
-    /** Sempre 12 mesi: quelli senza riga salvata sono a zero. */
     fun anno12(utenza: String, anno: String): List<Lettura> {
         val per = anni(utenza).firstOrNull { it.anno == anno }?.letture ?: emptyList()
         return (1..12).map { m -> per.firstOrNull { it.mese == m } ?: Lettura(m, 0.0, 0.0, 0.0) }
@@ -137,7 +132,6 @@ object Utenze {
         return f + " " + String.format(Locale.ITALY, "%+.1f%%", v)
     }
 
-    /** Lettura precedente proposta: l'attuale del mese prima (dicembre dell'anno prima per gennaio). */
     fun precSuggerita(utenza: String, anno: Int, mese: Int): Double {
         val (a, m) = if (mese == 1) (anno - 1) to 12 else anno to (mese - 1)
         val l = anni(utenza).firstOrNull { it.anno == a.toString() }?.letture?.firstOrNull { it.mese == m }
@@ -167,10 +161,6 @@ object Utenze {
         per.put(anno.toString(), arr)
     }
 
-    /**
-     * Salva una lettura come sul desktop: ricalcola il consumo, la lettura precedente del mese dopo
-     * diventa questa lettura attuale (da dicembre si passa a gennaio dell'anno dopo, creandolo se serve).
-     */
     fun salvaLettura(utenza: String, anno: Int, mese: Int, prec: Double, att: Double) {
         val base = leggi() ?: JSONObject()
         val l = base.optJSONObject("letture_salvate") ?: JSONObject().also { base.put("letture_salvate", it) }
@@ -210,14 +200,12 @@ object Utenze {
         return KEYWORDS.filter { (_, kws) -> kws.any { Regex(it).containsMatchIn(d) } }.keys.toList()
     }
 
-    /** Categoria di spesa scelta per le bollette di questa utenza ("" se nessuna). */
     fun categoriaBollette(utenza: String): String =
         leggi()?.optJSONObject("anagrafiche")?.optJSONObject(utenza)?.optString("_categoria_bollette", "")?.trim() ?: ""
 
     fun categoriaScelta(utenza: String): Boolean =
         leggi()?.optJSONObject("anagrafiche")?.optJSONObject(utenza)?.has("_categoria_bollette") == true
 
-    /** Proposta come sul desktop: categoria col nome dell'utenza, altrimenti una che contiene "bollett"/"utenz". */
     fun categoriaProposta(utenza: String, cats: List<String>): String {
         val att = categoriaBollette(utenza)
         if (att.isNotEmpty() && att in cats) return att
@@ -241,7 +229,6 @@ object Utenze {
         Files.move(tmp.toPath(), f.toPath(), StandardCopyOption.REPLACE_EXISTING)
     }
 
-    /** Bollette per mese ("MM/AAAA" -> totale) prese dalle uscite della categoria scelta. */
     fun bollette(utenza: String): Map<String, Double> {
         val cat = categoriaBollette(utenza)
         if (cat.isEmpty()) return emptyMap()
