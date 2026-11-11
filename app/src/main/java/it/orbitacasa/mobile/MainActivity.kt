@@ -2023,11 +2023,7 @@ class MainActivity : AppCompatActivity() {
             boxTot.removeAllViews()
             boxRis.removeAllViews()
             val desc = Ricerca.descrizioneFiltri(rc)
-            riga(
-                boxFiltri, "Filtri avanzati",
-                if (Ricerca.attivo(rc)) "filtri attivi: " + desc.joinToString(", ") else "nessun filtro attivo",
-                "⚙️", if (Ricerca.attivo(rc)) oro else null
-            ) { dialogFiltriRicerca() }
+            if (Ricerca.attivo(rc)) vuoto(boxFiltri, "⚙️ Filtri attivi: " + desc.joinToString(", "))
 
             val voci = Repo.voci()
             val ris = Ricerca.cerca(voci, rcTesto, rcFuturi, rc)
