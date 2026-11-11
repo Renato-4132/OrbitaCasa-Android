@@ -1296,6 +1296,68 @@ object Repo {
     fun uscite(da: LocalDate, a: LocalDate): List<Voce> =
         voci().filter { it.tipo == "Uscita" && !it.data.isBefore(da) && !it.data.isAfter(a) }
 
+    // ───────────── Modalità demo ─────────────
+    // I dati veri vengono copiati in db_reale, la cartella dati viene svuotata e sostituita dal profilo demo.
+    // All'uscita la cartella dati torna esattamente com'era.
+
+    private const val DEMO = "demo"
+    val demoAttiva: Boolean get() = prefs.getBoolean(DEMO, false)
+
+    private fun svuotaDir() {
+        dir.listFiles()?.forEach { it.deleteRecursively() }
+    }
+
+    private fun ricaricaDopoScambio() {
+        targetMese = 0.0
+        targetAnno = 0.0
+        smartCatOn = true
+        smartCatToll = 15.0
+        nomeGestore = ""
+        checkMese = true
+        sogliaGiorniRic = 5
+        fmDismiss = null
+        barra = BARRA_DEFAULT
+        caricaImpostazioni()
+        Notif.init(dir)
+        load()
+        rev++
+    }
+
+    fun entraDemo(ctx: Context, zip: File): List<String> {
+        if (demoAttiva) throw IllegalStateException("Modalità demo già attiva")
+        val reale = File(ctx.filesDir, "db_reale")
+        reale.deleteRecursively()
+        if (!dir.copyRecursively(reale, overwrite = true)) {
+            reale.deleteRecursively()
+            throw IllegalStateException("Impossibile salvare i dati attuali: demo annullata")
+        }
+        try {
+            svuotaDir()
+            val letti = importa(ctx, Uri.fromFile(zip))
+            prefs.edit().putBoolean(DEMO, true).apply()
+            ricaricaDopoScambio()
+            return letti
+        } catch (e: Exception) {
+            svuotaDir()
+            reale.copyRecursively(dir, overwrite = true)
+            reale.deleteRecursively()
+            ricaricaDopoScambio()
+            throw e
+        }
+    }
+
+    fun esciDemo(ctx: Context) {
+        val reale = File(ctx.filesDir, "db_reale")
+        if (!reale.isDirectory) throw IllegalStateException("Copia dei dati veri non trovata: demo non chiusa")
+        svuotaDir()
+        if (!reale.copyRecursively(dir, overwrite = true)) {
+            throw IllegalStateException("Ripristino non riuscito: riprova a uscire dalla demo")
+        }
+        reale.deleteRecursively()
+        prefs.edit().putBoolean(DEMO, false).apply()
+        ricaricaDopoScambio()
+    }
+
     fun esporta(ctx: Context, uri: Uri): Int {
         var n = 0
         val os = ctx.contentResolver.openOutputStream(uri)

@@ -362,6 +362,15 @@ class MainActivity : AppCompatActivity() {
         val cont = vista<LinearLayout>(R.id.groups)
         cont.removeAllViews()
         aggiornaGruppi.clear()
+        if (Repo.demoAttiva) {
+            val banner = TextView(this)
+            banner.text = "🎭 MODALITÀ DEMO: stai vedendo dati di esempio. I tuoi dati sono al sicuro. Tocca per uscire."
+            banner.setTextColor(ContextCompat.getColor(this, R.color.oc_orange))
+            banner.setTypeface(null, Typeface.BOLD)
+            banner.setPadding(24, 16, 24, 16)
+            banner.setOnClickListener { confermaEsciDemo() }
+            cont.addView(banner)
+        }
         gruppo(
             cont, "Movimenti", "🗓️",
             listOf(
@@ -410,6 +419,9 @@ class MainActivity : AppCompatActivity() {
                 Tessera("📥", "Importa dati") { confermaImporta() },
                 Tessera("📤", "Esporta dati") { creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip") },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
+                Tessera("🎭", if (Repo.demoAttiva) "Esci dalla demo" else "Modalità demo") {
+                    if (Repo.demoAttiva) confermaEsciDemo() else confermaEntraDemo()
+                },
                 Tessera("🔄", "Aggiornamenti") { cercaAggiornamenti() },
                 Tessera("🧭", "Personalizza barra") { dialogBarra() },
                 Tessera("🔒", "Blocco app: " + if (Repo.lockOn) "attivo" else "no") { cambiaBlocco() },
@@ -5647,6 +5659,60 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Riconosciuta")
             .setMessage(righe + "\n\nLa registrazione automatica scatta solo se la regola la prevede e la categoria è stata trovata.")
             .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun confermaEntraDemo() {
+        OcBuilder(this)
+            .setTitle("Modalità demo")
+            .setMessage(
+                "Scarica un profilo di esempio da GitHub (serve internet) e lo mostra al posto dei tuoi dati. " +
+                    "I tuoi dati vengono messi da parte e tornano esattamente come erano quando esci dalla demo. " +
+                    "Quello che inserisci durante la demo viene perso all'uscita."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Avvia demo") { _, _ ->
+                aviso("Download del profilo demo…")
+                thread {
+                    try {
+                        val zip = Demo.scarica(applicationContext)
+                        try {
+                            Repo.entraDemo(applicationContext, zip)
+                        } finally {
+                            zip.delete()
+                        }
+                        runOnUiThread {
+                            Avvisi.pianifica(applicationContext)
+                            mostra(Pagina.HOME)
+                            aviso("Demo attiva")
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread { aviso("Demo non avviata: " + Demo.messaggio(e)) }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun confermaEsciDemo() {
+        OcBuilder(this)
+            .setTitle("Esci dalla demo")
+            .setMessage("I dati di esempio vengono eliminati e tornano i tuoi dati.")
+            .setNegativeButton("Resta in demo", null)
+            .setPositiveButton("Esci") { _, _ ->
+                thread {
+                    try {
+                        Repo.esciDemo(applicationContext)
+                        runOnUiThread {
+                            Avvisi.pianifica(applicationContext)
+                            mostra(Pagina.HOME)
+                            aviso("Dati ripristinati")
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread { aviso("Uscita non riuscita: " + e.message) }
+                    }
+                }
+            }
             .show()
     }
 
