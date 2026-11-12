@@ -12,7 +12,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 155
-        versionName = "1.0.62"
+        versionName = "1.0.63"
     }
 
     val ksFile = System.getenv("KEYSTORE_FILE")

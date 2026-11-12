@@ -5030,10 +5030,23 @@ class MainActivity : AppCompatActivity() {
             corpo, "Indirizzo del PC (es. https://192.168.1.20:8081)", Sync.indirizzo(this),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         )
+        val btnQrUrl = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnQrUrl.text = "📷 Scansiona QR indirizzo"
+        corpo.addView(btnQrUrl)
         val etTok = campoTesto(
             corpo, "Token", Sync.gettone(this),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         )
+        val btnQrTok = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnQrTok.text = "📷 Scansiona QR token"
+        corpo.addView(btnQrTok)
+        btnQrUrl.setOnClickListener {
+            scansionaQr { v ->
+                if (v.startsWith("http://", true) || v.startsWith("https://", true)) etUrl.setText(v)
+                else aviso("Il QR non contiene un indirizzo (https://...)")
+            }
+        }
+        btnQrTok.setOnClickListener { scansionaQr { v -> etTok.setText(v) } }
         val chk = MaterialCheckBox(this)
         chk.text = "Sincronizza all'apertura dell'app"
         chk.isChecked = Sync.auto(this)
@@ -5061,6 +5074,18 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Chiudi", null)
             .show()
+    }
+
+    private fun scansionaQr(onResult: (String) -> Unit) {
+        val opzioni = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE)
+            .build()
+        com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(this, opzioni).startScan()
+            .addOnSuccessListener { b ->
+                val v = b.rawValue?.trim().orEmpty()
+                if (v.isNotEmpty()) onResult(v) else aviso("QR vuoto")
+            }
+            .addOnFailureListener { e -> aviso("Scansione non riuscita: ${e.message}") }
     }
 
     private fun avviaSync(indirizzo: String, token: String, auto: Boolean) {
