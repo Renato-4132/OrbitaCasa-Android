@@ -693,6 +693,7 @@ class MainActivity : AppCompatActivity() {
         val view = inflDialogo.inflate(R.layout.dialog_voce, null)
         val grp = view.findViewById<MaterialButtonToggleGroup>(R.id.grpTipo)
         val etImp = view.findViewById<TextInputEditText>(R.id.etImporto)
+        Calc.collega(this, etImp)
         val acCat = view.findViewById<MaterialAutoCompleteTextView>(R.id.acCat)
         val btnData = view.findViewById<MaterialButton>(R.id.btnData)
         val etDescr = view.findViewById<TextInputEditText>(R.id.etDescr)
@@ -1676,6 +1677,7 @@ class MainActivity : AppCompatActivity() {
         corpo.addView(grp)
 
         val etImp = campoTesto(corpo, "Importo (€)", "", TIPO_DECIMALE, 12)
+        Calc.collega(this, etImp)
         val tvSmart = TextView(this)
         tvSmart.textSize = 12f
         tvSmart.setTextColor(com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, 0))
@@ -3357,6 +3359,7 @@ class MainActivity : AppCompatActivity() {
         val etImp = campoTesto(
             corpo, "Importo (€)", d?.importo?.let { String.format(Locale.ITALY, "%.2f", it) } ?: "", TIPO_DECIMALE, 14
         )
+        Calc.collega(this, etImp)
         val setData = bottoneData(corpo, "Data", data, false) { data = it ?: data }
         var tilTipo: TextInputLayout? = null
         var tilCat: TextInputLayout? = null
@@ -4310,6 +4313,7 @@ class MainActivity : AppCompatActivity() {
         val oggi = if (m?.data != null) m.data else LocalDate.now()
         val etData = campoTesto(corpo, "Data (gg-mm-aaaa)", s.dataIt(oggi), InputType.TYPE_CLASS_TEXT, 10)
         val etImp = campoTesto(corpo, "Importo (€)", m?.let { String.format(Locale.ITALY, "%.2f", it.imp) } ?: "", TIPO_DECIMALE, 12)
+        Calc.collega(this, etImp)
         val etDesc = campoTesto(corpo, "Descrizione", m?.desc ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         val etExtra = s.cfg.extra.map { e ->
             e to campoTesto(corpo, e.l, m?.extra?.get(e.k)?.takeIf { it > 0 }?.let { s.fmtN(it) } ?: "", TIPO_DECIMALE, 9)
@@ -5442,6 +5446,7 @@ class MainActivity : AppCompatActivity() {
             corpo, "Importo (€, facoltativo)",
             v?.let { Prom.importo(it) }?.let { String.format(Locale.ITALY, "%.2f", it) } ?: "", TIPO_DECIMALE, 10
         )
+        Calc.collega(this, etImp)
         val etLuogo = campoTesto(corpo, "Luogo (facoltativo)", v?.optString("luogo") ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 40)
 
         campoMenu(corpo, "Ripetizione", ripEtichette, ripEtichette[ripValori.indexOf(rip)]) { rip = ripValori[it] }
@@ -5829,6 +5834,7 @@ class MainActivity : AppCompatActivity() {
         val (view, corpo) = corpoDialogo()
         val etDesc = campoTesto(corpo, "Descrizione", p.desc, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 60)
         val etImp = campoTesto(corpo, "Importo (€)", String.format(Locale.ITALY, "%.2f", p.importo), TIPO_DECIMALE, 12)
+        Calc.collega(this, etImp)
         val tipi = listOf("Uscita", "Entrata")
         campoMenu(corpo, "Tipo", tipi, if (tipo in tipi) tipo else tipi[0]) { tipo = tipi[it] }
         if (cats.isNotEmpty()) campoMenu(corpo, "Categoria", cats, cat) { cat = cats[it] }
