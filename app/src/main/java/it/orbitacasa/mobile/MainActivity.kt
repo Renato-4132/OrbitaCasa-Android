@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, INFO }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, INFO }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -79,6 +79,8 @@ class MainActivity : AppCompatActivity() {
     private var sbloccata = false
     private var ultimoStop = 0L
     private var meseCal: YearMonth = YearMonth.now()
+    private var casaCat = "Tutte"
+    private var casaStato = "Tutti"
     private var giornoCal: LocalDate? = LocalDate.now()
     private var pianCal = false
     private var schedaAperta: String? = null
@@ -148,6 +150,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.CALENDARIO -> dialogVoce(null, giornoCal)
                 Pagina.FINANZIAMENTI -> dialogFin(null)
                 Pagina.FONDO -> dialogObiettivoFondo()
+                Pagina.CASACARE -> dialogCasaCare(null)
                 Pagina.PIANIFICA -> dialogNuovoPiano()
                 Pagina.DOCUMENTI, Pagina.DOCPERS -> nuovoDocumento()
                 Pagina.UTENZE -> dialogNuovaLettura()
@@ -175,6 +178,8 @@ class MainActivity : AppCompatActivity() {
                 menuCalcolatori()
             } else if (pagina == Pagina.FONDO) {
                 dialogImportiFondo()
+            } else if (pagina == Pagina.CASACARE) {
+                dialogFiltriCasa()
             } else if (pagina == Pagina.PROMEMORIA) {
                 dialogAvvisi()
             } else if (pagina == Pagina.NOTIFICHE) {
@@ -247,6 +252,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (intent?.getStringExtra("apri") == "promemoria") mostra(Pagina.PROMEMORIA)
         if (intent?.getStringExtra("apri") == "notifiche") mostra(Pagina.NOTIFICHE)
+        if (intent?.getStringExtra("apri") == "casacare") mostra(Pagina.CASACARE)
         Avvisi.iniziaDa(applicationContext)
         Notif.applicaStato(applicationContext)
         if (savedInstanceState == null) controllaAggiornamentiAvvio()
@@ -257,6 +263,7 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         if (intent.getStringExtra("apri") == "promemoria") mostra(Pagina.PROMEMORIA)
         if (intent.getStringExtra("apri") == "notifiche") mostra(Pagina.NOTIFICHE)
+        if (intent.getStringExtra("apri") == "casacare") mostra(Pagina.CASACARE)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -339,7 +346,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.INFO
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.INFO
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -410,6 +417,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🧾", "Doc. Contabili") { mostra(Pagina.DOCUMENTI) },
                 Tessera("🪪", "Doc. Personali") { mostra(Pagina.DOCPERS) },
                 Tessera("💡", "Utenze") { mostra(Pagina.UTENZE) },
+                Tessera("🛠️", "CasaCare") { mostra(Pagina.CASACARE) },
                 Tessera("🤝", "FairShare") { mostra(Pagina.FAIRSHARE) },
                 Tessera("🚗", "AutoPark") { schedaAperta = null; mostra(Pagina.AUTOPARK) },
                 Tessera("🏢", "ImmoBil") { schedaAperta = null; mostra(Pagina.IMMOBIL) },
@@ -462,6 +470,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.AUTOPARK, "🚗", "AutoPark"),
         Dest(Pagina.IMMOBIL, "🏢", "ImmoBil"),
         Dest(Pagina.PET, "🐾", "Pet Care"),
+        Dest(Pagina.CASACARE, "🛠️", "CasaCare"),
     )
 
     private fun apriDest(p: Pagina) {
@@ -1041,6 +1050,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.FINANZIAMENTI -> renderFinanziamenti()
             Pagina.AUTOPARK, Pagina.IMMOBIL, Pagina.PET -> renderScheda()
             Pagina.FONDO -> renderFondo()
+            Pagina.CASACARE -> renderCasaCare()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -2965,6 +2975,168 @@ class MainActivity : AppCompatActivity() {
             dlg.dismiss()
             refresh()
             aviso("Obiettivo aggiunto")
+        }
+    }
+
+    private val CASA_STATI = listOf("Tutti", "Scadute/Urgenti", "In avvicinamento", "OK", "Da pianificare")
+    private val CASA_TAG = mapOf("Scadute/Urgenti" to "rosso", "In avvicinamento" to "ambra", "OK" to "verde", "Da pianificare" to "grigio")
+
+    private fun renderCasaCare() {
+        intestaLista("🛠️ CasaCare", "➕  Nuova attività", "🔎  Filtri")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        Casa.errore?.let { vuoto(cont, "⚠️ $it") }
+        val oggi = LocalDate.now()
+        val tutte = Casa.voci().map { it to Casa.stato(it, oggi) }
+        if (Casa.errore != null && cont.childCount == 0) vuoto(cont, "⚠️ " + Casa.errore)
+        fun n(t: String) = tutte.count { it.second.tag == t }
+        vuoto(cont, "🔴 " + n("rosso") + "  ·  🟠 " + n("ambra") + "  ·  🟢 " + n("verde") + "  ·  ⚪ " + n("grigio"))
+        if (casaCat != "Tutte" || casaStato != "Tutti") vuoto(cont, "Filtro: $casaCat · $casaStato")
+        val tagFiltro = CASA_TAG[casaStato]
+        val visibili = tutte.filter { (v, st) ->
+            (casaCat == "Tutte" || v.categoria == casaCat) && (tagFiltro == null || st.tag == tagFiltro)
+        }
+        if (visibili.isEmpty()) {
+            vuoto(cont, "Nessuna attività.")
+            return
+        }
+        val gruppi = listOf(
+            "rosso" to "SCADUTE / URGENTI", "ambra" to "IN AVVICINAMENTO",
+            "verde" to "OK", "grigio" to "DA PIANIFICARE",
+        )
+        for ((tag, titolo) in gruppi) {
+            val lista = visibili.filter { it.second.tag == tag }
+                .sortedWith(compareBy({ it.second.giorni ?: Int.MAX_VALUE }, { it.first.nome.lowercase() }))
+            if (lista.isEmpty()) continue
+            sezione(cont, titolo + " (" + lista.size + ")")
+            for ((v, st) in lista) {
+                val sotto = v.categoria + " · " + v.freqLabel + "\n" + st.testo +
+                    (if (v.note.isNotBlank()) "\n" + v.note else "")
+                riga(cont, (if (v.legge) "⚖ " else "") + v.nome, sotto, emojiScad(tag), null) { menuCasa(v) }
+            }
+        }
+    }
+
+    private fun menuCasa(v: Casa.Voce) {
+        OcBuilder(this)
+            .setTitle(v.nome)
+            .setItems(arrayOf("✅  Segna eseguita oggi", "✏️  Modifica", "↩️  Azzera (mai eseguita)", "🗑️  Elimina")) { _, k ->
+                when (k) {
+                    0 -> {
+                        val err = Casa.segnaOggi(v.id)
+                        if (err != null) aviso(err) else { refresh(); aviso("Segnata come eseguita oggi") }
+                    }
+                    1 -> dialogCasaCare(v)
+                    2 -> OcBuilder(this)
+                        .setTitle("Azzera attività")
+                        .setMessage("Riportare '" + v.nome + "' allo stato 'mai eseguita'?")
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Azzera") { _, _ ->
+                            val err = Casa.azzera(v.id)
+                            if (err != null) aviso(err) else { refresh(); aviso("Attività azzerata") }
+                        }
+                        .show()
+                    else -> OcBuilder(this)
+                        .setTitle("Eliminare l'attività?")
+                        .setMessage(v.nome)
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Elimina") { _, _ ->
+                            val err = Casa.elimina(v.id)
+                            if (err != null) aviso(err) else { refresh(); aviso("Attività eliminata") }
+                        }
+                        .show()
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogFiltriCasa() {
+        val (view, corpo) = corpoDialogo()
+        val cats = listOf("Tutte") + Casa.voci().map { it.categoria }.distinct().sorted()
+        var cat = if (casaCat in cats) casaCat else "Tutte"
+        var stato = casaStato
+        campoMenu(corpo, "Categoria", cats, cat) { cat = cats[it] }
+        campoMenu(corpo, "Stato", CASA_STATI, stato) { stato = CASA_STATI[it] }
+        OcBuilder(this)
+            .setTitle("Filtri CasaCare")
+            .setView(view)
+            .setPositiveButton("Applica") { _, _ ->
+                casaCat = cat
+                casaStato = stato
+                refresh()
+            }
+            .setNegativeButton("Azzera") { _, _ ->
+                casaCat = "Tutte"
+                casaStato = "Tutti"
+                refresh()
+            }
+            .show()
+    }
+
+    private fun dialogCasaCare(v: Casa.Voce?) {
+        val (view, corpo) = corpoDialogo()
+        fun tilDi(et: View): View {
+            var p = et.parent
+            while (p != null && p !is TextInputLayout) p = p.parent
+            return (p ?: et) as View
+        }
+        val extra = Casa.voci().map { it.categoria }.filter { it !in Casa.CATEGORIE }.distinct().sorted()
+        val altra = "➕ Altra categoria…"
+        val cats = Casa.CATEGORIE + extra + altra
+        var cat = v?.categoria ?: Casa.CATEGORIE[0]
+        var tilAltra: View? = null
+        campoMenu(corpo, "Categoria", cats, cat) {
+            cat = cats[it]
+            tilAltra?.visibility = if (cat == altra) View.VISIBLE else View.GONE
+        }
+        val etAltra = campoTesto(corpo, "Nuova categoria", "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 40)
+        tilDi(etAltra).also { tilAltra = it; it.visibility = View.GONE }
+        val etNome = campoTesto(corpo, "Attività", v?.nome ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 120)
+
+        val etichette = Casa.FREQ.map { it.first }
+        var fl = when {
+            v == null -> "Ogni mese"
+            v.freqLabel in etichette -> v.freqLabel
+            else -> Casa.PERSONALIZZATA
+        }
+        var tilGg: View? = null
+        campoMenu(corpo, "Frequenza", etichette, fl) {
+            fl = etichette[it]
+            tilGg?.visibility = if (fl == Casa.PERSONALIZZATA) View.VISIBLE else View.GONE
+        }
+        val etGg = campoTesto(corpo, "Giorni (frequenza personalizzata)", (v?.freqGiorni ?: 30).toString(), InputType.TYPE_CLASS_NUMBER, 5)
+        tilDi(etGg).also { tilGg = it; it.visibility = if (fl == Casa.PERSONALIZZATA) View.VISIBLE else View.GONE }
+
+        var ultima: LocalDate? = v?.ultima?.takeIf { it.isNotBlank() }?.let {
+            try { LocalDate.parse(it, FMT_DATA) } catch (_: Exception) { null }
+        }
+        bottoneData(corpo, "Ultima esecuzione (pressione lunga = mai)", ultima, true) { ultima = it }
+        val etNote = campoTesto(corpo, "Note", v?.note ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 120)
+        val chk = MaterialCheckBox(this)
+        chk.text = "⚖ Obbligatoria per legge (caldaia, canna fumaria, estintore)"
+        chk.isChecked = v?.legge ?: false
+        corpo.addView(chk)
+
+        val dlg = OcBuilder(this)
+            .setTitle(if (v == null) "Nuova attività" else "Modifica attività")
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val categoria = if (cat == altra) etAltra.text.toString().trim() else cat
+            if (categoria.isEmpty()) { etAltra.error = "Inserisci la categoria"; return@setOnClickListener }
+            val giorni = Casa.FREQ.first { it.first == fl }.second
+                ?: etGg.text.toString().trim().toIntOrNull() ?: -1
+            val err = Casa.salva(
+                v?.id, categoria, etNome.text.toString(), giorni, fl,
+                ultima?.format(FMT_DATA) ?: "", etNote.text.toString(), chk.isChecked
+            )
+            if (err != null) { aviso(err); return@setOnClickListener }
+            dlg.dismiss()
+            refresh()
+            aviso("Attività salvata")
         }
     }
 

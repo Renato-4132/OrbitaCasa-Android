@@ -89,6 +89,7 @@ object Avvisi {
             for (k in 0..ORIZZONTE_GIORNI) {
                 val g = oggi.plusDays(k)
                 res.add(Evento(LocalDateTime.of(g, h), "riepilogo|$g", "Promemoria", "", CANALE_GIORNO))
+                res.add(Evento(LocalDateTime.of(g, h), "casa|$g", "CasaCare", "", CANALE_GIORNO))
             }
         }
         return res.sortedBy { it.quando }
@@ -122,11 +123,11 @@ object Avvisi {
         prefs(ctx).edit().putStringSet(K_INVIATI, s).apply()
     }
 
-    private fun mostra(ctx: Context, id: Int, canale: String, titolo: String, testo: String) {
+    private fun mostra(ctx: Context, id: Int, canale: String, titolo: String, testo: String, apriPag: String = "promemoria") {
         if (!permessoNotifiche(ctx)) return
         val apri = PendingIntent.getActivity(
-            ctx, 0, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                .putExtra("apri", "promemoria"),
+            ctx, if (apriPag == "promemoria") 0 else 1, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra("apri", apriPag),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val n = NotificationCompat.Builder(ctx, canale)
@@ -156,6 +157,17 @@ object Avvisi {
                 if (e.chiave in fatti) continue
                 if (e.canale == CANALE_GIORNO) {
                     if (e.quando.toLocalDate() != adesso.toLocalDate()) continue
+                    if (e.chiave.startsWith("casa|")) {
+                        segnaInviato(ctx, e.chiave)
+                        val urg = Casa.voci().map { it to Casa.stato(it, adesso.toLocalDate()) }
+                            .filter { it.second.tag == "rosso" }.sortedBy { it.second.giorni ?: 0 }
+                        if (urg.isEmpty()) continue
+                        val scad = urg.count { (it.second.giorni ?: 0) < 0 }
+                        val intro = (if (scad > 0) "$scad scadute · " else "") + (urg.size - scad) + " in scadenza\n"
+                        val elenco = urg.take(3).joinToString("\n") { "• " + it.first.nome + " — " + it.second.testo.substringBefore(" (") }
+                        mostra(ctx, 7201, CANALE_GIORNO, "CasaCare: " + urg.size + " da fare", intro + elenco, "casacare")
+                        continue
+                    }
                     val c = Prom.conteggio(adesso.toLocalDate())
                     segnaInviato(ctx, e.chiave)
                     if (c.totale == 0) continue
@@ -196,6 +208,7 @@ object Avvisi {
 
     fun iniziaDa(ctx: Context) {
         Prom.init(File(ctx.filesDir, "db"))
+        Casa.init(File(ctx.filesDir, "db"))
         creaCanali(ctx)
     }
 }
