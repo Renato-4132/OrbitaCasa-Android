@@ -377,12 +377,12 @@ class MainActivity : AppCompatActivity() {
         gruppo(
             cont, "Movimenti", "🗓️",
             listOf(
-                Tessera("📈", "Movimenti del mese") { mostra(Pagina.MOVIMENTI) },
+                Tessera("📈", "Movimenti Mese") { mostra(Pagina.MOVIMENTI) },
                 Tessera("🗓️", "Calendario") { mostra(Pagina.CALENDARIO) },
                 Tessera("📌", "Pianifica") { mostra(Pagina.PIANIFICA) },
                 Tessera("🔔", "Promemoria" + Prom.conteggio().totale.let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.PROMEMORIA) },
                 Tessera("📩", "Notifiche" + Notif.nAttesa().let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.NOTIFICHE) },
-                Tessera("🔎", "Cerca operazioni") { mostra(Pagina.RICERCA) },
+                Tessera("🔎", "Cerca Operazioni") { mostra(Pagina.RICERCA) },
             )
         )
         gruppo(
@@ -390,7 +390,7 @@ class MainActivity : AppCompatActivity() {
             listOf(
                 Tessera("📊", "Grafici") { mostra(Pagina.GRAFICI) },
                 Tessera("🔁", "Checkout") { mostra(Pagina.CHECKOUT) },
-                Tessera("📉", "Previsione fine mese") { mostra(Pagina.PREVISIONE) },
+                Tessera("📉", "Proiezione Mese") { mostra(Pagina.PREVISIONE) },
             )
         )
         gruppo(
@@ -407,8 +407,8 @@ class MainActivity : AppCompatActivity() {
         gruppo(
             cont, "Casa e beni", "🏠",
             listOf(
-                Tessera("🧾", "Doc. contabili") { mostra(Pagina.DOCUMENTI) },
-                Tessera("🪪", "Doc. personali") { mostra(Pagina.DOCPERS) },
+                Tessera("🧾", "Doc. Contabili") { mostra(Pagina.DOCUMENTI) },
+                Tessera("🪪", "Doc. Personali") { mostra(Pagina.DOCPERS) },
                 Tessera("💡", "Utenze") { mostra(Pagina.UTENZE) },
                 Tessera("🤝", "FairShare") { mostra(Pagina.FAIRSHARE) },
                 Tessera("🚗", "AutoPark") { schedaAperta = null; mostra(Pagina.AUTOPARK) },
@@ -427,9 +427,9 @@ class MainActivity : AppCompatActivity() {
                     if (Repo.demoAttiva) confermaEsciDemo() else confermaEntraDemo()
                 },
                 Tessera("🔄", "Aggiornamenti") { cercaAggiornamenti() },
-                Tessera("ℹ️", "Info e contatti") { mostra(Pagina.INFO) },
-                Tessera("🧭", "Personalizza barra") { dialogBarra() },
-                Tessera("🔒", "Blocco app: " + if (Repo.lockOn) "attivo" else "no") { cambiaBlocco() },
+                Tessera("ℹ️", "Info e Contatti") { mostra(Pagina.INFO) },
+                Tessera("🧭", "Personalizza") { dialogBarra() },
+                Tessera("🔒", "Blocco App: " + if (Repo.lockOn) "attivo" else "no") { cambiaBlocco() },
                 Tessera("💡", "SmartCat: " + if (Repo.smartCatOn) "attiva" else "no") {
                     Repo.setSmartCat(!Repo.smartCatOn)
                     renderHome()
