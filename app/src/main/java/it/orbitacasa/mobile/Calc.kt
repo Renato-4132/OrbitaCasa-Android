@@ -92,6 +92,7 @@ object Calc {
             when {
                 t == "C" -> sb.setLength(0)
                 t == "⌫" -> if (sb.isNotEmpty()) sb.setLength(sb.length - 1)
+                t == "=" -> valuta(sb.toString())?.let { sb.setLength(0); sb.append(fmt(it)) }
                 isOp -> {
                     if (sb.isEmpty()) { if (t == "-") sb.append(t) }
                     else if (ultimo in listOf('+', '-', '×', '÷')) {
@@ -131,12 +132,12 @@ object Calc {
             b.setOnClickListener { tasto(t) }
             griglia.addView(b)
         }
-        for ((t, span) in listOf("0" to 2, "00" to 2)) {
+        for ((t, span) in listOf("0" to 1, "00" to 1, "=" to 2)) {
             val b = MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
             b.text = t; b.textSize = 20f
             b.insetTop = 0; b.insetBottom = 0
             b.setPadding(0, 0, 0, 0)
-            b.setTextColor(ContextCompat.getColor(ctx, R.color.oc_text))
+            b.setTextColor(ContextCompat.getColor(ctx, if (t == "=") R.color.oc_gold_dark else R.color.oc_text))
             val lp = GridLayout.LayoutParams(
                 GridLayout.spec(GridLayout.UNDEFINED, 1f),
                 GridLayout.spec(GridLayout.UNDEFINED, span, 1f)
