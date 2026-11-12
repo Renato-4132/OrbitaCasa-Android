@@ -178,6 +178,7 @@ object Repo {
         Immo.init(dir)
         Pet.init(dir)
         Fondo.init(dir)
+        Casa.init(dir)
         Doc.init(dir)
         Utenze.init(dir)
         Prom.init(dir)
