@@ -278,6 +278,7 @@ class MainActivity : AppCompatActivity() {
         controllaFineMese()
         Avvisi.pianifica(applicationContext)
         if (pagina == Pagina.NOTIFICHE) renderLista()
+        if (Sync.daAutoSync(this)) eseguiSync(true)
     }
 
     override fun onStart() {
@@ -420,6 +421,7 @@ class MainActivity : AppCompatActivity() {
             listOf(
                 Tessera("📥", "Importa dati") { confermaImporta() },
                 Tessera("📤", "Esporta dati") { creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip") },
+                Tessera("🔗", "Sync PC: " + if (Sync.configurato(this)) "attiva" else "no") { dialogSync() },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
                 Tessera("🎭", if (Repo.demoAttiva) "Esci dalla demo" else "Modalità demo") {
                     if (Repo.demoAttiva) confermaEsciDemo() else confermaEntraDemo()
@@ -4019,8 +4021,6 @@ class MainActivity : AppCompatActivity() {
         b.show()
     }
 
-    // ───────────── Info e contatti ─────────────
-
     private fun apriLink(url: String) {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -5011,6 +5011,115 @@ class MainActivity : AppCompatActivity() {
             startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(r.apkUrl)))
         } catch (e: Exception) {
             aviso("Nessun browser disponibile per scaricare l'aggiornamento")
+        }
+    }
+
+    private fun dialogSync() {
+        if (Repo.demoAttiva) {
+            aviso("La sincronizzazione non è disponibile in modalità demo")
+            return
+        }
+        val (view, corpo) = corpoDialogo()
+        val info = TextView(ctxDialogo)
+        info.text = "Sincronizza movimenti, categorie, archivi e documenti con OrbitaCasa sul PC, " +
+            "nella rete di casa. Indirizzo e token sono quelli della Configurazione sul PC " +
+            "(il token è lo stesso del webhook). Se un dato cambia su entrambi, vince il PC " +
+            "e la copia del telefono resta in una cartella di sicurezza."
+        info.setPadding(4, 4, 4, 12)
+        corpo.addView(info)
+        val etUrl = campoTesto(
+            corpo, "Indirizzo del PC (es. https://192.168.1.20:8081)", Sync.indirizzo(this),
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        )
+        val etTok = campoTesto(
+            corpo, "Token", Sync.gettone(this),
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        )
+        val chk = MaterialCheckBox(this)
+        chk.text = "Sincronizza all'apertura dell'app"
+        chk.isChecked = Sync.auto(this)
+        corpo.addView(chk)
+        val stato = TextView(ctxDialogo)
+        val ult = Sync.ultima(this)
+        stato.text = (
+            if (ult > 0) "Ultima sincronizzazione: " +
+                java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY).format(java.util.Date(ult))
+            else "Mai sincronizzato"
+            ) + if (Sync.improntaFissata(this).isNotEmpty()) "\nCertificato del PC memorizzato" else ""
+        stato.setPadding(4, 8, 4, 4)
+        corpo.addView(stato)
+
+        OcBuilder(this)
+            .setTitle("🔗 Sync con il PC")
+            .setView(view)
+            .setPositiveButton("Sincronizza") { _, _ ->
+                avviaSync(etUrl.text.toString(), etTok.text.toString(), chk.isChecked)
+            }
+            .setNeutralButton("Scollega") { _, _ ->
+                Sync.scollega(this)
+                aviso("Sincronizzazione scollegata")
+                refresh()
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun avviaSync(indirizzo: String, token: String, auto: Boolean) {
+        val u = Sync.normalizzaUrl(indirizzo)
+        if (u == null) {
+            aviso("Indirizzo non valido: serve https:// e l'indirizzo del PC")
+            return
+        }
+        if (token.isBlank()) {
+            aviso("Inserisci il token")
+            return
+        }
+        Sync.salva(this, u, token, auto)
+        if (Sync.improntaFissata(this).isEmpty()) {
+            aviso("Controllo il certificato del PC...")
+            thread {
+                try {
+                    val imp = Sync.leggiImpronta(u)
+                    runOnUiThread { if (!isFinishing && !isDestroyed) chiediFiducia(imp) }
+                } catch (e: Exception) {
+                    runOnUiThread { aviso("PC non raggiungibile: " + e.message) }
+                }
+            }
+            return
+        }
+        eseguiSync(false)
+    }
+
+    private fun chiediFiducia(impronta: String) {
+        OcBuilder(this)
+            .setTitle("Certificato del PC")
+            .setMessage(
+                "Impronta SHA-256:\n" + Sync.formatta(impronta) + "\n\n" +
+                    "È il certificato autofirmato di OrbitaCasa sul tuo PC? Se ti fidi lo ricordo " +
+                    "e da ora accetto solo questo: se cambia, la sincronizzazione si ferma."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Mi fido") { _, _ ->
+                Sync.fissaImpronta(this, impronta)
+                eseguiSync(false)
+            }
+            .show()
+    }
+
+    private fun eseguiSync(auto: Boolean) {
+        if (!auto) aviso("Sincronizzazione in corso...")
+        Sync.sincronizza(this) { e ->
+            if (isFinishing || isDestroyed) return@sincronizza
+            if (e.modificato || !auto) refresh()
+            if (auto) {
+                if (e.ok && e.modificato) aviso("Sync PC: " + e.righe.first())
+            } else {
+                OcBuilder(this)
+                    .setTitle(if (e.ok) "✅ Sync con il PC" else "Sync non riuscita")
+                    .setMessage(if (e.ok) e.righe.joinToString("\n") else (e.errore ?: "Errore sconosciuto"))
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
         }
     }
 

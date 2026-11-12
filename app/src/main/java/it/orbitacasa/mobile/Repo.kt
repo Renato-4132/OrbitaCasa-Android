@@ -587,6 +587,85 @@ object Repo {
         save()
     }
 
+    val BLOCCHI_SYNC = listOf(
+        "categorie", "categorie_tipi", "categorie_classi", "categorie_conti_risparmio",
+        "ricorrenze", "budget_categorie", "budget_annuale_categorie", "pianificate",
+        "fairshare", "memoria_categorie",
+    )
+
+    fun dirDati(): File = dir
+
+    fun syncVoci(): LinkedHashMap<String, Pair<String, JSONObject>> {
+        val out = LinkedHashMap<String, Pair<String, JSONObject>>()
+        val sp = db.optJSONArray("spese") ?: return out
+        for (i in 0 until sp.length()) {
+            val day = sp.optJSONObject(i) ?: continue
+            val d = day.optString("date")
+            val en = day.optJSONArray("entries") ?: continue
+            for (j in 0 until en.length()) {
+                val e = en.optJSONObject(j) ?: continue
+                val id = str(e, "id_spesa")
+                if (id.isNotBlank()) out[id] = d to JSONObject(e.toString())
+            }
+        }
+        return out
+    }
+
+    fun syncImpostaVoce(data: String, entry: JSONObject) {
+        val d = parseData(data) ?: return
+        val id = str(entry, "id_spesa")
+        if (id.isBlank()) return
+        rimuoviEntry(id)
+        inserisciEntry(d, JSONObject(entry.toString()))
+    }
+
+    fun syncRimuoviVoce(id: String) {
+        rimuoviEntry(id)
+    }
+
+    fun syncSalva() = save()
+
+    fun syncBlocco(nome: String): Any {
+        return when (nome) {
+            "categorie" -> JSONArray((db.optJSONArray("categorie") ?: JSONArray()).toString())
+            "memoria_categorie" -> try {
+                JSONObject(File(dir, "memoria_categorie.json").readText(Charsets.UTF_8))
+            } catch (_: Exception) {
+                JSONObject()
+            }
+            "pianificate" -> JSONObject().put(
+                "piani", JSONArray((db.optJSONObject("pianificate")?.optJSONArray("piani") ?: JSONArray()).toString())
+            )
+            "fairshare" -> {
+                val b = db.optJSONObject("fairshare")
+                JSONObject()
+                    .put("gestore_partecipa", b?.optBoolean("gestore_partecipa", true) ?: true)
+                    .put("partecipanti", JSONArray((b?.optJSONArray("partecipanti") ?: JSONArray()).toString()))
+            }
+            else -> JSONObject((db.optJSONObject(nome) ?: JSONObject()).toString())
+        }
+    }
+
+    fun syncImpostaBlocco(nome: String, v: Any) {
+        when (nome) {
+            "memoria_categorie" -> {
+                val f = File(dir, "memoria_categorie.json")
+                val tmp = File(dir, "memoria_categorie.json.tmp")
+                tmp.writeText((v as JSONObject).toString(2), Charsets.UTF_8)
+                Files.move(tmp.toPath(), f.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+            "fairshare" -> {
+                val b = fsBlocco()
+                val src = v as JSONObject
+                b.put("gestore_partecipa", src.optBoolean("gestore_partecipa", true))
+                b.put("partecipanti", src.optJSONArray("partecipanti") ?: JSONArray())
+            }
+            "pianificate" ->
+                db.put("pianificate", JSONObject().put("piani", (v as JSONObject).optJSONArray("piani") ?: JSONArray()))
+            else -> db.put(nome, v)
+        }
+    }
+
     private fun dateRicorrenza(tipo: String, inizio: LocalDate, n: Int): List<LocalDate> {
         val out = ArrayList<LocalDate>()
         for (i in 0 until n) {
@@ -1296,10 +1375,6 @@ object Repo {
     fun uscite(da: LocalDate, a: LocalDate): List<Voce> =
         voci().filter { it.tipo == "Uscita" && !it.data.isBefore(da) && !it.data.isAfter(a) }
 
-    // ───────────── Modalità demo ─────────────
-    // I dati veri vengono copiati in db_reale, la cartella dati viene svuotata e sostituita dal profilo demo.
-    // All'uscita la cartella dati torna esattamente com'era.
-
     private const val DEMO = "demo"
     val demoAttiva: Boolean get() = prefs.getBoolean(DEMO, false)
 
@@ -1463,6 +1538,7 @@ object Repo {
                     letti.add(nome)
                 }
             }
+            File(dir, "sync_stato.json").delete()
             if (nDoc > 0) {
                 stage.walkTopDown().filter { it.isFile }.forEach { f ->
                     val dst = File(dir, f.relativeTo(stage).path)
