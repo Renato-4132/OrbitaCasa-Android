@@ -888,28 +888,132 @@ object Sync {
         return "documenti/$nome"
     }
 
-    private fun unisci(locale: Any?, remoto: Any?): Any? {
-        if (locale is JSONObject && remoto is JSONObject) {
-            val out = JSONObject(locale.toString())
-            val ks = remoto.keys()
-            while (ks.hasNext()) {
-                val k = ks.next()
-                out.put(k, remoto.opt(k))
-            }
-            return out
-        }
-        if (locale is JSONArray && remoto is JSONArray) {
+    private fun fondi(c: Ctx, nome: String, base: Any?, locale: Any?, remoto: Any): Any {
+        if (remoto is JSONArray) {
             val out = JSONArray()
             val visti = HashSet<String>()
-            for (src in listOf(locale, remoto)) {
+            val srcs = ArrayList<JSONArray>()
+            srcs.add(remoto)
+            if (locale is JSONArray) srcs.add(locale)
+            for (src in srcs) {
                 for (i in 0 until src.length()) {
-                    val k = syH(src.opt(i))
-                    if (visti.add(k)) out.put(src.opt(i))
+                    if (visti.add(syH(src.opt(i)))) out.put(src.opt(i))
                 }
             }
             return out
         }
-        return remoto
+        val rem = remoto as JSONObject
+        val loc = locale as? JSONObject ?: return rem
+        val bas = base as? JSONObject
+        val out = JSONObject()
+        val chiavi = LinkedHashSet<String>()
+        val kr = rem.keys()
+        while (kr.hasNext()) chiavi.add(kr.next())
+        val kl = loc.keys()
+        while (kl.hasNext()) chiavi.add(kl.next())
+        var confl = false
+        for (k in chiavi) {
+            val lv = loc.opt(k)
+            val rv = rem.opt(k)
+            val bv = bas?.opt(k)
+            when {
+                lv == null -> out.put(k, rv)
+                rv == null -> if (!(bv != null && syH(lv) == syH(bv))) out.put(k, lv)
+                syH(lv) == syH(rv) -> out.put(k, rv)
+                bv != null && syH(rv) == syH(bv) -> out.put(k, lv)
+                else -> {
+                    out.put(k, rv)
+                    confl = true
+                }
+            }
+        }
+        if (confl) {
+            c.inc("conflitti")
+            scriviBackup(c, "documenti_personali", nome.replace('/', '_'), loc.toString(2))
+        }
+        return out
+    }
+
+    private fun sincMeta(c: Ctx, nome: String, f: File, mt: Long) {
+        val basi = c.st.sez("pers_base")
+        val sez = c.st.sez("docs")
+        val locale = leggiLocale(f).second
+        val baseTxt = basi.optString(nome, "")
+        val base: Any? = if (baseTxt.isEmpty()) null else try {
+            JSONTokener(baseTxt).nextValue()
+        } catch (_: Exception) {
+            null
+        }
+        val invariato = locale != null && base != null && sez.optLong(nome, -1L) == mt && syH(locale) == syH(base)
+        if (invariato) return
+        f.parentFile?.mkdirs()
+        val tmp = File(f.parentFile, f.name + ".sync.tmp")
+        val code = c.http.scarica("/api/sync/doc?nome=" + syEnc(nome), tmp)
+        if (code !in 200..299) {
+            tmp.delete()
+            if (code == 401 || code == 429) verifica(Http.Risp(code, null), "documenti")
+            return
+        }
+        val remoto = try {
+            JSONTokener(tmp.readText(Charsets.UTF_8)).nextValue()
+        } catch (_: Exception) {
+            null
+        }
+        tmp.delete()
+        if (remoto !is JSONObject && remoto !is JSONArray) return
+        val fusa = fondi(c, nome, base, locale, remoto)
+        if (locale == null || syH(fusa) != syH(locale)) {
+            suMain { scriviJson(f, fusa) }
+            c.inc("doc_giu")
+        }
+        if (syH(fusa) == syH(remoto)) {
+            sez.put(nome, mt)
+            basi.put(nome, fusa.toString())
+            return
+        }
+        val rr = c.http.invia("/api/sync/doc?nome=" + syEnc(nome) + "&base_mt=" + mt, f)
+        if (rr.codice == 401 || rr.codice == 429) verifica(rr, "documenti")
+        if (rr.codice in 200..299 && rr.json?.optBoolean("ok") == true) {
+            c.inc("doc_su")
+            sez.put(nome, rr.json?.optLong("mt", mt) ?: mt)
+            basi.put(nome, fusa.toString())
+        } else if (rr.codice == 409) {
+            c.inc("saltati")
+        } else {
+            c.righe.add("Documento $nome non inviato: ${rr.json?.optString("errore").orEmpty().ifBlank { "HTTP ${rr.codice}" }}")
+        }
+    }
+
+    private fun invioMeta(c: Ctx, nome: String, f: File) {
+        val rr = c.http.invia("/api/sync/doc?nome=" + syEnc(nome) + "&base_mt=0", f)
+        if (rr.codice == 401 || rr.codice == 429) verifica(rr, "documenti")
+        if (rr.codice in 200..299 && rr.json?.optBoolean("ok") == true) {
+            c.inc("doc_su")
+            c.st.sez("docs").put(nome, rr.json?.optLong("mt", 0L) ?: 0L)
+            leggiLocale(f).second?.let { c.st.sez("pers_base").put(nome, it.toString()) }
+        } else if (rr.codice == 409) {
+            c.inc("saltati")
+        } else {
+            c.righe.add("Documento $nome non inviato: ${rr.json?.optString("errore").orEmpty().ifBlank { "HTTP ${rr.codice}" }}")
+        }
+    }
+
+    private fun locPersonali(dir: File): List<String> {
+        val out = ArrayList<String>()
+        val rad = File(dir, "documenti_personali")
+        if (!rad.isDirectory) return out
+        if (File(rad, "profili.json").isFile) out.add("documenti_personali/profili.json")
+        val profili = rad.listFiles()?.filter { it.isDirectory && !it.name.startsWith(".") }?.sortedBy { it.name }
+        for (p in profili ?: emptyList()) {
+            for (m in listOf("registry.json", "categorie.json")) {
+                if (File(p, m).isFile) out.add("documenti_personali/${p.name}/$m")
+            }
+            val docs = File(p, "documenti").listFiles()?.filter {
+                it.isFile && !it.name.startsWith(".") && it.name.substringAfterLast('.', "").lowercase() in EST_DOC
+            }?.sortedBy { it.name }
+            for (d in docs ?: emptyList()) out.add("documenti_personali/${p.name}/documenti/${d.name}")
+        }
+        return out
     }
 
     private fun sincDocs(c: Ctx) {
@@ -919,6 +1023,7 @@ object Sync {
         val dir = Repo.dirDati()
         val sez = c.st.sez("docs")
         val sulPc = HashSet<String>()
+        val metaPc = ArrayList<Pair<String, Long>>()
 
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
@@ -926,34 +1031,16 @@ object Sync {
             val mt = o.optLong("mt")
             val rel = percorsoDoc(nome) ?: continue
             sulPc.add(nome)
-            val f = File(dir, rel)
             val meta = nome.startsWith("documenti_personali/") && nome.endsWith(".json")
+            if (meta) {
+                metaPc.add(nome to mt)
+                continue
+            }
+            val f = File(dir, rel)
             try {
-                if (!f.isFile) {
-                    if (scaricaDoc(c, nome, f)) {
-                        sez.put(nome, mt)
-                        c.inc("doc_giu")
-                    }
-                } else if (meta && sez.optLong(nome, -1L) != mt) {
-                    val tmp = File(f.parentFile, f.name + ".sync.tmp")
-                    val code = c.http.scarica("/api/sync/doc?nome=" + syEnc(nome), tmp)
-                    if (code in 200..299) {
-                        val remoto = try {
-                            JSONTokener(tmp.readText(Charsets.UTF_8)).nextValue()
-                        } catch (_: Exception) {
-                            null
-                        }
-                        val locale = leggiLocale(f).second
-                        val fusa = if (remoto is JSONObject || remoto is JSONArray) unisci(locale, remoto) else null
-                        if (fusa != null && syH(fusa) != syH(locale)) {
-                            suMain { scriviJson(f, fusa) }
-                            c.inc("doc_giu")
-                        }
-                        sez.put(nome, mt)
-                    } else if (code == 401 || code == 429) {
-                        verifica(Http.Risp(code, null), "documenti")
-                    }
-                    tmp.delete()
+                if (!f.isFile && scaricaDoc(c, nome, f)) {
+                    sez.put(nome, mt)
+                    c.inc("doc_giu")
                 }
             } catch (e: SyncErr) {
                 throw e
@@ -975,6 +1062,57 @@ object Sync {
             if (rr.codice == 401 || rr.codice == 429) verifica(rr, "documenti")
             if (rr.codice in 200..299 && rr.json?.optBoolean("ok") == true) c.inc("doc_su")
             else c.righe.add("Documento ${f.name} non inviato: ${rr.json?.optString("errore").orEmpty().ifBlank { "HTTP ${rr.codice}" }}")
+        }
+
+        val perso = locPersonali(dir)
+        for (nome in perso) {
+            if (nome in sulPc || sez.has(nome) || nome.endsWith(".json")) continue
+            val f = File(dir, nome)
+            if (f.length() !in 1..MAX_DOC_BYTES || percorsoDoc(nome) == null) continue
+            try {
+                val rr = c.http.invia("/api/sync/doc?nome=" + syEnc(nome), f)
+                if (rr.codice == 401 || rr.codice == 429) verifica(rr, "documenti")
+                if (rr.codice in 200..299 && rr.json?.optBoolean("ok") == true) {
+                    sez.put(nome, rr.json?.optLong("mt", 0L) ?: 0L)
+                    c.inc("doc_su")
+                } else {
+                    c.righe.add("Documento $nome non inviato: ${rr.json?.optString("errore").orEmpty().ifBlank { "HTTP ${rr.codice}" }}")
+                }
+            } catch (e: SyncErr) {
+                throw e
+            } catch (e: IOException) {
+                throw e
+            } catch (e: Exception) {
+                c.righe.add("Documento $nome non inviato: ${e.message}")
+            }
+        }
+
+        for ((nome, mt) in metaPc) {
+            val f = File(dir, percorsoDoc(nome) ?: continue)
+            try {
+                sincMeta(c, nome, f, mt)
+            } catch (e: SyncErr) {
+                throw e
+            } catch (e: IOException) {
+                throw e
+            } catch (e: Exception) {
+                c.righe.add("Documento $nome non sincronizzato: ${e.message}")
+            }
+        }
+
+        for (nome in perso) {
+            if (!nome.endsWith(".json") || nome in sulPc || sez.has(nome)) continue
+            val f = File(dir, nome)
+            if (f.length() !in 1..MAX_FILE_CHARS.toLong() || percorsoDoc(nome) == null) continue
+            try {
+                invioMeta(c, nome, f)
+            } catch (e: SyncErr) {
+                throw e
+            } catch (e: IOException) {
+                throw e
+            } catch (e: Exception) {
+                c.righe.add("Documento $nome non inviato: ${e.message}")
+            }
         }
     }
 
