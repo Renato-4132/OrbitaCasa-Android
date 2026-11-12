@@ -68,7 +68,9 @@ object Lock {
 
 class MainActivity : AppCompatActivity() {
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE }
+    private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
+
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, INFO }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -336,7 +338,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.INFO
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -423,6 +425,7 @@ class MainActivity : AppCompatActivity() {
                     if (Repo.demoAttiva) confermaEsciDemo() else confermaEntraDemo()
                 },
                 Tessera("🔄", "Aggiornamenti") { cercaAggiornamenti() },
+                Tessera("ℹ️", "Info e contatti") { mostra(Pagina.INFO) },
                 Tessera("🧭", "Personalizza barra") { dialogBarra() },
                 Tessera("🔒", "Blocco app: " + if (Repo.lockOn) "attivo" else "no") { cambiaBlocco() },
                 Tessera("💡", "SmartCat: " + if (Repo.smartCatOn) "attiva" else "no") {
@@ -1047,6 +1050,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.PREVISIONE -> renderPrevisione()
             Pagina.PROMEMORIA -> renderPromemoria()
             Pagina.NOTIFICHE -> renderNotifiche()
+            Pagina.INFO -> renderInfo()
             else -> {}
         }
     }
@@ -4013,6 +4017,66 @@ class MainActivity : AppCompatActivity() {
             .setMessage(d.dettaglio())
         bottoniDoc(b, d) { dialogDocPers(d) }
         b.show()
+    }
+
+    // ───────────── Info e contatti ─────────────
+
+    private fun apriLink(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (_: Exception) {
+            aviso("Nessuna app per aprire il link")
+        }
+    }
+
+    private fun versioneApp(): Pair<String, Long> = try {
+        val pi = packageManager.getPackageInfo(packageName, 0)
+        (pi.versionName ?: "?") to androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(pi)
+    } catch (_: Exception) {
+        "?" to 0L
+    }
+
+    private fun scriviSupporto() {
+        val (v, c) = versioneApp()
+        val corpo = "\n\n---\nOrbitaCasa Android $v ($c)\nAndroid ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}"
+        val i = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
+            .putExtra(Intent.EXTRA_EMAIL, arrayOf(MAIL_SUPPORTO))
+            .putExtra(Intent.EXTRA_SUBJECT, "OrbitaCasa Android $v - supporto")
+            .putExtra(Intent.EXTRA_TEXT, corpo)
+        try {
+            startActivity(i)
+        } catch (_: Exception) {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("mail", MAIL_SUPPORTO))
+            aviso("Nessuna app e-mail: indirizzo copiato")
+        }
+    }
+
+    private fun renderInfo() {
+        intestaLista("Info e contatti", "")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val (v, c) = versioneApp()
+        val raw = "https://raw.githubusercontent.com/Renato-4132/OrbitaCasa/main/resources"
+
+        sezione(cont, "QUESTA APP")
+        riga(cont, "OrbitaCasa Android", "Versione $v (build $c)", "", null) {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("versione", "OrbitaCasa Android $v ($c)"))
+            aviso("Versione copiata")
+        }
+
+        sezione(cont, "CONTATTI")
+        riga(cont, "✉️ Scrivi al supporto", MAIL_SUPPORTO, "›", null) { scriviSupporto() }
+
+        sezione(cont, "PAGINE ORBITACASA")
+        riga(cont, "📱 OrbitaCasa Android", "Sito ufficiale", "›", null) { apriLink("https://renato-4132.github.io/OrbitaCasa-Android/") }
+        riga(cont, "🖥️ OrbitaCasa Desktop", "Sito ufficiale", "›", null) { apriLink("https://renato-4132.github.io/OrbitaCasa/") }
+
+        sezione(cont, "MANUALI")
+        riga(cont, "📘 Manuale OrbitaCasa", "PDF", "›", null) { apriLink("$raw/OrbitaCasa.pdf") }
+        riga(cont, "🏠 Manutenzione e risparmio casa", "PDF", "›", null) { apriLink("$raw/Manuale_Manutenzione_Risparmio_Casa.pdf") }
+        riga(cont, "🔢 Tabella contatori", "PDF", "›", null) { apriLink("$raw/Tabella%20Contatori.pdf") }
+
     }
 
     private fun indietroLista() {
