@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OrbitaCasa Mobile – L'app Android per spese e promemoria</title>
-<meta name="description" content="OrbitaCasa Mobile: l'app Android di OrbitaCasa. Funziona da sola, offline, con i dati sul telefono. Sincronizza con il desktop tramite zip e registra le spese dalle notifiche della banca.">
+<meta name="description" content="OrbitaCasa Mobile: l'app Android di OrbitaCasa. Funziona da sola, offline, con i dati sul telefono. Si sincronizza con il PC o con uno zip e registra le spese dalle notifiche della banca.">
 <link rel="canonical" href="https://renato-4132.github.io/OrbitaCasa/android.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="OrbitaCasa Mobile – L'app Android">
-<meta property="og:description" content="OrbitaCasa in tasca: dati sul telefono, zero cloud, sincronizzazione con il desktop tramite zip.">
+<meta property="og:description" content="OrbitaCasa in tasca: dati sul telefono, zero cloud, sincronizzazione con il PC e spese dalle notifiche.">
 <meta property="og:url" content="https://renato-4132.github.io/OrbitaCasa/android.html">
 <meta property="og:locale" content="it_IT">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,9 +111,9 @@ footer a{color:#818cf8}
 
 <header class="hero"><div class="wrap">
 <div>
-<span class="ver">Versione 1.0.57 · Android 8.0+</span>
+<span class="ver">Versione 1.0.65 · Android 8.0+</span>
 <h1>Orbita<span>Casa</span> Mobile</h1>
-<p class="lead">OrbitaCasa in tasca. Funziona da sola, con i dati sul telefono, e si sincronizza con il desktop quando vuoi.</p>
+<p class="lead">OrbitaCasa in tasca. Funziona da sola, con i dati sul telefono, e si allinea al PC quando vuoi.</p>
 <div class="btns">
 <a class="btn" href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">Scarica l'APK</a>
 <a class="btn alt" href="#schermate">Guarda le schermate</a>
@@ -154,9 +154,9 @@ footer a{color:#818cf8}
 <p class="sub">Non serve il PC acceso, né un server o una connessione. L'app legge e scrive gli stessi file di OrbitaCasa desktop, senza perdere i campi che non conosce.</p>
 <div class="pillars">
 <div class="pillar"><h3>Zero cloud</h3><p>I dati restano sul telefono. Il backup automatico di Android è disattivato.</p></div>
-<div class="pillar"><h3>Offline</h3><p>Nessun server, nessun account. Internet serve solo per Gemini e per cercare aggiornamenti.</p></div>
-<div class="pillar"><h3>Sync con uno zip</h3><p>Importi lo zip di OrbitaCasa sul telefono e lo riesporti indietro con un tocco.</p></div>
-<div class="pillar"><h3>Blocco app</h3><p>Impronta, volto o PIN del dispositivo.</p></div>
+<div class="pillar"><h3>Offline</h3><p>Nessun server, nessun account. Internet serve solo se attivi la sync, Gemini o cerchi aggiornamenti.</p></div>
+<div class="pillar"><h3>Sync con il PC</h3><p>Allinei movimenti, archivi e documenti con OrbitaCasa desktop, nella rete di casa. Oppure usi lo zip.</p></div>
+<div class="pillar"><h3>Blocco app</h3><p>Impronta, volto o sblocco del dispositivo.</p></div>
 </div>
 </div></section>
 
@@ -166,10 +166,29 @@ footer a{color:#818cf8}
 <ol class="steps">
 <li><span>Apri la pagina delle <a href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">release</a> dal telefono, oppure inquadra il QR qui sopra.</span></li>
 <li><span>Scarica l'APK dell'ultima versione e aprilo. Se Android lo chiede, consenti l'installazione da questa fonte.</span></li>
-<li><span>Apri l'app e importa i dati da OrbitaCasa desktop (Home → Strumenti → Importa dati), oppure parti da zero aggiungendo il primo conto.</span></li>
-<li><span>Quando torni al PC, esporta lo zip e riportalo in OrbitaCasa desktop. Esportarne uno ogni tanto serve anche come backup.</span></li>
+<li><span>Apri l'app e porta i tuoi dati: con la <b>sync</b> (Home → Strumenti → Sync PC), con lo <b>zip</b> di OrbitaCasa desktop (Importa / Esporta), oppure parti da zero aggiungendo il primo conto. Per provarla prima, c'è la modalità demo.</span></li>
+<li><span>Quando torni al PC, la sync tiene tutto allineato. Uno zip esportato ogni tanto resta un ottimo backup.</span></li>
 </ol>
-<div class="note"><strong>Aggiornamenti.</strong> Da Home → Strumenti → Aggiornamenti l'app controlla l'ultima release e ti porta al download. Il nuovo APK deve avere la stessa firma di quello installato.</div>
+<div class="note"><strong>Aggiornamenti.</strong> L'app controlla l'ultima release all'avvio e da Home → Strumenti → Aggiornamenti, e ti porta al download. Il nuovo APK deve avere la stessa firma di quello installato.</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Sincronizza con il PC</h2>
+<p class="sub">Da Home → Strumenti → Sync PC colleghi il telefono a OrbitaCasa acceso sul PC, nella rete di casa. Niente server di terzi.</p>
+<div class="notif">
+<ul>
+<li><b>Si allineano</b> movimenti (anche le eliminazioni), impostazioni e categorie, archivi e documenti contabili e personali.</li>
+<li><b>Configurazione veloce:</b> indirizzo del PC e token (lo stesso del webhook) si inseriscono a mano o <b>inquadrando un QR</b>.</li>
+<li><b>Sincronizza all'apertura</b> dell'app, se lo spunti: parte al massimo ogni 10 minuti.</li>
+<li>Puoi usare anche <b>l'importazione e l'esportazione con lo zip</b>, quando preferisci.</li>
+</ul>
+<ul>
+<li><b>Solo HTTPS</b>, con il certificato del PC memorizzato al primo collegamento: se cambia, l'app si ferma e ti chiede di ricollegare.</li>
+<li><b>Conflitti:</b> se lo stesso dato cambia su entrambi i lati, vince il PC e la copia del telefono resta in una cartella di sicurezza.</li>
+<li><b>Copia di sicurezza</b> dei dati prima di ogni sincronizzazione.</li>
+<li>In <b>modalità demo</b> la sync è disattivata, per non mescolare i dati di esempio con quelli del PC.</li>
+</ul>
+</div>
 </div></section>
 
 <section><div class="wrap">
@@ -197,15 +216,15 @@ footer a{color:#818cf8}
 <p class="sub">Le stesse funzioni di tutti i giorni del desktop, pensate per lo schermo piccolo.</p>
 <div class="groups">
 <div class="group g1"><h3>Movimenti e pianificazione</h3><ul>
-<li><b>Movimenti del mese</b> con entrate, uscite e saldo</li><li><b>Calendario</b> dei movimenti per giorno</li><li><b>Cerca operazioni</b> con filtri e tag</li><li><b>Pianifica</b> una spesa in quote</li><li><b>Ricorrenze</b> come affitto e abbonamenti</li><li><b>Promemoria</b> con avviso all'ora e riepilogo del giorno</li></ul></div>
+<li><b>Movimenti del mese</b> con entrate, uscite e saldo</li><li><b>Calendario</b> dei movimenti per giorno</li><li><b>Pianifica</b> una spesa in quote</li><li><b>Promemoria</b> con avviso all'ora e riepilogo del giorno</li><li><b>Notifiche</b> con la coda «Da confermare» e le regole</li><li><b>Cerca operazioni</b> con filtri e tag</li></ul></div>
 <div class="group g2"><h3>Analisi e controllo</h3><ul>
-<li><b>Grafici</b> di entrate e uscite</li><li><b>Previsione fine mese</b> per categoria</li><li><b>Checkout:</b> le categorie abituali che questo mese mancano</li><li><b>Categorie e Target</b> con classi 50/30/20</li><li><b>SmartCat:</b> suggerisce la categoria dallo storico</li></ul></div>
-<div class="group g3"><h3>Conti e finanze</h3><ul>
-<li><b>Conti:</b> fino a 10, con saldo iniziale e IBAN</li><li><b>Trasferimenti</b> tra conti</li><li><b>Finanziamenti</b> con piano di ammortamento</li><li><b>Fondo Risparmio</b> e obiettivi</li><li><b>FairShare:</b> spese divise tra più persone</li></ul></div>
+<li><b>Grafici</b> di entrate e uscite</li><li><b>Checkout:</b> le categorie abituali che questo mese mancano</li><li><b>Proiezione mese</b> per categoria, con budget</li></ul></div>
+<div class="group g3"><h3>Finanze</h3><ul>
+<li><b>Conti:</b> fino a 10, con saldo iniziale e IBAN, e trasferimenti</li><li><b>Categorie e Target</b> con classi 50/30/20</li><li><b>Ricorrenze</b> come affitto e abbonamenti</li><li><b>Finanziamenti</b> con piano di ammortamento</li><li><b>Fondo Risparmio</b> e obiettivi</li><li><b>SmartCat:</b> suggerisce la categoria dallo storico</li></ul></div>
 <div class="group g4"><h3>Casa e beni</h3><ul>
-<li><b>Documenti contabili</b> collegati ai movimenti</li><li><b>Documenti personali</b> con scadenze</li><li><b>Utenze:</b> letture e consumi su 12 mesi</li><li><b>AutoPark</b> e <b>ImmoBil</b></li><li><b>Pet Care</b></li></ul></div>
+<li><b>Documenti contabili</b> collegati ai movimenti</li><li><b>Documenti personali</b> con scadenze</li><li><b>Utenze:</b> letture e consumi su 12 mesi</li><li><b>FairShare:</b> spese divise tra più persone</li><li><b>AutoPark</b> e <b>ImmoBil</b></li><li><b>Pet Care</b></li></ul></div>
 <div class="group g5"><h3>Strumenti</h3><ul>
-<li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave</li><li><b>Modalità demo:</b> dati di esempio da provare, con uscita quando vuoi e i tuoi dati al sicuro</li><li><b>Barra di navigazione</b> personalizzabile</li><li><b>Tema</b> chiaro e scuro</li></ul></div>
+<li><b>Importa / Esporta</b> lo zip di OrbitaCasa</li><li><b>Sync PC</b> con scansione dei QR</li><li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave (anche con QR)</li><li><b>Modalità demo:</b> dati di esempio da provare, con uscita quando vuoi e i tuoi dati al sicuro</li><li><b>Barra di navigazione</b> personalizzabile e <b>tema</b> chiaro e scuro</li><li><b>Info e contatti:</b> supporto, siti e manuali PDF</li></ul></div>
 </div>
 </div></section>
 
@@ -217,7 +236,7 @@ footer a{color:#818cf8}
 <tr><th>Notifiche</th><td>Avvisi dei promemoria e esito delle spese rilevate</td></tr>
 <tr><th>Accesso alle notifiche</th><td>Lettura delle notifiche di banche e carte. Si attiva solo con l'interruttore</td></tr>
 <tr><th>Avvio del dispositivo</th><td>Riprogrammare gli avvisi dopo un riavvio o un aggiornamento</td></tr>
-<tr><th>Internet</th><td>Solo per Gemini (con la tua chiave) e per cercare aggiornamenti su GitHub</td></tr>
+<tr><th>Internet</th><td>Sync con il tuo PC (HTTPS, certificato fissato), Gemini (con la tua chiave) e ricerca aggiornamenti su GitHub</td></tr>
 </table>
 <p class="sub" style="margin-top:14px">La chiave Gemini resta nelle impostazioni private dell'app.</p>
 </div></section>
@@ -225,7 +244,9 @@ footer a{color:#818cf8}
 <section><div class="wrap">
 <h2>Domande frequenti</h2>
 <details><summary>Android mi avvisa che l'app non è sicura. È normale?</summary><p>L'app non passa dal Play Store e Play Protect può segnalarla. Il codice è pubblico su GitHub e puoi controllarlo. Se tieni attiva la lettura delle notifiche, il sistema può essere ancora più cauto.</p></details>
-<details><summary>Devo avere OrbitaCasa sul PC?</summary><p>No. L'app funziona da sola. Il desktop serve solo se vuoi portare i dati sul telefono o riportarli indietro con lo zip.</p></details>
+<details><summary>Devo avere OrbitaCasa sul PC?</summary><p>No. L'app funziona da sola. Il desktop serve solo se vuoi portare i dati sul telefono o riportarli indietro, con la sync o con lo zip.</p></details>
+<details><summary>Sync o zip: quale scelgo?</summary><p>La sync allinea tutto da sola quando sei nella rete di casa. Lo zip va bene per un backup o se il PC non è raggiungibile. Puoi usarli insieme.</p></details>
+<details><summary>Cosa non funziona in modalità demo?</summary><p>Solo la sincronizzazione con il PC, manuale e automatica. Il resto dell'app lavora sui dati di esempio e puoi uscirne quando vuoi.</p></details>
 <details><summary>Che differenza c'è con OrbitaWeb?</summary><p>OrbitaCasa Mobile funziona da sola, con i dati sul telefono. OrbitaWeb si collega a un OrbitaCasa acceso sul tuo PC o server. Puoi usarle insieme.</p></details>
 <details><summary>Il QR porta sempre all'ultima versione?</summary><p>Sì, porta alla pagina «ultima release» su GitHub, che si aggiorna a ogni nuova versione.</p></details>
 </div></section>
@@ -259,7 +280,7 @@ var S=[
 ['08-ricerca','Cerca operazioni','Ricerca per testo e filtri avanzati, anche per tag, con totali e condivisione dei risultati.'],
 ['09-grafici','Grafici e statistiche','Andamento di entrate e uscite, in vista annuale, mensile e per spese.'],
 ['10-checkout','Checkout','Le categorie in cui spendi di solito ma che questo mese non hai ancora registrato.'],
-['11-previsione','Previsione fine mese','Per categoria: speso finora, previsione a fine mese e budget.'],
+['11-previsione','Proiezione mese','Per categoria: speso finora, previsione a fine mese e budget.'],
 ['12-conti','Conti','Fino a 10 conti con saldo e tipo, e trasferimenti tra un conto e l\'altro.'],
 ['13-categorie','Categorie','Le spese del mese per categoria, con budget e classe 50/30/20.'],
 ['14-target','Target','Target di spesa mensile e annuale e budget per categoria, con barre di avanzamento.'],
@@ -273,7 +294,7 @@ var S=[
 ['22-autopark','AutoPark','I veicoli con le scadenze (bollo, assicurazione, revisione) e i costi.'],
 ['23-immobil','ImmoBil','Gli immobili con contratti, scadenze, canoni e voci di spesa.'],
 ['24-petcare','Pet Care','Gli animali con vaccinazioni, antiparassitari e spese del veterinario.'],
-['25-strumenti','Strumenti','Importa ed esporta lo zip, chiave Gemini, aggiornamenti e modalità demo.']
+['25-strumenti','Strumenti','Importa ed esporta lo zip, sync con il PC, chiave Gemini, aggiornamenti e modalità demo.']
 ];
 var INTERVAL=6000,cur=0,timer=null;
 var track=document.getElementById('shotsTrack'),dots=document.getElementById('shotsDots'),prog=document.getElementById('shotsProg');
