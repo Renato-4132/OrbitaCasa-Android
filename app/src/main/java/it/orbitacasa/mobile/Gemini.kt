@@ -28,6 +28,39 @@ object Gemini {
         prefs(ctx).edit().putString("gemini_key", chiave.trim()).putString("gemini_model", modello.trim()).apply()
     }
 
+    fun elencaModelli(chiave: String): List<String> {
+        val out = ArrayList<String>()
+        var pagina = ""
+        for (giro in 0 until 10) {
+            var u = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000"
+            if (pagina.isNotEmpty()) u += "&pageToken=" + java.net.URLEncoder.encode(pagina, "UTF-8")
+            val conn = URL(u).openConnection() as HttpURLConnection
+            try {
+                conn.connectTimeout = 20_000
+                conn.readTimeout = 30_000
+                conn.setRequestProperty("x-goog-api-key", chiave)
+                val code = conn.responseCode
+                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                val testo = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+                if (code !in 200..299) throw Exception("HTTP $code " + testo.take(300))
+                val j = JSONObject(testo)
+                val arr = j.optJSONArray("models") ?: JSONArray()
+                for (i in 0 until arr.length()) {
+                    val m = arr.getJSONObject(i)
+                    val metodi = m.optJSONArray("supportedGenerationMethods") ?: continue
+                    var ok = false
+                    for (k in 0 until metodi.length()) if (metodi.getString(k) == "generateContent") ok = true
+                    if (ok) out.add(m.optString("name").removePrefix("models/"))
+                }
+                pagina = j.optString("nextPageToken", "")
+            } finally {
+                conn.disconnect()
+            }
+            if (pagina.isEmpty()) break
+        }
+        return out.filter { it.isNotEmpty() }.distinct().sorted()
+    }
+
     private fun mimeDi(f: File): String = when (f.extension.lowercase()) {
         "pdf" -> "application/pdf"
         "png" -> "image/png"

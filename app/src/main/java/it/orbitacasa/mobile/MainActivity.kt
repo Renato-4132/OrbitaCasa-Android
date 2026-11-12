@@ -3250,6 +3250,58 @@ class MainActivity : AppCompatActivity() {
         if (Gemini.chiave(this).isNotEmpty()) lancia()
     }
 
+    private fun campiGemini(corpo: LinearLayout): Pair<TextInputEditText, TextInputEditText> {
+        val etK = campoTesto(
+            corpo, "Chiave API Gemini", Gemini.chiave(this),
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        )
+        val btnQrK = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnQrK.text = "📷 Scansiona QR chiave Gemini"
+        corpo.addView(btnQrK)
+        btnQrK.setOnClickListener { scansionaQr { v -> etK.setText(v) } }
+        val etM = campoTesto(corpo, "Modello", Gemini.modello(this), InputType.TYPE_CLASS_TEXT)
+        val btnMod = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnMod.text = "📋 Leggi modelli Gemini"
+        corpo.addView(btnMod)
+        btnMod.setOnClickListener {
+            val k = etK.text.toString().trim()
+            if (k.isEmpty()) {
+                aviso("Inserisci o scansiona prima la chiave API")
+                return@setOnClickListener
+            }
+            btnMod.isEnabled = false
+            Thread {
+                var modelli: List<String> = emptyList()
+                var err: String? = null
+                try {
+                    modelli = Gemini.elencaModelli(k)
+                } catch (e: Exception) {
+                    err = Gemini.messaggio(e)
+                }
+                runOnUiThread {
+                    btnMod.isEnabled = true
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (err != null) {
+                        aviso("Errore API: $err")
+                    } else if (modelli.isEmpty()) {
+                        aviso("Nessun modello di generazione trovato")
+                    } else {
+                        val cur = etM.text.toString().trim()
+                        OcBuilder(this)
+                            .setTitle("Seleziona modello")
+                            .setSingleChoiceItems(modelli.toTypedArray(), modelli.indexOf(cur)) { d, i ->
+                                etM.setText(modelli[i])
+                                d.dismiss()
+                            }
+                            .setNegativeButton("Annulla", null)
+                            .show()
+                    }
+                }
+            }.start()
+        }
+        return etK to etM
+    }
+
     private fun dialogChiaveGemini(dopo: (() -> Unit)?) {
         val (view, corpo) = corpoDialogo()
         val info = TextView(ctxDialogo)
@@ -3257,11 +3309,7 @@ class MainActivity : AppCompatActivity() {
             "(gratuita su aistudio.google.com). La chiave resta solo su questo telefono."
         info.setPadding(4, 4, 4, 12)
         corpo.addView(info)
-        val etK = campoTesto(
-            corpo, "Chiave API Gemini", Gemini.chiave(this),
-            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        )
-        val etM = campoTesto(corpo, "Modello", Gemini.modello(this), InputType.TYPE_CLASS_TEXT)
+        val (etK, etM) = campiGemini(corpo)
         OcBuilder(this)
             .setTitle("🤖 Analisi automatica")
             .setView(view)
@@ -5051,6 +5099,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         btnQrTok.setOnClickListener { scansionaQr { v -> etTok.setText(v) } }
+        val tvGem = TextView(ctxDialogo)
+        tvGem.text = "🤖 Analisi automatica (Gemini)"
+        tvGem.setPadding(4, 16, 4, 4)
+        corpo.addView(tvGem)
+        val (etGemK, etGemM) = campiGemini(corpo)
         val chk = MaterialCheckBox(this)
         chk.text = "Sincronizza all'apertura dell'app"
         chk.isChecked = Sync.auto(this)
@@ -5069,6 +5122,10 @@ class MainActivity : AppCompatActivity() {
             .setTitle("🔗 Sync con il PC")
             .setView(view)
             .setPositiveButton("Sincronizza") { _, _ ->
+                val gk = etGemK.text.toString().trim()
+                if (gk.isNotEmpty() && (gk != Gemini.chiave(this) || etGemM.text.toString().trim() != Gemini.modello(this))) {
+                    Gemini.salva(this, gk, etGemM.text.toString())
+                }
                 avviaSync(etUrl.text.toString(), etTok.text.toString(), chk.isChecked)
             }
             .setNeutralButton("Scollega") { _, _ ->
