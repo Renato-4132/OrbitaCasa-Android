@@ -419,8 +419,7 @@ class MainActivity : AppCompatActivity() {
         gruppo(
             cont, "Strumenti", "🛠️",
             listOf(
-                Tessera("📥", "Importa dati") { confermaImporta() },
-                Tessera("📤", "Esporta dati") { creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip") },
+                Tessera("🔀", "Importa / Esporta") { dialogImportaEsporta() },
                 Tessera("🔗", "Sync PC: " + if (Sync.configurato(this)) "attiva" else "no") { dialogSync() },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
                 Tessera("🎭", if (Repo.demoAttiva) "Esci dalla demo" else "Modalità demo") {
@@ -5121,6 +5120,17 @@ class MainActivity : AppCompatActivity() {
                     .show()
             }
         }
+    }
+
+    private fun dialogImportaEsporta() {
+        OcBuilder(this)
+            .setTitle("Importa / Esporta dati")
+            .setItems(arrayOf("📥  Importa dati", "📤  Esporta dati")) { _, k ->
+                if (k == 0) confermaImporta()
+                else creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
     }
 
     private fun confermaImporta() {
