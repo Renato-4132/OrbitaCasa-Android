@@ -5042,8 +5042,12 @@ class MainActivity : AppCompatActivity() {
         corpo.addView(btnQrTok)
         btnQrUrl.setOnClickListener {
             scansionaQr { v ->
-                if (v.startsWith("http://", true) || v.startsWith("https://", true)) etUrl.setText(v)
-                else aviso("Il QR non contiene un indirizzo (https://...)")
+                if (v.startsWith("http://", true) || v.startsWith("https://", true)) {
+                    val i = v.indexOf("/api/")
+                    etUrl.setText(if (i > 0) v.substring(0, i) else v.trimEnd('/'))
+                } else {
+                    aviso("Il QR non contiene un indirizzo (https://...)")
+                }
             }
         }
         btnQrTok.setOnClickListener { scansionaQr { v -> etTok.setText(v) } }
