@@ -81,6 +81,8 @@ class MainActivity : AppCompatActivity() {
     private var meseCal: YearMonth = YearMonth.now()
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
+    private var meseProm: YearMonth = YearMonth.now()
+    private var giornoProm: LocalDate? = LocalDate.now()
     private var giornoCal: LocalDate? = LocalDate.now()
     private var pianCal = false
     private var schedaAperta: String? = null
@@ -5501,24 +5503,124 @@ class MainActivity : AppCompatActivity() {
             sezione(cont, "SCADUTI / NON COMPLETATI (" + ritardo.size + ")")
             ritardo.forEach { rigaProm(cont, it, true) }
         }
-        val prossimi = Prom.occorrenze(agenda, oggi, oggi.plusDays(30))
-        sezione(cont, "OGGI · " + nomeGiorno(oggi).uppercase())
-        val diOggi = prossimi.filter { it.data == oggi }
-        if (diOggi.isEmpty()) vuoto(cont, "Niente in agenda oggi.") else diOggi.forEach { rigaProm(cont, it, false) }
-        val dopo = prossimi.filter { it.data.isAfter(oggi) }
-        if (dopo.isEmpty()) {
-            sezione(cont, "PROSSIMI 30 GIORNI")
-            vuoto(cont, "Niente nei prossimi 30 giorni.")
+        val dp = resources.displayMetrics.density
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+
+        val nav = LinearLayout(this)
+        nav.orientation = LinearLayout.HORIZONTAL
+        nav.gravity = android.view.Gravity.CENTER_VERTICAL
+        nav.setPadding(0, (12 * dp).toInt(), 0, 0)
+        val prev = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        prev.text = "◀"
+        prev.minWidth = 0
+        prev.setOnClickListener {
+            meseProm = meseProm.minusMonths(1)
+            giornoProm = null
+            renderPromemoria()
         }
-        var ultimo: LocalDate? = null
-        for (o in dopo.take(150)) {
-            if (o.data != ultimo) {
-                sezione(cont, nomeGiorno(o.data).uppercase())
-                ultimo = o.data
+        val next = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        next.text = "▶"
+        next.minWidth = 0
+        next.setOnClickListener {
+            meseProm = meseProm.plusMonths(1)
+            giornoProm = null
+            renderPromemoria()
+        }
+        val titolo = TextView(this)
+        titolo.text = maiuscola(meseProm.format(FMT_MESE))
+        titolo.gravity = android.view.Gravity.CENTER
+        titolo.setTypeface(null, Typeface.BOLD)
+        titolo.textSize = 16f
+        titolo.setOnClickListener {
+            meseProm = YearMonth.now()
+            giornoProm = oggi
+            renderPromemoria()
+        }
+        nav.addView(prev)
+        nav.addView(titolo, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        nav.addView(next)
+        cont.addView(nav)
+
+        val head = LinearLayout(this)
+        head.orientation = LinearLayout.HORIZONTAL
+        head.setPadding(0, (8 * dp).toInt(), 0, (2 * dp).toInt())
+        for (g in listOf("L", "M", "M", "G", "V", "S", "D")) {
+            val t = TextView(this)
+            t.text = g
+            t.gravity = android.view.Gravity.CENTER
+            t.textSize = 12f
+            t.setTextColor(grigio)
+            head.addView(t, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        cont.addView(head)
+
+        val perGiorno = Prom.occorrenze(agenda, meseProm.atDay(1), meseProm.atEndOfMonth()).groupBy { it.data }
+        val offset = meseProm.atDay(1).dayOfWeek.value - 1
+        val giorniMese = meseProm.lengthOfMonth()
+        val righe = (offset + giorniMese + 6) / 7
+        for (r in 0 until righe) {
+            val rigaV = LinearLayout(this)
+            rigaV.orientation = LinearLayout.HORIZONTAL
+            for (c in 0 until 7) {
+                val idx = r * 7 + c - offset
+                val cella = LinearLayout(this)
+                cella.orientation = LinearLayout.VERTICAL
+                cella.gravity = android.view.Gravity.CENTER_HORIZONTAL
+                val lp = LinearLayout.LayoutParams(0, (48 * dp).toInt(), 1f)
+                lp.setMargins(2, 2, 2, 2)
+                cella.layoutParams = lp
+                if (idx in 0 until giorniMese) {
+                    val giorno = meseProm.atDay(idx + 1)
+                    val voci = perGiorno[giorno].orEmpty()
+                    val evid = giorno == giornoProm || giorno == oggi
+                    if (evid) cella.setBackgroundResource(R.drawable.bg_tile)
+                    val n = TextView(this)
+                    n.text = (idx + 1).toString()
+                    n.textSize = 14f
+                    n.gravity = android.view.Gravity.CENTER_HORIZONTAL
+                    n.setTypeface(null, if (evid) Typeface.BOLD else Typeface.NORMAL)
+                    n.setPadding(0, (4 * dp).toInt(), 0, 0)
+                    cella.addView(n)
+                    if (voci.isNotEmpty()) {
+                        val dots = LinearLayout(this)
+                        dots.orientation = LinearLayout.HORIZONTAL
+                        dots.gravity = android.view.Gravity.CENTER_HORIZONTAL
+                        if (voci.any { it.voce.optString("tipo") == "Scadenza" }) {
+                            val d1 = TextView(this)
+                            d1.text = "●"
+                            d1.textSize = 9f
+                            d1.setTextColor(rosso)
+                            dots.addView(d1)
+                        }
+                        if (voci.any { it.voce.optString("tipo") != "Scadenza" }) {
+                            val d2 = TextView(this)
+                            d2.text = "●"
+                            d2.textSize = 9f
+                            d2.setTextColor(verde)
+                            dots.addView(d2)
+                        }
+                        cella.addView(dots)
+                    }
+                    cella.setOnClickListener {
+                        giornoProm = giorno
+                        renderPromemoria()
+                    }
+                }
+                rigaV.addView(cella)
             }
-            rigaProm(cont, o, false)
+            cont.addView(rigaV)
         }
-        if (dopo.size > 150) vuoto(cont, "Elenco ridotto: altre voci nei prossimi 30 giorni.")
+
+        val g = giornoProm
+        if (g == null) {
+            vuoto(cont, "Tocca un giorno per vedere le voci.")
+        } else {
+            sezione(cont, (if (g == oggi) "OGGI · " else "") + nomeGiorno(g).uppercase())
+            val voci = Prom.occorrenze(agenda, g, g)
+            if (voci.isEmpty()) vuoto(cont, "Niente in agenda.") else voci.forEach { rigaProm(cont, it, false) }
+        }
     }
 
     private fun menuProm(o: Prom.Occ) {
