@@ -5450,12 +5450,13 @@ class MainActivity : AppCompatActivity() {
     private fun rigaProm(cont: LinearLayout, o: Prom.Occ, inRitardo: Boolean) {
         val v = o.voce
         val fatta = Prom.fatta(v, o.data)
-        val ico = if (v.optString("tipo") == "Scadenza") "⏰" else "📅"
+        val ico = if (v.optBoolean("esterna")) (when (v.optString("apri")) { "autopark" -> "🚗"; "immobil" -> "🏢"; else -> "🐾" })
+            else if (v.optString("tipo") == "Scadenza") "⏰" else "📅"
         val ora = v.optString("ora")
         val titolo = (if (fatta) "✓ " else "") + ico + " " + (if (ora.isNotEmpty()) "$ora  " else "") + v.optString("titolo")
         val sotto = listOfNotNull(
             if (inRitardo) Prom.fmtData(o.data) else null,
-            v.optString("tipo"),
+            if (v.optBoolean("esterna")) v.optString("origine") else v.optString("tipo"),
             Prom.testoFine(v).takeIf { it.isNotEmpty() },
             if (v.optString("ripetizione", "Nessuna") != "Nessuna") "ripete " + Prom.ripTesto(v) else null,
             v.optString("luogo").takeIf { it.isNotEmpty() },
@@ -5473,7 +5474,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderPromemoria() {
         intestaLista("🔔 Promemoria", "➕  Nuovo promemoria", "⚙️  Avvisi")
         val cont = vista<LinearLayout>(R.id.listaGen)
-        val agenda = Prom.agenda()
+        val agenda = Prom.tutte()
         Prom.errore?.let {
             vuoto(cont, "⚠️ $it")
             return
@@ -5522,6 +5523,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun menuProm(o: Prom.Occ) {
         val v = o.voce
+        if (v.optBoolean("esterna")) {
+            val dest = when (v.optString("apri")) { "autopark" -> Pagina.AUTOPARK; "immobil" -> Pagina.IMMOBIL; else -> Pagina.PET }
+            OcBuilder(this)
+                .setTitle(v.optString("titolo"))
+                .setMessage("Scadenza del " + Prom.fmtData(o.data) + " · " + v.optString("origine") + "\nSi modifica nella scheda di origine.")
+                .setPositiveButton("Apri " + v.optString("origine")) { _, _ -> schedaAperta = null; mostra(dest) }
+                .setNegativeButton("Chiudi", null)
+                .show()
+            return
+        }
         val id = v.optString("id")
         val fatta = Prom.fatta(v, o.data)
         val nomi = ArrayList<String>()

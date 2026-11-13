@@ -209,6 +209,9 @@ object Avvisi {
     fun iniziaDa(ctx: Context) {
         Prom.init(File(ctx.filesDir, "db"))
         Casa.init(File(ctx.filesDir, "db"))
+        Park.init(File(ctx.filesDir, "db"))
+        Immo.init(File(ctx.filesDir, "db"))
+        Pet.init(File(ctx.filesDir, "db"))
         creaCanali(ctx)
     }
 }

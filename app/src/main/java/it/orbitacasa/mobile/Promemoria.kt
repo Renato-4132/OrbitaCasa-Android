@@ -95,6 +95,33 @@ object Prom {
 
     fun nota(): String = radice().optString("note", "")
 
+    const val PREAVVISO_ESTERNE = 7
+
+    fun esterne(): List<JSONObject> {
+        val res = ArrayList<JSONObject>()
+        val fonti = listOf(Triple("Veicoli", "autopark", Park), Triple("Immobili", "immobil", Immo), Triple("PetCare", "pet", Pet))
+        for ((origine, apri, sch) in fonti) {
+            for (v in sch.elenco()) {
+                val nome = v.optString("nome").ifBlank { v.optString("targa") }
+                    .ifBlank { if (apri == "autopark") "Veicolo" else if (apri == "immobil") "Immobile" else "Animale" }
+                for ((k, etic0) in sch.SCADENZE) {
+                    val d = sch.parse(v.optString(k)) ?: continue
+                    val etic = when (etic0) { "Contratto" -> "scadenza contratto"; "Controllo" -> "Controllo veterinario"; else -> etic0 }
+                    val o = JSONObject()
+                        .put("id", "ext-" + (apri + "-" + v.optString("id") + "-" + k).replace(Regex("[^A-Za-z0-9_.-]"), "_"))
+                        .put("esterna", true).put("origine", origine).put("apri", apri)
+                        .put("titolo", "$nome: $etic").put("tipo", "Scadenza").put("data", d.toString())
+                        .put("ora", "").put("ripetizione", "Nessuna").put("note", "")
+                        .put("fatti", JSONArray()).put("preavviso", PREAVVISO_ESTERNE)
+                    normalizza(o)?.let { res.add(it) }
+                }
+            }
+        }
+        return res
+    }
+
+    fun tutte(): List<JSONObject> = agenda() + esterne()
+
     private fun scrivi(root: JSONObject, voci: List<JSONObject>) {
         val arr = JSONArray()
         voci.forEach { arr.put(it) }
@@ -504,7 +531,7 @@ object Prom {
     }
 
     fun conteggio(oggi: LocalDate = LocalDate.now()): Conteggio {
-        val a = agenda()
+        val a = tutte()
         val n = a.count { occorre(it, oggi) && !fatta(it, oggi) }
         return Conteggio(n, scaduti(a, oggi).size, anticipi(a, oggi).size)
     }
