@@ -121,6 +121,10 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importaZip(uri)
         }
+    private val apriPdfPensione =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) importaPensione(uri)
+        }
     private val apriDocumento =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@registerForActivityResult
@@ -196,7 +200,7 @@ class MainActivity : AppCompatActivity() {
             } else if (pagina == Pagina.CASACARE) {
                 dialogFiltriCasa()
             } else if (pagina == Pagina.PENSIONE) {
-                esportaPensione()
+                menuPdfPensione()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -1158,8 +1162,6 @@ class MainActivity : AppCompatActivity() {
         tvSub.visibility = if (sotto.isEmpty()) View.GONE else View.VISIBLE
         val tvImp = r.findViewById<TextView>(R.id.tvImp)
         tvImp.text = valore
-        // Valori lunghi (es. Note): limita la larghezza così il titolo non viene schiacciato
-        // e il valore va a capo.
         tvImp.maxWidth = (resources.displayMetrics.widthPixels * 0.55f).toInt()
         tvImp.gravity = android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
         if (colore != null) tvImp.setTextColor(colore)
@@ -4469,6 +4471,78 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun menuPdfPensione() {
+        val voci = ArrayList<String>()
+        val azioni = ArrayList<() -> Unit>()
+        if (penVista in 2..4) {
+            voci.add("📤  Esporta PDF")
+            azioni.add { esportaPensione() }
+        }
+        voci.add("📥  Importa PDF del fondo")
+        azioni.add { apriPdfPensione.launch(arrayOf("application/pdf")) }
+        OcBuilder(this)
+            .setTitle("PDF Fondo Pensione")
+            .setItems(voci.toTypedArray()) { _, i -> azioni[i]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun importaPensione(uri: android.net.Uri) {
+        if (Gemini.chiave(this).isEmpty()) {
+            dialogChiaveGemini { importaPensione(uri) }
+            return
+        }
+        val file = try {
+            val f = java.io.File(cacheDir, "pensione_import.pdf")
+            contentResolver.openInputStream(uri)!!.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+            f
+        } catch (e: Exception) {
+            aviso("File non leggibile: " + e.message)
+            return
+        }
+        aviso("Lettura del PDF in corso…")
+        Thread {
+            val r = runCatching { Gemini.analizza(this, file, PensioneImport.prompt()) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                r.onSuccess {
+                    try {
+                        dialogAnteprimaPensione(PensioneImport.leggi(it, Pensione.dati()))
+                    } catch (_: Exception) {
+                        aviso("Risposta IA non leggibile")
+                    }
+                }.onFailure { aviso(Gemini.messaggio(it)) }
+            }
+        }.start()
+    }
+
+    private fun dialogAnteprimaPensione(es: PensioneImport.Esito) {
+        if (es.nuove.isEmpty()) {
+            val extra = if (es.giaPresenti > 0) " (${es.giaPresenti} già presenti)" else ""
+            aviso("Nessun dato nuovo da importare$extra")
+            return
+        }
+        val sel = BooleanArray(es.nuove.size) { true }
+        val titolo = "Importa " + es.nuove.size + (if (es.nuove.size == 1) " voce" else " voci") +
+            (if (es.giaPresenti > 0) " · ${es.giaPresenti} già presenti" else "")
+        OcBuilder(this)
+            .setTitle(titolo)
+            .setMultiChoiceItems(es.nuove.map { it.etichetta() }.toTypedArray(), sel) { _, i, on -> sel[i] = on }
+            .setPositiveButton("Importa") { _, _ ->
+                var ok = 0
+                var errore: String? = null
+                es.nuove.forEachIndexed { i, p ->
+                    if (!sel[i]) return@forEachIndexed
+                    val err = Pensione.salvaVoce(p.chiave, null, p.data, p.tipo, p.importo, p.motivo, "da PDF")
+                    if (err == null) ok++ else errore = err
+                }
+                refresh()
+                aviso(if (errore != null) "Importate $ok voci. Errore: $errore" else "Importate $ok voci")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
     private fun esportaPensione() {
         val k = penChiave()
         if (k.isEmpty()) return
@@ -4489,7 +4563,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderPensione() {
         val azioni = listOf("➕  Nuovo versamento", "✏️  Modifica piano", "➕  Nuovo versamento", "➕  Nuova valorizzazione", "➕  Nuovo riscatto")
-        intestaLista("🏖️ Fondo Pensione", azioni[penVista], if (penVista in 2..4) "📄  Esporta PDF" else null)
+        intestaLista("🏖️ Fondo Pensione", azioni[penVista], "📄  PDF")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val d = Pensione.dati()
         Pensione.errore?.let { vuoto(cont, "⚠️ $it") }
