@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, INFO }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, INFO }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -356,7 +356,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.INFO
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.INFO
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -406,6 +406,7 @@ class MainActivity : AppCompatActivity() {
             cont, "Analisi", "📊",
             listOf(
                 Tessera("📊", "Grafici") { mostra(Pagina.GRAFICI) },
+                Tessera("🔍", "Analisi Categorie") { mostra(Pagina.ANALISI) },
                 Tessera("🔁", "Checkout") { mostra(Pagina.CHECKOUT) },
                 Tessera("📉", "Proiezione Mese") { mostra(Pagina.PREVISIONE) },
             )
@@ -461,6 +462,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.MOVIMENTI, "📈", "Movimenti"),
         Dest(Pagina.CALENDARIO, "🗓️", "Calendario"),
         Dest(Pagina.GRAFICI, "📊", "Grafici"),
+        Dest(Pagina.ANALISI, "🔍", "Analisi"),
         Dest(Pagina.CONTI, "🏦", "Conti"),
         Dest(Pagina.CATEGORIE, "🏷️", "Categorie"),
         Dest(Pagina.TARGET, "🎯", "Target"),
@@ -1054,6 +1056,7 @@ class MainActivity : AppCompatActivity() {
         when (pagina) {
             Pagina.CONTI -> renderConti()
             Pagina.CATEGORIE -> renderCategorie()
+            Pagina.ANALISI -> renderAnalisi()
             Pagina.TARGET -> renderTarget()
             Pagina.RICORRENZE -> renderRicorrenze()
             Pagina.CALENDARIO -> renderCalendario()
@@ -1077,11 +1080,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var b2Tint: ColorStateList? = null
+    private var b2Testo: ColorStateList? = null
+
+    private fun giallo(b: MaterialButton) {
+        b.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.oc_gold))
+        b.setTextColor(android.graphics.Color.BLACK)
+    }
+
     private fun intestaLista(titolo: String, azione: String, azione2: String? = null) {
         vista<TextView>(R.id.tvTitoloLista).text = titolo
         vista<TextView>(R.id.tvAddGen).text = azione
         vista<View>(R.id.btnAddGen).visibility = if (azione.isEmpty()) View.GONE else View.VISIBLE
         val b2 = vista<MaterialButton>(R.id.btnAddGen2)
+        if (b2Tint == null) { b2Tint = b2.backgroundTintList; b2Testo = b2.textColors }
+        b2.backgroundTintList = b2Tint
+        b2Testo?.let { b2.setTextColor(it) }
         b2.visibility = if (azione2 == null) View.GONE else View.VISIBLE
         if (azione2 != null) b2.text = azione2
         vista<LinearLayout>(R.id.listaGen).removeAllViews()
@@ -1414,7 +1428,7 @@ class MainActivity : AppCompatActivity() {
     // ======================= ANALISI CATEGORIE (schede) =======================
     private val AN_SCHEDE = listOf(
         "🔍 Dettaglio", "Σ Aggrega", "⏳ Time Machine", "📈 Trend",
-        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20", "🛠️ Gestione"
+        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20"
     )
     private val MESI_IT: List<String> by lazy {
         (1..12).map { maiuscola(java.time.Month.of(it).getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALIAN)) }
@@ -1429,7 +1443,6 @@ class MainActivity : AppCompatActivity() {
     private val AN_SENZA_ORA = "Senza orario"
 
     private var catTab = 0
-    private var anScrollX = 0
     private var anModo = "Giorno"
     private var anGiorno: LocalDate = LocalDate.now()
     private var anDal: LocalDate = LocalDate.now().withDayOfMonth(1)
@@ -1445,23 +1458,20 @@ class MainActivity : AppCompatActivity() {
     private var anDist = AN_MODI_DIST[0]
     private var anClasse = "Tutte"
 
-    private fun renderCategorie() {
-        intestaLista("📊 Analisi categorie", "➕  Nuova categoria", "⚙️  Strumenti")
+    private fun renderAnalisi() {
+        intestaLista("🔍 Analisi categorie", "")
         val cont = vista<LinearLayout>(R.id.listaGen)
-        val sv = android.widget.HorizontalScrollView(this)
-        sv.isHorizontalScrollBarEnabled = false
-        val barra = LinearLayout(this)
-        barra.orientation = LinearLayout.HORIZONTAL
-        AN_SCHEDE.forEachIndexed { i, t ->
-            barra.addView(pulsanteSel(t, i == catTab) {
-                anScrollX = sv.scrollX
-                catTab = i
-                renderCategorie()
-            })
+        val scelta = pulsanteSel("Vista:  " + AN_SCHEDE[catTab] + "   ▾", true) {
+            OcBuilder(this)
+                .setTitle("Scegli la vista")
+                .setItems(AN_SCHEDE.mapIndexed { i, t -> (if (i == catTab) "● " else "○ ") + t }.toTypedArray()) { _, i ->
+                    catTab = i
+                    renderAnalisi()
+                }
+                .setNegativeButton("Chiudi", null)
+                .show()
         }
-        sv.addView(barra)
-        cont.addView(sv)
-        sv.post { sv.scrollTo(anScrollX, 0) }
+        cont.addView(scelta, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         when (catTab) {
             0 -> tabDettaglio(cont)
             1 -> tabAggrega(cont)
@@ -1470,8 +1480,7 @@ class MainActivity : AppCompatActivity() {
             4 -> tabDistribuzione(cont)
             5 -> tabBudgetSuperato(cont)
             6 -> tabTarget(cont)
-            7 -> tab503020(cont)
-            else -> renderGestioneCategorie(cont)
+            else -> tab503020(cont)
         }
     }
 
@@ -1493,7 +1502,7 @@ class MainActivity : AppCompatActivity() {
     private fun anMovs(): List<Voce> = Repo.voci().filter { anConto.isEmpty() || it.conto == anConto }
 
     private fun anMenu(cont: LinearLayout, hint: String, voci: List<String>, sel: String, on: (Int) -> Unit) =
-        campoMenu(cont, hint, voci, sel) { on(it); renderCategorie() }
+        campoMenu(cont, hint, voci, sel) { on(it); renderAnalisi() }
 
     private fun anRiga(cont: LinearLayout, f: (LinearLayout) -> Unit) {
         val r = LinearLayout(this)
@@ -1515,7 +1524,7 @@ class MainActivity : AppCompatActivity() {
         et.setOnClickListener {
             DatePickerDialog(this, { _, y, m, d ->
                 onData(LocalDate.of(y, m + 1, d))
-                renderCategorie()
+                renderAnalisi()
             }, valore.year, valore.monthValue - 1, valore.dayOfMonth).show()
         }
     }
@@ -1532,7 +1541,7 @@ class MainActivity : AppCompatActivity() {
             val chk = MaterialCheckBox(this)
             chk.text = "Includi movimenti futuri"
             chk.isChecked = anFuturi
-            chk.setOnCheckedChangeListener { _, on -> anFuturi = on; renderCategorie() }
+            chk.setOnCheckedChangeListener { _, on -> anFuturi = on; renderAnalisi() }
             cont.addView(chk)
         }
     }
@@ -1607,7 +1616,7 @@ class MainActivity : AppCompatActivity() {
                 set.clear()
                 set.addAll(scelte.take(max))
                 if (scelte.size > max) aviso("Massimo $max categorie: tenute le prime $max")
-                renderCategorie()
+                renderAnalisi()
             }
             .show()
     }
@@ -1754,9 +1763,9 @@ class MainActivity : AppCompatActivity() {
         rigaBt.addView(pulsanteSel("Top 10 per spesa", false) {
             val top = anAggrega(movs, null, ::filtro).entries.filter { it.value.usc > 0 }
                 .sortedByDescending { it.value.usc }.take(10).map { it.key }
-            anAgg.clear(); anAgg.addAll(top); renderCategorie()
+            anAgg.clear(); anAgg.addAll(top); renderAnalisi()
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        rigaBt.addView(pulsanteSel("Azzera", false) { anAgg.clear(); renderCategorie() },
+        rigaBt.addView(pulsanteSel("Azzera", false) { anAgg.clear(); renderAnalisi() },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         cont.addView(rigaBt)
 
@@ -1871,7 +1880,7 @@ class MainActivity : AppCompatActivity() {
             chk.isChecked = cat in anTm
             chk.setOnCheckedChangeListener { _, on ->
                 if (on) anTm.add(cat) else anTm.remove(cat)
-                renderCategorie()
+                renderAnalisi()
             }
             cont.addView(chk)
         }
@@ -1879,7 +1888,7 @@ class MainActivity : AppCompatActivity() {
         rb.orientation = LinearLayout.HORIZONTAL
         rb.addView(pulsanteSel("Altre categorie…", false) { dialogScegliCategorie("Categorie da escludere", anTm, 40) },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        rb.addView(pulsanteSel("Azzera", false) { anTm.clear(); renderCategorie() },
+        rb.addView(pulsanteSel("Azzera", false) { anTm.clear(); renderAnalisi() },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         cont.addView(rb)
         if (ris.isEmpty()) {
@@ -1960,7 +1969,7 @@ class MainActivity : AppCompatActivity() {
                 if (n[m] == 0) "" else "−" + euro(u[m]),
                 if (n[m] == 0) medio else if (e[m] >= u[m]) verde else rosso,
                 if (n[m] == 0) null else ({
-                    anModo = "Mese"; anMese = YearMonth.of(annoT, m); catTab = 0; renderCategorie()
+                    anModo = "Mese"; anMese = YearMonth.of(annoT, m); catTab = 0; renderAnalisi()
                 })
             )
         }
@@ -2263,7 +2272,7 @@ class MainActivity : AppCompatActivity() {
                 if (n[m] == 0) "Nessun movimento" else n[m].toString() + " mov" +
                     (if (tm > 0) " · Target " + euro(tm) + " · " + anPct(perc!!) + " · residuo " + anSaldo(tm - u[m]) else ""),
                 if (n[m] == 0) "" else euro(u[m]), col,
-                if (n[m] == 0) null else ({ anModo = "Mese"; anMese = YearMonth.of(annoT, m); anCat = AN_TUTTE; catTab = 0; renderCategorie() })
+                if (n[m] == 0) null else ({ anModo = "Mese"; anMese = YearMonth.of(annoT, m); anCat = AN_TUTTE; catTab = 0; renderAnalisi() })
             )
         }
         val tu = u.sum()
@@ -2442,7 +2451,10 @@ class MainActivity : AppCompatActivity() {
     private val CAT_ORDINI = listOf("Nome", "Spesa del mese", "N. operazioni")
     private val CAT_MOSTRA = listOf("Tutte", "Solo senza operazioni")
 
-    private fun renderGestioneCategorie(cont: LinearLayout) {
+    private fun renderCategorie() {
+        intestaLista("🏷️ Categorie", "", "⚙️  Strumenti")
+        giallo(vista<MaterialButton>(R.id.btnAddGen2))
+        val cont = vista<LinearLayout>(R.id.listaGen)
         val ym = YearMonth.now()
         val voci = Repo.voci()
         val totali = voci.filter { YearMonth.from(it.data) == ym }.groupBy { it.categoria }
@@ -2508,13 +2520,17 @@ class MainActivity : AppCompatActivity() {
         OcBuilder(this)
             .setTitle("Strumenti categorie")
             .setItems(
-                arrayOf("🔎  Cerca, ordina e filtra", "🔀  Sposta o unisci categorie", "🗑️  Elimina categorie vuote")
+                arrayOf(
+                    "➕  Nuova categoria", "🔎  Cerca, ordina e filtra", "🔀  Sposta o unisci categorie",
+                    "🗑️  Elimina categorie vuote", "🔍  Apri Analisi categorie"
+                )
             ) { _, k ->
-                catTab = 8
                 when (k) {
-                    0 -> dialogCercaCategorie()
-                    1 -> dialogSpostaCategorie()
-                    else -> dialogEliminaVuote()
+                    0 -> dialogCategoria(null)
+                    1 -> dialogCercaCategorie()
+                    2 -> dialogSpostaCategorie()
+                    3 -> dialogEliminaVuote()
+                    else -> mostra(Pagina.ANALISI)
                 }
             }
             .setNegativeButton("Chiudi", null)
