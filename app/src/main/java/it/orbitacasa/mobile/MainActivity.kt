@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private var meseCal: YearMonth = YearMonth.now()
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
+    private var scadutiAperti = false
     private var meseProm: YearMonth = YearMonth.now()
     private var giornoProm: LocalDate? = LocalDate.now()
     private var giornoCal: LocalDate? = LocalDate.now()
@@ -5499,10 +5500,6 @@ class MainActivity : AppCompatActivity() {
         }
         val oggi = LocalDate.now()
         val ritardo = Prom.scaduti(agenda, oggi)
-        if (ritardo.isNotEmpty()) {
-            sezione(cont, "SCADUTI / NON COMPLETATI (" + ritardo.size + ")")
-            ritardo.forEach { rigaProm(cont, it, true) }
-        }
         val dp = resources.displayMetrics.density
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
         val verde = ContextCompat.getColor(this, R.color.oc_green)
@@ -5620,6 +5617,16 @@ class MainActivity : AppCompatActivity() {
             sezione(cont, (if (g == oggi) "OGGI · " else "") + nomeGiorno(g).uppercase())
             val voci = Prom.occorrenze(agenda, g, g)
             if (voci.isEmpty()) vuoto(cont, "Niente in agenda.") else voci.forEach { rigaProm(cont, it, false) }
+        }
+        if (ritardo.isNotEmpty()) {
+            riga(
+                cont, "⚠️ Scaduti / non completati (" + ritardo.size + ")  " + (if (scadutiAperti) "▲" else "▼"),
+                "", "", rosso
+            ) {
+                scadutiAperti = !scadutiAperti
+                renderPromemoria()
+            }
+            if (scadutiAperti) ritardo.forEach { rigaProm(cont, it, true) }
         }
     }
 
