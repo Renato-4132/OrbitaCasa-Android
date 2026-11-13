@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, INFO }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -175,6 +175,11 @@ class MainActivity : AppCompatActivity() {
                 Pagina.AUTOPARK, Pagina.IMMOBIL, Pagina.PET -> {
                     val aperto = schedaAperta?.let { sc.per(it) }
                     if (aperto == null) dialogNuovaScheda() else dialogMovScheda(aperto, null)
+                }
+                Pagina.CHIEDI -> {
+                    chiediStorico.clear()
+                    chiediBozza = ""
+                    renderChiedi()
                 }
                 else -> {}
             }
@@ -356,7 +361,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.INFO
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -409,6 +414,8 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🔍", "Analisi Categorie") { mostra(Pagina.ANALISI) },
                 Tessera("🔁", "Checkout") { mostra(Pagina.CHECKOUT) },
                 Tessera("📉", "Proiezione Mese") { mostra(Pagina.PREVISIONE) },
+                Tessera("💳", "Estratti per metodo") { mostra(Pagina.ESTRATTI) },
+                Tessera("🤖", "Chiedi al Database") { mostra(Pagina.CHIEDI) },
             )
         )
         gruppo(
@@ -479,6 +486,8 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.CHECKOUT, "🔁", "Checkout"),
         Dest(Pagina.RICERCA, "🔎", "Cerca"),
         Dest(Pagina.PREVISIONE, "📉", "Previsione"),
+        Dest(Pagina.ESTRATTI, "💳", "Estratti"),
+        Dest(Pagina.CHIEDI, "🤖", "Chiedi AI"),
         Dest(Pagina.AUTOPARK, "🚗", "AutoPark"),
         Dest(Pagina.IMMOBIL, "🏢", "ImmoBil"),
         Dest(Pagina.PET, "🐾", "Pet Care"),
@@ -1076,6 +1085,8 @@ class MainActivity : AppCompatActivity() {
             Pagina.PROMEMORIA -> renderPromemoria()
             Pagina.NOTIFICHE -> renderNotifiche()
             Pagina.INFO -> renderInfo()
+            Pagina.ESTRATTI -> renderEstratti()
+            Pagina.CHIEDI -> renderChiedi()
             else -> {}
         }
     }
@@ -2120,13 +2131,13 @@ class MainActivity : AppCompatActivity() {
 
         val rb = LinearLayout(this)
         rb.orientation = LinearLayout.HORIZONTAL
-        rb.addView(pulsanteSel("✏️ Modifica budget", false) {
+        rb.addView(unaRiga(pulsanteSel("✏️ Modifica budget", false) {
             val ordinate = cats.sortedBy { it.lowercase() }
             OcBuilder(this).setTitle("Budget di quale categoria?")
                 .setItems(ordinate.toTypedArray()) { _, i -> dialogCategoria(ordinate[i]) }
                 .setNegativeButton("Annulla", null).show()
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        rb.addView(pulsanteSel("💡 Suggerisci tutti", false) { dialogSuggerisciBudget() },
+        }), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        rb.addView(unaRiga(pulsanteSel("💡 Suggerisci tutti", false) { dialogSuggerisciBudget() }),
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         cont.addView(rb)
 
@@ -3022,6 +3033,15 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Forza il testo del pulsante su una sola riga, riducendolo se non entra. */
+    private fun unaRiga(b: MaterialButton): MaterialButton {
+        val dp = resources.displayMetrics.density
+        b.maxLines = 1
+        b.setPadding((6 * dp).toInt(), b.paddingTop, (6 * dp).toInt(), b.paddingBottom)
+        b.setAutoSizeTextTypeUniformWithConfiguration(10, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+        return b
+    }
+
     private fun pulsanteSel(testo: String, attivo: Boolean, click: () -> Unit): MaterialButton {
         val attr = if (attivo) com.google.android.material.R.attr.materialButtonStyle
         else com.google.android.material.R.attr.materialButtonOutlinedStyle
@@ -3223,6 +3243,198 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    // ---- Estratti per metodo e conti ----
+    private var esAnno = ""
+    private var esMese = 0
+    private var esFuturi = false
+    private var esVista = 0
+
+    private fun renderEstratti() {
+        intestaLista("💳 Estratti per metodo e conti", "")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val tutte = Repo.voci()
+        if (tutte.isEmpty()) {
+            vuoto(cont, "Nessuna operazione registrata.")
+            return
+        }
+        val oggi = LocalDate.now()
+        val tutti = "Tutti"
+        val anni = listOf(tutti) + tutte.map { it.data.year }.distinct().sortedDescending().map { it.toString() }
+        val mesiL = listOf(tutti) + Ricerca.MESI
+        if (esAnno.isNotEmpty() && esAnno !in anni) esAnno = ""
+
+        val rv = LinearLayout(this)
+        rv.orientation = LinearLayout.HORIZONTAL
+        listOf("💳 Per metodo", "🏦 Per conto").forEachIndexed { i, t ->
+            rv.addView(
+                unaRiga(pulsanteSel(t, esVista == i) { esVista = i; renderEstratti() }),
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            )
+        }
+        cont.addView(rv)
+
+        anRiga(cont) { r ->
+            campoMenu(r, "Anno", anni, if (esAnno.isEmpty()) tutti else esAnno) {
+                esAnno = if (it == 0) "" else anni[it]
+                renderEstratti()
+            }
+            campoMenu(r, "Mese", mesiL, mesiL[esMese]) {
+                esMese = it
+                renderEstratti()
+            }
+        }
+        val chk = MaterialCheckBox(this)
+        chk.text = "Includi movimenti futuri"
+        chk.isChecked = esFuturi
+        chk.setOnCheckedChangeListener { _, on -> esFuturi = on; renderEstratti() }
+        cont.addView(chk)
+
+        val annoN = esAnno.toIntOrNull()
+        val voci = tutte.filter {
+            (esFuturi || !it.data.isAfter(oggi)) &&
+                (annoN == null || it.data.year == annoN) &&
+                (esMese == 0 || it.data.monthValue == esMese)
+        }
+        val periodo = (if (esMese == 0) "Tutti i mesi" else Ricerca.MESI[esMese - 1]) + " " + (annoN?.toString() ?: "tutti gli anni")
+        sezione(cont, (if (esVista == 0) "METODI DI PAGAMENTO" else "CONTI") + " · " + periodo.uppercase())
+        if (voci.isEmpty()) {
+            vuoto(cont, "Nessuna operazione nel periodo scelto.")
+            return
+        }
+        val tE = voci.filter { it.tipo == "Entrata" }.sumOf { it.importo }
+        val tU = voci.filter { it.tipo == "Uscita" }.sumOf { it.importo }
+        val netto = tE - tU
+        riga(
+            cont, "Totale periodo",
+            voci.size.toString() + " operazioni · Entrate " + euro(tE) + " · Uscite " + euro(tU),
+            (if (netto >= 0) "+" else "−") + euro(abs(netto)), if (netto >= 0) verde else rosso, null
+        )
+
+        class G(val k: String, val e: Double, val u: Double, val n: Int)
+        val gruppi = voci.groupBy { if (esVista == 0) it.metodo.trim() else it.conto.trim() }.map { (k, l) ->
+            G(k, l.filter { it.tipo == "Entrata" }.sumOf { it.importo }, l.filter { it.tipo == "Uscita" }.sumOf { it.importo }, l.size)
+        }.sortedByDescending { it.e + it.u }
+
+        for (g in gruppi) {
+            val titolo = if (esVista == 0) {
+                if (g.k.isBlank()) "Non specificato" else Repo.metodoConEmoji(g.k)
+            } else {
+                if (g.k.isBlank()) "Senza conto" else g.k
+            }
+            val net = g.e - g.u
+            val sotto = "Entrate " + euro(g.e) + " · Uscite " + euro(g.u) + " · " + g.n + " operazioni" +
+                (if (tU > 0 && g.u > 0) " · " + Math.round(g.u / tU * 100) + "% delle uscite" else "")
+            val apri: () -> Unit = {
+                rc.azzera()
+                if (esVista == 0) rc.metodo = g.k else rc.conto = g.k
+                rc.anno = esAnno
+                rc.mese = esMese
+                rcTesto = ""
+                rcFuturi = esFuturi
+                mostra(Pagina.RICERCA)
+            }
+            val click: (() -> Unit)? = if (g.k.isBlank()) null else apri
+            riga(cont, titolo, sotto, (if (net >= 0) "+" else "−") + euro(abs(net)), if (net >= 0) verde else rosso, click)
+        }
+        anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
+    }
+
+    // ---- Chiedi al Database ----
+    private class ChiediMsg(val domanda: String, var risposta: String?, var errore: Boolean = false)
+
+    private val chiediStorico = ArrayList<ChiediMsg>()
+    private var chiediBozza = ""
+    private var chiediInCorso = false
+
+    private fun renderChiedi() {
+        intestaLista("🤖 Chiedi al Database", "🗑️  Nuova conversazione")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        if (Gemini.chiave(this).isEmpty()) {
+            vuoto(cont, "Per fare domande ai tuoi dati serve la chiave API Gemini (gratuita su aistudio.google.com).")
+            cont.addView(pulsanteSel("🔑 Imposta chiave Gemini", true) { dialogChiaveGemini { renderChiedi() } })
+            return
+        }
+        anTesto(
+            cont,
+            "Ogni domanda invia a Google Gemini un riepilogo dei tuoi dati: totali per periodo, categorie, conti, budget, " +
+                "finanziamenti e gli ultimi movimenti con la descrizione. Le risposte sono indicative.",
+            colore = medio, size = 12f
+        )
+        val til = layoutInflater.inflate(R.layout.view_campo, cont, false) as TextInputLayout
+        til.hint = "Es. quanto ho speso in carburante a ottobre?"
+        val et = til.findViewById<TextInputEditText>(R.id.campoTesto)
+        et.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        et.minLines = 2
+        et.maxLines = 5
+        et.setText(chiediBozza)
+        et.doAfterTextChanged { chiediBozza = it?.toString() ?: "" }
+        cont.addView(til)
+        val inv = pulsanteSel(if (chiediInCorso) "⏳ Sto pensando…" else "➤ Chiedi", true) { invioChiedi() }
+        inv.isEnabled = !chiediInCorso
+        cont.addView(inv)
+
+        if (chiediStorico.isEmpty()) {
+            vuoto(cont, "Puoi chiedere totali e confronti (\"spese di settembre rispetto a agosto\"), dettagli per conto o categoria, " +
+                "stato dei finanziamenti, budget sforati, oppure consigli su come risparmiare.")
+            return
+        }
+        val dp = resources.displayMetrics.density
+        for (m in chiediStorico.asReversed()) {
+            anTesto(cont, "❓ " + m.domanda, grassetto = true)
+            val t = TextView(this)
+            t.text = m.risposta ?: "…"
+            t.setTextIsSelectable(true)
+            t.setBackgroundResource(R.drawable.bg_tile)
+            t.setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+            t.setTextColor(if (m.errore) rosso else ContextCompat.getColor(this, R.color.oc_text))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.bottomMargin = (10 * dp).toInt()
+            cont.addView(t, lp)
+        }
+    }
+
+    private fun invioChiedi() {
+        val d = chiediBozza.trim()
+        if (d.isEmpty()) {
+            aviso("Scrivi una domanda")
+            return
+        }
+        if (chiediInCorso) return
+        val cronologia = chiediStorico.filter { !it.errore && it.risposta != null }.takeLast(4).map { it.domanda to it.risposta!! }
+        val prompt = try {
+            ChiediDb.prompt(d, cronologia)
+        } catch (e: Exception) {
+            aviso("Impossibile preparare i dati: " + e.message)
+            return
+        }
+        val m = ChiediMsg(d, null)
+        chiediStorico.add(m)
+        chiediBozza = ""
+        chiediInCorso = true
+        renderChiedi()
+        val app = applicationContext
+        Thread {
+            var testo: String? = null
+            var err: String? = null
+            try {
+                testo = Gemini.chiediTesto(app, prompt)
+            } catch (e: Exception) {
+                err = Gemini.messaggio(e)
+            }
+            runOnUiThread {
+                chiediInCorso = false
+                m.risposta = testo ?: err ?: "Errore sconosciuto"
+                m.errore = testo == null
+                if (!isFinishing && !isDestroyed && pagina == Pagina.CHIEDI) renderChiedi()
+            }
+        }.start()
     }
 
     private fun renderRicerca() {

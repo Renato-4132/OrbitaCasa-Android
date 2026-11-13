@@ -129,6 +129,29 @@ object Gemini {
 
     fun analizzaTesto(ctx: Context, prompt: String): JSONObject = esegui(ctx, null, null, prompt)
 
+    /** Risposta in testo libero (non JSON), per le domande sul database. */
+    fun chiediTesto(ctx: Context, prompt: String): String {
+        val chiave = chiave(ctx)
+        if (chiave.isEmpty()) throw Errore("Imposta la chiave API Gemini")
+        val modello = modello(ctx)
+        val cfg = JSONObject().put("temperature", 0.2)
+        var tent = 0
+        while (true) {
+            try {
+                val t = chiama(chiave, modello, null, null, prompt, cfg).trim()
+                if (t.isEmpty()) throw Errore("Risposta vuota da Gemini")
+                return t
+            } catch (e: Exception) {
+                val m = e.message ?: ""
+                tent++
+                if (tent >= 3 || e is Errore || "HTTP 400" in m || "INVALID_ARGUMENT" in m ||
+                    ("HTTP 429" in m && Regex("retry in \\d+h").containsMatchIn(m))
+                ) throw e
+                Thread.sleep(3000L * tent)
+            }
+        }
+    }
+
     private fun esegui(ctx: Context, mime: String?, b64: String?, prompt: String): JSONObject {
         val chiave = chiave(ctx)
         if (chiave.isEmpty()) throw Errore("Imposta la chiave API Gemini")
