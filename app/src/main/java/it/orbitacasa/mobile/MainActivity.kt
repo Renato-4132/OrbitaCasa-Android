@@ -82,6 +82,11 @@ class MainActivity : AppCompatActivity() {
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
     private var scadutiAperti = false
+    private var catCerca = ""
+    private var catOrdine = "Nome"
+    private var catSoloVuote = false
+    private var catUsciteAperte = true
+    private var catEntrateAperte = true
     private var meseProm: YearMonth = YearMonth.now()
     private var giornoProm: LocalDate? = LocalDate.now()
     private var giornoCal: LocalDate? = LocalDate.now()
@@ -183,6 +188,8 @@ class MainActivity : AppCompatActivity() {
                 dialogImportiFondo()
             } else if (pagina == Pagina.CASACARE) {
                 dialogFiltriCasa()
+            } else if (pagina == Pagina.CATEGORIE) {
+                menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
                 dialogAvvisi()
             } else if (pagina == Pagina.NOTIFICHE) {
@@ -1404,26 +1411,1085 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ======================= ANALISI CATEGORIE (schede) =======================
+    private val AN_SCHEDE = listOf(
+        "🔍 Dettaglio", "Σ Aggrega", "⏳ Time Machine", "📈 Trend",
+        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20", "🛠️ Gestione"
+    )
+    private val MESI_IT: List<String> by lazy {
+        (1..12).map { maiuscola(java.time.Month.of(it).getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALIAN)) }
+    }
+    private val AN_GIORNI = listOf("Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica")
+    private val AN_FASCE = listOf(
+        Triple("Notte (00–06)", 0, 6), Triple("Mattina (06–12)", 6, 12),
+        Triple("Pomeriggio (12–18)", 12, 18), Triple("Sera (18–24)", 18, 24)
+    )
+    private val AN_MODI_DIST = listOf("Giorno della settimana", "Fascia oraria", "Ora")
+    private val AN_TUTTE = "Tutte le categorie"
+    private val AN_SENZA_ORA = "Senza orario"
+
+    private var catTab = 0
+    private var anScrollX = 0
+    private var anModo = "Giorno"
+    private var anGiorno: LocalDate = LocalDate.now()
+    private var anDal: LocalDate = LocalDate.now().withDayOfMonth(1)
+    private var anAl: LocalDate = LocalDate.now()
+    private var anMese: YearMonth = YearMonth.now()
+    private var anAnno = LocalDate.now().year.toString()
+    private var anMeseN = 0
+    private var anCat = AN_TUTTE
+    private var anConto = ""
+    private var anFuturi = false
+    private val anAgg = LinkedHashSet<String>()
+    private val anTm = LinkedHashSet<String>()
+    private var anDist = AN_MODI_DIST[0]
+    private var anClasse = "Tutte"
+
     private fun renderCategorie() {
-        intestaLista("🏷️ Categorie", "➕  Nuova categoria")
+        intestaLista("📊 Analisi categorie", "➕  Nuova categoria", "⚙️  Strumenti")
         val cont = vista<LinearLayout>(R.id.listaGen)
+        val sv = android.widget.HorizontalScrollView(this)
+        sv.isHorizontalScrollBarEnabled = false
+        val barra = LinearLayout(this)
+        barra.orientation = LinearLayout.HORIZONTAL
+        AN_SCHEDE.forEachIndexed { i, t ->
+            barra.addView(pulsanteSel(t, i == catTab) {
+                anScrollX = sv.scrollX
+                catTab = i
+                renderCategorie()
+            })
+        }
+        sv.addView(barra)
+        cont.addView(sv)
+        sv.post { sv.scrollTo(anScrollX, 0) }
+        when (catTab) {
+            0 -> tabDettaglio(cont)
+            1 -> tabAggrega(cont)
+            2 -> tabTimeMachine(cont)
+            3 -> tabTrend(cont)
+            4 -> tabDistribuzione(cont)
+            5 -> tabBudgetSuperato(cont)
+            6 -> tabTarget(cont)
+            7 -> tab503020(cont)
+            else -> renderGestioneCategorie(cont)
+        }
+    }
+
+    // ---- helper comuni ----
+    private fun anEntrata(v: Voce) = v.tipo.trim().equals("Entrata", ignoreCase = true)
+    private fun anUscita(v: Voce) = v.tipo.trim().equals("Uscita", ignoreCase = true)
+    private fun anPct(x: Double) = String.format(Locale.ITALY, "%.1f%%", x)
+    private fun anPctS(x: Double) = String.format(Locale.ITALY, "%+.1f%%", x)
+    private fun anSaldo(x: Double) = (if (x >= 0) "+" else "−") + euro(abs(x))
+    private fun anDelta(cur: Double, prev: Double?): String {
+        if (prev == null) return "—"
+        if (prev <= 0.004) return if (cur > 0.004) "nuovo" else "—"
+        return anPctS((cur - prev) / prev * 100)
+    }
+    private fun anAnni(): List<Int> =
+        (Repo.voci().map { it.data.year } + LocalDate.now().year).distinct().sortedDescending()
+
+    /** Movimenti filtrati per conto (le date si filtrano a parte). */
+    private fun anMovs(): List<Voce> = Repo.voci().filter { anConto.isEmpty() || it.conto == anConto }
+
+    private fun anMenu(cont: LinearLayout, hint: String, voci: List<String>, sel: String, on: (Int) -> Unit) =
+        campoMenu(cont, hint, voci, sel) { on(it); renderCategorie() }
+
+    private fun anRiga(cont: LinearLayout, f: (LinearLayout) -> Unit) {
+        val r = LinearLayout(this)
+        r.orientation = LinearLayout.HORIZONTAL
+        f(r)
+        val n = r.childCount
+        for (i in 0 until n) {
+            val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            if (i < n - 1) lp.marginEnd = (8 * resources.displayMetrics.density).toInt()
+            r.getChildAt(i).layoutParams = lp
+        }
+        cont.addView(r)
+    }
+
+    private fun anCampoData(cont: LinearLayout, hint: String, valore: LocalDate, onData: (LocalDate) -> Unit) {
+        val et = campoTesto(cont, hint, valore.format(FMT_DATA))
+        et.isFocusable = false
+        et.isCursorVisible = false
+        et.setOnClickListener {
+            DatePickerDialog(this, { _, y, m, d ->
+                onData(LocalDate.of(y, m + 1, d))
+                renderCategorie()
+            }, valore.year, valore.monthValue - 1, valore.dayOfMonth).show()
+        }
+    }
+
+    private fun anContoFuturi(cont: LinearLayout, futuri: Boolean = true) {
+        val conti = Repo.conti().map { it.nome }
+        if (conti.isNotEmpty()) {
+            val nomi = listOf("Tutti i conti") + conti
+            anMenu(cont, "Conto", nomi, if (anConto.isEmpty()) nomi[0] else anConto) {
+                anConto = if (it == 0) "" else nomi[it]
+            }
+        }
+        if (futuri) {
+            val chk = MaterialCheckBox(this)
+            chk.text = "Includi movimenti futuri"
+            chk.isChecked = anFuturi
+            chk.setOnCheckedChangeListener { _, on -> anFuturi = on; renderCategorie() }
+            cont.addView(chk)
+        }
+    }
+
+    private fun anTesto(cont: LinearLayout, testo: String, grassetto: Boolean = false, colore: Int? = null, size: Float = 14f) {
+        val t = TextView(this)
+        t.text = testo
+        t.textSize = size
+        t.setTextColor(colore ?: ContextCompat.getColor(this, R.color.oc_text))
+        if (grassetto) t.setTypeface(null, Typeface.BOLD)
+        t.setPadding(8, 8, 8, 8)
+        cont.addView(t)
+    }
+
+    private fun anBarra(cont: LinearLayout, etichetta: String, valore: Double, max: Double, colore: Int, testo: String) {
+        val dp = resources.displayMetrics.density
+        val r = LinearLayout(this)
+        r.orientation = LinearLayout.VERTICAL
+        r.setPadding(8, 6, 8, 6)
+        val t = TextView(this)
+        t.text = "$etichetta  ·  $testo"
+        t.textSize = 13f
+        t.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        r.addView(t)
+        val w = if (max > 0) (abs(valore) / max).coerceIn(0.0, 1.0).toFloat() else 0f
+        val b = LinearLayout(this)
+        b.orientation = LinearLayout.HORIZONTAL
+        val pieno = View(this)
+        pieno.setBackgroundColor(colore)
+        b.addView(pieno, LinearLayout.LayoutParams(0, (8 * dp).toInt(), w.coerceAtLeast(0.001f)))
+        b.addView(View(this), LinearLayout.LayoutParams(0, (8 * dp).toInt(), (1f - w).coerceAtLeast(0.001f)))
+        r.addView(b)
+        cont.addView(r)
+    }
+
+    private fun anGrafico(
+        cont: LinearLayout, etichette: List<String>, a: List<Double?>, b: List<Double?>,
+        colA: Int, colB: Int, dettaglio: (Int) -> String,
+    ) {
+        val dp = resources.displayMetrics.density
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val g = GraficoView(this)
+        g.imposta(
+            GraficoView.Modo.BARRE_DOPPIE, etichette, a, b, colA, colB, grigio,
+            ContextCompat.getColor(this, R.color.oc_border), grigio,
+            ContextCompat.getColor(this, R.color.oc_surface),
+        )
+        val det = TextView(this)
+        det.textSize = 13f
+        det.setPadding(8, (6 * dp).toInt(), 8, (6 * dp).toInt())
+        det.text = "Tocca il grafico per vedere i dettagli."
+        det.setTextColor(grigio)
+        det.minLines = 3
+        g.alSelezionare = { i ->
+            det.text = dettaglio(i)
+            det.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        }
+        cont.addView(g, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (170 * dp).toInt()))
+        cont.addView(det)
+    }
+
+    private fun dialogScegliCategorie(titolo: String, set: MutableSet<String>, max: Int) {
+        val conteggi = Repo.operazioniPerCategoria()
+        val cats = Repo.categorie().sortedBy { it.lowercase() }
+        val sel = BooleanArray(cats.size) { cats[it] in set }
+        OcBuilder(this)
+            .setTitle(titolo)
+            .setMultiChoiceItems(cats.map { it + " (" + (conteggi[it] ?: 0) + ")" }.toTypedArray(), sel) { _, i, on -> sel[i] = on }
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("OK") { _, _ ->
+                val scelte = cats.filterIndexed { i, _ -> sel[i] }
+                set.clear()
+                set.addAll(scelte.take(max))
+                if (scelte.size > max) aviso("Massimo $max categorie: tenute le prime $max")
+                renderCategorie()
+            }
+            .show()
+    }
+
+    private fun anElencoMovimenti(titolo: String, lista: List<Voce>, neutro: Pair<String, () -> Unit>? = null) {
+        val ordinata = lista.sortedWith(compareByDescending<Voce> { it.data }.thenByDescending { it.ora })
+        val testo = ordinata.take(120).joinToString("\n") { v ->
+            v.data.format(FMT_DATA) + "  " + (if (anEntrata(v)) "+" else "−") + euro(v.importo) + "  " +
+                v.descrizione.ifBlank { v.categoria } + (if (v.conto.isNotBlank()) " · " + v.conto else "")
+        } + (if (ordinata.size > 120) "\n… altri " + (ordinata.size - 120) else "")
+        val b = OcBuilder(this)
+            .setTitle(titolo)
+            .setMessage(if (testo.isBlank()) "Nessun movimento." else testo)
+            .setPositiveButton("Chiudi", null)
+        if (neutro != null) b.setNeutralButton(neutro.first) { _, _ -> neutro.second() }
+        b.show()
+    }
+
+    // ---- Dettaglio ----
+    private fun tabDettaglio(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val modi = listOf("Giorno", "Mese", "Anno", "Periodo")
+        val mesi = (0 until 36).map { YearMonth.from(oggi).minusMonths(it.toLong()) }
+        val anni = anAnni()
+        val annoD = anAnno.toIntOrNull() ?: oggi.year
+        anRiga(cont) { r ->
+            anMenu(r, "Modalità", modi, anModo) { anModo = modi[it] }
+            when (anModo) {
+                "Giorno" -> anCampoData(r, "Giorno", anGiorno) { anGiorno = it }
+                "Mese" -> anMenu(r, "Mese", mesi.map { maiuscola(it.format(FMT_MESE)) }, maiuscola(anMese.format(FMT_MESE))) { anMese = mesi[it] }
+                "Anno" -> anMenu(r, "Anno", anni.map { it.toString() }, annoD.toString()) { anAnno = anni[it].toString() }
+            }
+        }
+        if (anModo == "Periodo") anRiga(cont) { r ->
+            anCampoData(r, "Dal", anDal) { anDal = it }
+            anCampoData(r, "Al", anAl) { anAl = it }
+        }
+        val nomiCat = listOf(AN_TUTTE) + Repo.categorie().sortedBy { it.lowercase() }
+        anMenu(cont, "Categoria", nomiCat, if (anCat in nomiCat) anCat else AN_TUTTE) { anCat = nomiCat[it] }
+        anContoFuturi(cont)
+
+        val (da, a) = when (anModo) {
+            "Giorno" -> anGiorno to anGiorno
+            "Mese" -> anMese.atDay(1) to anMese.atEndOfMonth()
+            "Anno" -> LocalDate.of(annoD, 1, 1) to LocalDate.of(annoD, 12, 31)
+            else -> if (anDal.isAfter(anAl)) anAl to anDal else anDal to anAl
+        }
+        val sel = anMovs().filter { v ->
+            !v.data.isBefore(da) && !v.data.isAfter(a) && (anFuturi || !v.data.isAfter(oggi)) &&
+                (anCat == AN_TUTTE || v.categoria == anCat)
+        }.sortedWith(compareByDescending<Voce> { it.data }.thenByDescending { it.ora })
+        val ent = sel.filter { anEntrata(it) }.sumOf { it.importo }
+        val usc = sel.filter { !anEntrata(it) }.sumOf { it.importo }
+        anTesto(
+            cont,
+            (if (da == a) da.format(FMT_DATA) else da.format(FMT_DATA) + " → " + a.format(FMT_DATA)) +
+                " · " + sel.size + (if (sel.size == 1) " movimento" else " movimenti") +
+                "\nEntrate " + euro(ent) + " · Uscite " + euro(usc) + "\nSaldo " + anSaldo(ent - usc),
+            grassetto = true, colore = if (ent - usc >= 0) verde else rosso
+        )
+        if (sel.isEmpty()) return
+        if (anCat == AN_TUTTE) {
+            sezione(cont, "PER CATEGORIA")
+            val perCat = sel.groupBy { it.categoria }.map { (c, l) ->
+                Triple(c, l.filter { anEntrata(it) }.sumOf { it.importo }, l.filter { !anEntrata(it) }.sumOf { it.importo })
+            }.sortedByDescending { maxOf(it.second, it.third) }
+            val mx = perCat.maxOf { maxOf(it.second, it.third) }
+            for ((c, e, u) in perCat) {
+                if (u > 0) anBarra(cont, c + " · uscite", u, mx, rosso, euro(u))
+                if (e > 0) anBarra(cont, c + " · entrate", e, mx, verde, euro(e))
+            }
+        }
+        sezione(cont, "MOVIMENTI")
+        for (v in sel.take(150)) {
+            val sotto = listOfNotNull(
+                v.data.format(FMT_DATA), v.categoria, v.conto.takeIf { it.isNotBlank() }, v.ora.takeIf { it.isNotBlank() }
+            ).joinToString(" · ")
+            riga(
+                cont, v.descrizione.ifBlank { v.categoria }, sotto,
+                (if (anEntrata(v)) "+" else "−") + euro(v.importo), if (anEntrata(v)) verde else rosso
+            ) { dialogVoce(v) }
+        }
+        if (sel.size > 150) anTesto(cont, "… altri " + (sel.size - 150) + " movimenti non mostrati", colore = medio, size = 12f)
+    }
+
+    // ---- Aggrega ----
+    private class AnAgg(var num: Int = 0, var usc: Double = 0.0, var ent: Double = 0.0, var max: Double = 0.0) {
+        val vol get() = if (usc > 0) usc else ent
+    }
+
+    private fun anAggrega(movs: List<Voce>, cats: Set<String>?, filtro: (LocalDate) -> Boolean): Map<String, AnAgg> {
+        val ris = HashMap<String, AnAgg>()
+        for (v in movs) {
+            if (!filtro(v.data)) continue
+            if (cats != null && v.categoria !in cats) continue
+            val r = ris.getOrPut(v.categoria) { AnAgg() }
+            r.num++
+            r.max = maxOf(r.max, abs(v.importo))
+            if (anEntrata(v)) r.ent += v.importo else if (anUscita(v)) r.usc += v.importo
+        }
+        return ris
+    }
+
+    private fun anMesiInPeriodo(date: List<LocalDate>, anno: Int?, meseN: Int?, oggi: LocalDate): Int {
+        if (meseN != null) return 1
+        if (anno != null) {
+            if (anno < oggi.year) return 12
+            val m = date.filter { it.year == anno }.map { it.monthValue }
+            val ultimo = (m + (if (anno == oggi.year) oggi.monthValue else 1)).maxOrNull() ?: 1
+            return ultimo.coerceIn(1, 12)
+        }
+        if (date.isEmpty()) return 1
+        val primo = date.minOrNull()!!
+        val ultimo = maxOf(date.maxOrNull()!!, oggi)
+        return maxOf(1, (ultimo.year - primo.year) * 12 + ultimo.monthValue - primo.monthValue + 1)
+    }
+
+    private fun tabAggrega(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        anRiga(cont) { r ->
+            anMenu(r, "Mese", listOf("Tutti") + MESI_IT, if (anMeseN == 0) "Tutti" else MESI_IT[anMeseN - 1]) { anMeseN = it }
+            anMenu(r, "Anno", listOf("Tutti") + anni.map { it.toString() }, anAnno) { anAnno = if (it == 0) "Tutti" else anni[it - 1].toString() }
+        }
+        anContoFuturi(cont)
+        val anno = anAnno.toIntOrNull()
+        val meseN: Int? = if (anMeseN == 0) null else anMeseN
+        val movs = anMovs()
+        fun filtro(d: LocalDate) =
+            (anFuturi || !d.isAfter(oggi)) && (anno == null || d.year == anno) && (meseN == null || d.monthValue == meseN)
+
+        val rigaBt = LinearLayout(this)
+        rigaBt.orientation = LinearLayout.HORIZONTAL
+        rigaBt.addView(pulsanteSel("Categorie (" + anAgg.size + "/10)", false) {
+            dialogScegliCategorie("Categorie da analizzare (max 10)", anAgg, 10)
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        rigaBt.addView(pulsanteSel("Top 10 per spesa", false) {
+            val top = anAggrega(movs, null, ::filtro).entries.filter { it.value.usc > 0 }
+                .sortedByDescending { it.value.usc }.take(10).map { it.key }
+            anAgg.clear(); anAgg.addAll(top); renderCategorie()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        rigaBt.addView(pulsanteSel("Azzera", false) { anAgg.clear(); renderCategorie() },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        cont.addView(rigaBt)
+
+        val scelte = Repo.categorie().filter { it in anAgg }.toSet()
+        val etich = (if (meseN == null) "Tutti i mesi" else MESI_IT[meseN - 1]) + " " + (anno?.toString() ?: "tutti gli anni")
+        if (scelte.isEmpty()) {
+            anTesto(cont, "Seleziona almeno una categoria da analizzare.", colore = medio)
+            return
+        }
+        val ris = anAggrega(movs, scelte, ::filtro)
+        val totUscPeriodo = anAggrega(movs, null, ::filtro).values.sumOf { it.usc }
+        val dateSel = movs.filter { filtro(it.data) && it.categoria in scelte }.map { it.data }
+        val nMesi = anMesiInPeriodo(dateSel, anno, meseN, oggi)
+        val parzM = anno == oggi.year && meseN == oggi.monthValue
+        val parzA = anno == oggi.year && meseN == null
+        val parziale = parzM || parzA
+        fun mkFiltro(y: Int, m: Int?): (LocalDate) -> Boolean = { d ->
+            if (d.year != y || (m != null && d.monthValue != m)) false
+            else if (parzM) d.dayOfMonth <= oggi.dayOfMonth
+            else if (parzA) (d.monthValue < oggi.monthValue || (d.monthValue == oggi.monthValue && d.dayOfMonth <= oggi.dayOfMonth))
+            else true
+        }
+        var risPrec: Map<String, AnAgg>? = null
+        var risAnno: Map<String, AnAgg>? = null
+        var txtPrec = ""
+        var txtAnno = ""
+        if (anno != null && meseN != null) {
+            val (py, pm) = if (meseN > 1) anno to meseN - 1 else anno - 1 to 12
+            risPrec = anAggrega(movs, scelte, mkFiltro(py, pm))
+            risAnno = anAggrega(movs, scelte, mkFiltro(anno - 1, meseN))
+            txtPrec = "Δ vs prec.: rispetto a " + MESI_IT[pm - 1] + " " + py
+            txtAnno = "Δ anno prec.: rispetto a " + MESI_IT[meseN - 1] + " " + (anno - 1)
+        } else if (anno != null) {
+            risPrec = anAggrega(movs, scelte, mkFiltro(anno - 1, null))
+            txtPrec = "Δ vs prec.: rispetto al " + (anno - 1)
+        }
+        val risOggi = anAggrega(movs, scelte) { filtro(it) && !it.isAfter(oggi) }
+        val risCfr = if (parziale) risOggi else ris
+        val budM = Repo.categorie().associateWith { Repo.budgetMensile(it) }.filterValues { it > 0 }
+        val budA = Repo.categorie().associateWith { Repo.budgetAnnuo(it) }.filterValues { it > 0 }
+        fun budgetPeriodo(c: String): Double = when {
+            meseN != null -> budM[c] ?: 0.0
+            anno != null && budA[c] != null -> budA[c]!!
+            else -> (budM[c] ?: 0.0) * nMesi
+        }
+        val ggMese = YearMonth.from(oggi).lengthOfMonth()
+        val ordinati = ris.entries.sortedBy { -(it.value.ent - it.value.usc) }
+
+        var te = 0.0; var tu = 0.0; var tn = 0
+        for ((c, r) in ordinati) {
+            te += r.ent; tu += r.usc; tn += r.num
+            val cfr = risCfr[c]?.vol ?: 0.0
+            val pPrec = risPrec?.let { it[c]?.vol ?: 0.0 }
+            val pAnno = risAnno?.let { it[c]?.vol ?: 0.0 }
+            val bud = budgetPeriodo(c)
+            val superato = bud > 0 && r.usc > bud
+            val righe = ArrayList<String>()
+            righe.add(r.num.toString() + " mov · Uscite " + euro(r.usc) + " · Entrate " + euro(r.ent))
+            righe.add("Medio " + euro((r.usc + r.ent) / r.num) + " · Max " + euro(r.max) +
+                (if (totUscPeriodo > 0 && r.usc > 0) " · " + anPct(r.usc / totUscPeriodo * 100) + " delle uscite" else ""))
+            if (meseN == null) righe.add("Media/mese " + euro(r.vol / nMesi) + " (su " + nMesi + (if (nMesi == 1) " mese)" else " mesi)"))
+            if (risPrec != null) righe.add("Δ vs prec. " + anDelta(cfr, pPrec) + (if (risAnno != null) " · Δ anno prec. " + anDelta(cfr, pAnno) else ""))
+            if (bud > 0) righe.add("Budget " + euro(bud) + (if (r.usc > 0) " · " + anPct(r.usc / bud * 100) + (if (superato) " ▲" else "") else ""))
+            if (parzM && (r.usc > 0 || (risOggi[c]?.usc ?: 0.0) > 0)) {
+                val prev = maxOf(r.usc, (risOggi[c]?.usc ?: 0.0) / oggi.dayOfMonth * ggMese)
+                righe.add("Prev. fine mese " + euro(prev))
+            }
+            riga(
+                cont, c, righe.joinToString("\n"), anSaldo(r.ent - r.usc),
+                if (superato) arancio else if (r.ent - r.usc >= 0) verde else rosso
+            ) { anElencoMovimenti(c + " – " + etich, movs.filter { filtro(it.data) && it.categoria == c }) }
+        }
+        sezione(cont, "TOTALE · " + etich.uppercase())
+        anTesto(
+            cont,
+            tn.toString() + " movimenti\nUscite " + euro(tu) + " · Entrate " + euro(te) + "\nSaldo " + anSaldo(te - tu),
+            grassetto = true, colore = if (te - tu >= 0) verde else rosso
+        )
+        val note = listOf(txtPrec, txtAnno).filter { it.isNotEmpty() }.toMutableList()
+        if (parziale && note.isNotEmpty()) note.add("(confronto sullo stesso intervallo di giorni)")
+        if (meseN == null) note.add("Media/mese calcolata su $nMesi " + (if (nMesi == 1) "mese" else "mesi"))
+        if (budM.isNotEmpty() || budA.isNotEmpty()) note.add("▲ = oltre budget")
+        anTesto(cont, note.joinToString("\n"), colore = medio, size = 12f)
+        sezione(cont, "CONFRONTO")
+        val mx = ordinati.maxOfOrNull { maxOf(it.value.ent, it.value.usc) } ?: 0.0
+        for ((c, r) in ordinati) {
+            anBarra(cont, c + " · uscite", r.usc, mx, if (budgetPeriodo(c) > 0 && r.usc > budgetPeriodo(c)) arancio else rosso, euro(r.usc))
+            if (r.ent > 0) anBarra(cont, c + " · entrate", r.ent, mx, verde, euro(r.ent))
+        }
+    }
+
+    // ---- Time Machine ----
+    private fun tabTimeMachine(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        anMenu(cont, "Anno", listOf("Tutti") + anni.map { it.toString() }, anAnno) { anAnno = if (it == 0) "Tutti" else anni[it - 1].toString() }
+        anContoFuturi(cont)
+        val anno = anAnno.toIntOrNull()
+        val periodo = if (anno == null) "Tutti gli anni" else "Anno $anno"
+        val c = anAggrega(anMovs().filter { it.categoria.isNotBlank() }, null) { d ->
+            (anFuturi || !d.isAfter(oggi)) && (anno == null || d.year == anno)
+        }
+        val ris = anTm.filter { it in c }.sortedByDescending { c[it]!!.usc - c[it]!!.ent }
+        val top10 = c.entries.sortedByDescending { it.value.usc - it.value.ent }.take(10)
+        sezione(cont, "TOP 10 CATEGORIE PER RISPARMIO POSSIBILE")
+        for ((cat, r) in top10) {
+            val chk = MaterialCheckBox(this)
+            chk.text = cat + " – " + r.num + "× · " + euro(r.usc - r.ent)
+            chk.isChecked = cat in anTm
+            chk.setOnCheckedChangeListener { _, on ->
+                if (on) anTm.add(cat) else anTm.remove(cat)
+                renderCategorie()
+            }
+            cont.addView(chk)
+        }
+        val rb = LinearLayout(this)
+        rb.orientation = LinearLayout.HORIZONTAL
+        rb.addView(pulsanteSel("Altre categorie…", false) { dialogScegliCategorie("Categorie da escludere", anTm, 40) },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        rb.addView(pulsanteSel("Azzera", false) { anTm.clear(); renderCategorie() },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        cont.addView(rb)
+        if (ris.isEmpty()) {
+            anTesto(cont, "Seleziona almeno una categoria: vedrai quanto avresti risparmiato escludendola.", colore = medio)
+            return
+        }
+        sezione(cont, "RISPARMIO TEORICO · " + periodo.uppercase())
+        val mx = ris.maxOf { abs(c[it]!!.usc - c[it]!!.ent) }
+        var tot = 0.0
+        var tn = 0
+        for (k in ris) {
+            val r = c[k]!!
+            val ris1 = r.usc - r.ent
+            tot += ris1; tn += r.num
+            riga(cont, k, r.num.toString() + " mov · Uscite " + euro(r.usc) + " · Entrate " + euro(r.ent), euro(ris1),
+                if (ris1 >= 0) verde else rosso) {
+                anElencoMovimenti(k + " – " + periodo, anMovs().filter { v ->
+                    v.categoria == k && (anFuturi || !v.data.isAfter(oggi)) && (anno == null || v.data.year == anno)
+                })
+            }
+            anBarra(cont, k, ris1, mx, if (ris1 >= 0) verde else rosso, euro(ris1))
+        }
+        anTesto(
+            cont,
+            "Risparmio totale teorico: " + euro(tot) + "\nProiezione del risparmio ottenibile " +
+                (if (anno == null) "su tutti gli anni disponibili" else "nel $anno") +
+                ", escludendo le categorie selezionate (Uscite − Entrate).",
+            grassetto = true, colore = if (tot >= 0) verde else rosso
+        )
+    }
+
+    // ---- Trend mensile ----
+    private fun tabTrend(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        val annoT = anAnno.toIntOrNull() ?: oggi.year
+        val nomiCat = listOf(AN_TUTTE) + Repo.categorie().sortedBy { it.lowercase() }
+        anRiga(cont) { r ->
+            anMenu(r, "Anno", anni.map { it.toString() }, annoT.toString()) { anAnno = anni[it].toString() }
+            anMenu(r, "Categoria", nomiCat, if (anCat in nomiCat) anCat else AN_TUTTE) { anCat = nomiCat[it] }
+        }
+        anContoFuturi(cont)
+        val n = IntArray(13)
+        val u = DoubleArray(13)
+        val e = DoubleArray(13)
+        for (v in anMovs()) {
+            if (v.data.year != annoT || (!anFuturi && v.data.isAfter(oggi))) continue
+            if (anCat != AN_TUTTE && v.categoria != anCat) continue
+            val m = v.data.monthValue
+            n[m]++
+            if (anEntrata(v)) e[m] += v.importo else if (anUscita(v)) u[m] += v.importo
+        }
+        val nome = if (anCat == AN_TUTTE) "tutte le categorie" else anCat
+        sezione(cont, "ANDAMENTO MENSILE · " + nome.uppercase() + " · " + annoT)
+        anGrafico(
+            cont, MESI_IT.map { it.take(3) }, (1..12).map { e[it] }, (1..12).map { u[it] }, verde, rosso
+        ) { i ->
+            val m = i + 1
+            MESI_IT[i] + " " + annoT + "\nEntrate " + euro(e[m]) + " · Uscite " + euro(u[m]) +
+                "\nSaldo " + anSaldo(e[m] - u[m]) + " · " + n[m] + " movimenti"
+        }
+        var prec: Double? = null
+        val attivi = ArrayList<Pair<Int, Double>>()
+        for (m in 1..12) {
+            val futuro = LocalDate.of(annoT, m, 1).isAfter(oggi)
+            val var_ = if (n[m] > 0 && prec != null && prec > 0) anPctS((u[m] - prec) / prec * 100) else ""
+            if (n[m] > 0) {
+                attivi.add(m to u[m])
+                if (u[m] != 0.0) prec = u[m]
+            }
+            riga(
+                cont, MESI_IT[m - 1] + (if (futuro) " (futuro)" else ""),
+                if (n[m] == 0) "Nessun movimento" else n[m].toString() + " mov · Entrate " + euro(e[m]) +
+                    (if (var_.isNotEmpty()) " · uscite " + var_ + " vs mese prec." else ""),
+                if (n[m] == 0) "" else "−" + euro(u[m]),
+                if (n[m] == 0) medio else if (e[m] >= u[m]) verde else rosso,
+                if (n[m] == 0) null else ({
+                    anModo = "Mese"; anMese = YearMonth.of(annoT, m); catTab = 0; renderCategorie()
+                })
+            )
+        }
+        val tu = u.sum(); val te = e.sum()
+        anTesto(
+            cont, "Totale " + annoT + "\nEntrate " + euro(te) + " · Uscite " + euro(tu) + "\nSaldo " + anSaldo(te - tu),
+            grassetto = true, colore = if (te - tu >= 0) verde else rosso
+        )
+        if (attivi.isNotEmpty()) {
+            val mx = attivi.maxByOrNull { it.second }!!
+            anTesto(
+                cont,
+                "Media uscite sui " + attivi.size + " mesi con movimenti: " + euro(tu / attivi.size) +
+                    "\nMese con più uscite: " + MESI_IT[mx.first - 1] + " (" + euro(mx.second) + ")" +
+                    "\nTocca un mese per aprirne il dettaglio.",
+                colore = medio, size = 12f
+            )
+        }
+    }
+
+    // ---- Distribuzione ----
+    private class AnGr(var n: Int = 0, var u: Double = 0.0, var e: Double = 0.0, val voci: ArrayList<Voce> = ArrayList())
+
+    private fun tabDistribuzione(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        val nomiCat = listOf(AN_TUTTE) + Repo.categorie().sortedBy { it.lowercase() }
+        anMenu(cont, "Raggruppa per", AN_MODI_DIST, anDist) { anDist = AN_MODI_DIST[it] }
+        anRiga(cont) { r ->
+            anMenu(r, "Mese", listOf("Tutti") + MESI_IT, if (anMeseN == 0) "Tutti" else MESI_IT[anMeseN - 1]) { anMeseN = it }
+            anMenu(r, "Anno", listOf("Tutti") + anni.map { it.toString() }, anAnno) { anAnno = if (it == 0) "Tutti" else anni[it - 1].toString() }
+        }
+        anMenu(cont, "Categoria", nomiCat, if (anCat in nomiCat) anCat else AN_TUTTE) { anCat = nomiCat[it] }
+        anContoFuturi(cont)
+        val anno = anAnno.toIntOrNull()
+        val meseN: Int? = if (anMeseN == 0) null else anMeseN
+        val movs = anMovs().filter { v ->
+            (anno == null || v.data.year == anno) && (meseN == null || v.data.monthValue == meseN) &&
+                (anFuturi || !v.data.isAfter(oggi)) && (anCat == AN_TUTTE || v.categoria == anCat)
+        }
+        val gruppi = java.util.TreeMap<Int, Pair<String, AnGr>>()
+        if (anDist == AN_MODI_DIST[0]) AN_GIORNI.forEachIndexed { i, g -> gruppi[i] = g to AnGr() }
+        if (anDist == AN_MODI_DIST[1]) AN_FASCE.forEachIndexed { i, f -> gruppi[i] = f.first to AnGr() }
+        for (v in movs) {
+            val h = v.ora.trim().split(":").firstOrNull()?.toIntOrNull()?.takeIf { it in 0..23 }
+            val (k, nome) = when {
+                anDist == AN_MODI_DIST[0] -> v.data.dayOfWeek.value - 1 to AN_GIORNI[v.data.dayOfWeek.value - 1]
+                h == null -> 99 to AN_SENZA_ORA
+                anDist == AN_MODI_DIST[1] -> {
+                    val i = AN_FASCE.indexOfFirst { h >= it.second && h < it.third }
+                    i to AN_FASCE[i].first
+                }
+                else -> h to String.format("%02d:00–%02d:59", h, h)
+            }
+            val g = gruppi.getOrPut(k) { nome to AnGr() }.second
+            g.n++
+            g.voci.add(v)
+            if (anEntrata(v)) g.e += abs(v.importo) else if (anUscita(v)) g.u += abs(v.importo)
+        }
+        val elenco = gruppi.values.filter { anDist != AN_MODI_DIST[2] || it.second.n > 0 }
+        val totU = elenco.sumOf { it.second.u }
+        val totE = elenco.sumOf { it.second.e }
+        val totN = elenco.sumOf { it.second.n }
+        val nome = if (anCat == AN_TUTTE) "tutte le categorie" else anCat
+        sezione(cont, "DISTRIBUZIONE PER " + anDist.uppercase() + " · " + nome.uppercase())
+        if (totN == 0) {
+            anTesto(cont, "Nessun movimento nel periodo.", colore = medio)
+            return
+        }
+        anGrafico(cont, elenco.map { it.first.take(5) }, elenco.map { it.second.e }, elenco.map { it.second.u }, verde, rosso) { i ->
+            val (nm, g) = elenco[i]
+            nm + "\nMovimenti " + g.n + " · Entrate " + euro(g.e) + " · Uscite " + euro(g.u) +
+                (if (totU > 0 && g.u > 0) "\n" + anPct(g.u / totU * 100) + " delle uscite" else "")
+        }
+        for ((nm, g) in elenco) {
+            riga(
+                cont, nm,
+                if (g.n == 0) "Nessun movimento" else g.n.toString() + " mov · Entrate " + euro(g.e) + " · Medio " + euro((g.u + g.e) / g.n) +
+                    (if (totU > 0 && g.u > 0) " · " + anPct(g.u / totU * 100) else ""),
+                if (g.n == 0) "" else "−" + euro(g.u), if (g.n == 0) medio else if (g.e >= g.u) verde else rosso,
+                if (g.n == 0) null else ({ anElencoMovimenti(nm + " – " + nome, g.voci) })
+            )
+        }
+        val top = elenco.filter { it.first != AN_SENZA_ORA }.maxByOrNull { it.second.u }
+        anTesto(
+            cont,
+            "Totale " + totN + " movimenti\nEntrate " + euro(totE) + " · Uscite " + euro(totU) + "\nSaldo " + anSaldo(totE - totU) +
+                (if (top != null && top.second.u > 0) "\nPiù uscite: " + top.first + " (" + euro(top.second.u) + ")" else ""),
+            grassetto = true, colore = if (totE - totU >= 0) verde else rosso
+        )
+    }
+
+    // ---- Budget superato ----
+    private class AnSf(
+        val cat: String, val anno: Int, val mese: Int?, val bud: Double, val speso: Double,
+        val num: Int, val quando: LocalDate?, val voci: List<Voce>,
+    ) {
+        val eccesso get() = speso - bud
+    }
+
+    private fun anMesiStorico(movs: List<Voce>, oggi: LocalDate, max: Int = 12): Int {
+        val date = movs.map { it.data }.filter { !it.isAfter(oggi) }
+        if (date.isEmpty()) return 0
+        val primo = date.minOrNull()!!
+        val chiusi = (oggi.year - primo.year) * 12 + oggi.monthValue - primo.monthValue
+        return maxOf(0, minOf(max, chiusi))
+    }
+
+    private fun anTotaliMensili(movs: List<Voce>, entrata: Boolean, cat: String?, n: Int, oggi: LocalDate): List<Double> {
+        val fin = ArrayList<YearMonth>()
+        var ym = YearMonth.from(oggi)
+        repeat(n) { ym = ym.minusMonths(1); fin.add(ym) }
+        val tot = HashMap<YearMonth, Double>()
+        for (v in movs) {
+            if (anEntrata(v) != entrata || (!entrata && !anUscita(v))) continue
+            if (cat != null && v.categoria != cat) continue
+            val k = YearMonth.from(v.data)
+            if (k in fin) tot[k] = (tot[k] ?: 0.0) + v.importo
+        }
+        return fin.map { tot[it] ?: 0.0 }
+    }
+
+    /** (mediana mensile, stima annua, mesi con dati) oppure null se lo storico è troppo corto. */
+    private fun anStima(valori: List<Double>): Triple<Double, Double, Int>? {
+        val attivi = valori.filter { it > 0.004 }.sorted()
+        if (attivi.size < 3) return null
+        val med = if (attivi.size % 2 == 1) attivi[attivi.size / 2] else (attivi[attivi.size / 2 - 1] + attivi[attivi.size / 2]) / 2
+        return Triple(Math.round(med * 100.0) / 100.0, Math.round(valori.sum() / valori.size * 12 * 100.0) / 100.0, attivi.size)
+    }
+
+    private fun tabBudgetSuperato(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        anRiga(cont) { r ->
+            anMenu(r, "Mese", listOf("Tutti") + MESI_IT, if (anMeseN == 0) "Tutti" else MESI_IT[anMeseN - 1]) { anMeseN = it }
+            anMenu(r, "Anno", listOf("Tutti") + anni.map { it.toString() }, anAnno) { anAnno = if (it == 0) "Tutti" else anni[it - 1].toString() }
+        }
+        anContoFuturi(cont)
+        val anno = anAnno.toIntOrNull()
+        val meseN: Int? = if (anMeseN == 0) null else anMeseN
+        val cats = Repo.categorie()
+        val budM = cats.associateWith { Repo.budgetMensile(it) }.filterValues { it > 0 }
+        val budA = cats.associateWith { Repo.budgetAnnuo(it) }.filterValues { it > 0 }
+
+        val rb = LinearLayout(this)
+        rb.orientation = LinearLayout.HORIZONTAL
+        rb.addView(pulsanteSel("✏️ Modifica budget", false) {
+            val ordinate = cats.sortedBy { it.lowercase() }
+            OcBuilder(this).setTitle("Budget di quale categoria?")
+                .setItems(ordinate.toTypedArray()) { _, i -> dialogCategoria(ordinate[i]) }
+                .setNegativeButton("Annulla", null).show()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        rb.addView(pulsanteSel("💡 Suggerisci tutti", false) { dialogSuggerisciBudget() },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        cont.addView(rb)
+
+        fun filtro(d: LocalDate) =
+            (anFuturi || !d.isAfter(oggi)) && (anno == null || d.year == anno) && (meseN == null || d.monthValue == meseN)
+        val mesi = HashMap<Triple<String, Int, Int>, ArrayList<Voce>>()
+        val anniMap = HashMap<Pair<String, Int>, ArrayList<Voce>>()
+        for (v in anMovs()) {
+            if (!filtro(v.data) || !anUscita(v)) continue
+            if (v.categoria in budM) mesi.getOrPut(Triple(v.categoria, v.data.year, v.data.monthValue)) { ArrayList() }.add(v)
+            if (v.categoria in budA && meseN == null) anniMap.getOrPut(v.categoria to v.data.year) { ArrayList() }.add(v)
+        }
+        fun riga1(c: String, y: Int, m: Int?, l: List<Voce>, bud: Double): AnSf? {
+            val speso = l.sumOf { it.importo }
+            if (speso <= bud) return null
+            var cum = 0.0
+            var quando: LocalDate? = null
+            for (v in l.sortedWith(compareBy<Voce> { it.data }.thenBy { it.ora })) {
+                cum += v.importo
+                if (cum > bud) { quando = v.data; break }
+            }
+            return AnSf(c, y, m, bud, speso, l.size, quando, l)
+        }
+        val righe = ArrayList<AnSf>()
+        for ((k, l) in mesi) riga1(k.first, k.second, k.third, l, budM[k.first]!!)?.let { righe.add(it) }
+        for ((k, l) in anniMap) riga1(k.first, k.second, null, l, budA[k.first]!!)?.let { righe.add(it) }
+        righe.sortWith(compareByDescending<AnSf> { it.eccesso }.thenBy { it.cat })
+        val etich = (if (meseN == null) "Tutti i mesi" else MESI_IT[meseN - 1]) + " " + (anno?.toString() ?: "tutti gli anni")
+        sezione(cont, "BUDGET SUPERATO · " + etich.uppercase())
+        if (budM.isEmpty() && budA.isEmpty()) {
+            anTesto(cont, "Nessun budget impostato: imposta i budget delle categorie per vedere i superamenti.", colore = medio)
+            return
+        }
+        if (righe.isEmpty()) {
+            anTesto(cont, "✅ Nessun budget superato (" + (budM.keys + budA.keys).size + " categorie con budget).", colore = medio)
+            return
+        }
+        val perCat = righe.groupBy { it.cat }
+        anTesto(
+            cont,
+            righe.size.toString() + (if (righe.size == 1) " superamento" else " superamenti") + " in " + perCat.size +
+                (if (perCat.size == 1) " categoria" else " categorie") + "\nSuperamento totale " + euro(righe.sumOf { it.eccesso }),
+            grassetto = true, colore = rosso
+        )
+        for (r in righe) {
+            val periodo = if (r.mese != null) MESI_IT[r.mese - 1] + " " + r.anno else "Anno " + r.anno
+            riga(
+                cont, r.cat + " · " + periodo,
+                "Budget " + euro(r.bud) + " · Speso " + euro(r.speso) + " (" + anPct(r.speso / r.bud * 100) + ")" +
+                    "\n" + r.num + " mov" + (if (r.quando != null) " · superato il " + r.quando.format(FMT_DATA) else ""),
+                "+" + euro(r.eccesso), arancio
+            ) { anElencoMovimenti(r.cat + " – " + periodo, r.voci, "Modifica budget" to { dialogCategoria(r.cat) }) }
+        }
+        sezione(cont, "SUPERAMENTO PER CATEGORIA")
+        val ord = perCat.entries.sortedByDescending { e -> e.value.sumOf { it.eccesso } }
+        val mx = ord.maxOf { e -> e.value.sumOf { it.eccesso } }
+        for ((c, l) in ord) anBarra(cont, c, l.sumOf { it.eccesso }, mx, arancio, euro(l.sumOf { it.eccesso }) + " · " + l.size + "×")
+    }
+
+    private fun dialogSuggerisciBudget() {
+        val oggi = LocalDate.now()
+        val movs = Repo.voci()
+        val n = anMesiStorico(movs, oggi)
+        val righe = Repo.categorie().sortedBy { it.lowercase() }.mapNotNull { c ->
+            if (n < 3) null else anStima(anTotaliMensili(movs, false, c, n, oggi))?.let { c to it }
+        }
+        if (righe.isEmpty()) {
+            aviso("Storico insufficiente: servono almeno 3 mesi chiusi con spese")
+            return
+        }
+        val sel = BooleanArray(righe.size) { true }
+        OcBuilder(this)
+            .setTitle("Suggerisci budget (ultimi $n mesi chiusi)")
+            .setMultiChoiceItems(
+                righe.map { (c, s) ->
+                    c + ": " + (Repo.budgetMensile(c).takeIf { it > 0 }?.let { euro(it) } ?: "—") + " → " + euro(s.first) +
+                        "/mese · " + euro(s.second) + "/anno"
+                }.toTypedArray(), sel
+            ) { _, i, on -> sel[i] = on }
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Applica") { _, _ ->
+                var k = 0
+                righe.forEachIndexed { i, (c, s) ->
+                    if (sel[i]) { Repo.salvaCategoria(c, s.first, s.second, Repo.classe(c)); k++ }
+                }
+                refresh()
+                aviso("Budget aggiornati per $k categorie")
+            }
+            .show()
+    }
+
+    // ---- Target ----
+    private fun tabTarget(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        val annoT = anAnno.toIntOrNull() ?: oggi.year
+        anMenu(cont, "Anno", anni.map { it.toString() }, annoT.toString()) { anAnno = anni[it].toString() }
+        anContoFuturi(cont)
+        val rb = LinearLayout(this)
+        rb.orientation = LinearLayout.HORIZONTAL
+        rb.addView(pulsanteSel("✏️ Imposta target", false) { dialogTarget() },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        rb.addView(pulsanteSel("💡 Suggerisci target", false) { dialogSuggerisciTarget() },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        cont.addView(rb)
+
+        val tm = Repo.targetMese
+        val ta = Repo.targetAnno
+        val n = IntArray(13)
+        val u = DoubleArray(13)
+        val e = DoubleArray(13)
+        for (v in anMovs()) {
+            if (v.data.year != annoT || (!anFuturi && v.data.isAfter(oggi))) continue
+            val m = v.data.monthValue
+            n[m]++
+            if (anEntrata(v)) e[m] += v.importo else if (anUscita(v)) u[m] += v.importo
+        }
+        sezione(cont, "TARGET DI SPESA · $annoT")
+        if (tm <= 0 && ta <= 0) anTesto(cont, "Target non impostati: usa «Imposta target» o «Suggerisci target».", colore = medio)
+        if (tm > 0) {
+            anGrafico(cont, MESI_IT.map { it.take(3) }, (1..12).map { u[it] }, (1..12).map { tm }, rosso, arancio) { i ->
+                val m = i + 1
+                MESI_IT[i] + " " + annoT + "\nUscite " + euro(u[m]) + " · Target " + euro(tm) + " (" + anPct(u[m] / tm * 100) + ")"
+            }
+        }
+        for (m in 1..12) {
+            val perc = if (tm > 0) u[m] / tm * 100 else null
+            val futuro = LocalDate.of(annoT, m, 1).isAfter(oggi)
+            val col = when {
+                n[m] == 0 || perc == null || futuro -> medio
+                perc < 80 -> verde
+                perc <= 100 -> arancio
+                else -> rosso
+            }
+            riga(
+                cont, MESI_IT[m - 1] + (if (futuro) " (futuro)" else ""),
+                if (n[m] == 0) "Nessun movimento" else n[m].toString() + " mov" +
+                    (if (tm > 0) " · Target " + euro(tm) + " · " + anPct(perc!!) + " · residuo " + anSaldo(tm - u[m]) else ""),
+                if (n[m] == 0) "" else euro(u[m]), col,
+                if (n[m] == 0) null else ({ anModo = "Mese"; anMese = YearMonth.of(annoT, m); anCat = AN_TUTTE; catTab = 0; renderCategorie() })
+            )
+        }
+        val tu = u.sum()
+        val percA = if (ta > 0) tu / ta * 100 else null
+        var proiez: Double? = null
+        var media: Double? = null
+        if (annoT == oggi.year) {
+            val chiusi = (1 until oggi.monthValue).map { u[it] }
+            if (chiusi.isNotEmpty()) {
+                val md = chiusi.average()
+                media = md
+                proiez = chiusi.sum() + (oggi.monthValue..12).sumOf { maxOf(u[it], md) }
+            }
+        } else proiez = tu
+        val sopra = (1..12).count { tm > 0 && u[it] > tm }
+        anTesto(
+            cont,
+            "Totale $annoT: " + euro(tu) + (if (ta > 0) " di " + euro(ta) + " (" + anPct(percA!!) + ") · residuo " + anSaldo(ta - tu) else "") +
+                (if (tm > 0) "\nMesi oltre target: $sopra" else "") +
+                (if (proiez != null && annoT == oggi.year) "\nProiezione fine anno: " + euro(proiez) +
+                    (if (ta > 0) (if (proiez > ta) " (oltre il target)" else " (nel target)") else "") else ""),
+            grassetto = true, colore = if (ta > 0 && tu > ta) rosso else verde
+        )
+        if (media != null) anTesto(cont, "Proiezione: mesi chiusi + per ogni mese restante il maggiore tra il registrato e la media dei mesi chiusi (" + euro(media) + ").", colore = medio, size = 12f)
+        val bm = Repo.categorie().sumOf { Repo.budgetMensile(it) }
+        val ba = Repo.categorie().sumOf { c -> Repo.budgetAnnuo(c).takeIf { it > 0 } ?: (Repo.budgetMensile(c) * 12) }
+        val coer = ArrayList<Pair<String, Boolean>>()
+        if (tm > 0 && bm > 0) coer.add("Budget mensili categorie " + euro(bm) + (if (bm > tm) " > " else " ≤ ") + "Target mese " + euro(tm) + (if (bm > tm) " (incoerente)" else "") to (bm <= tm))
+        if (ta > 0 && ba > 0) coer.add("Budget annuali categorie " + euro(ba) + (if (ba > ta) " > " else " ≤ ") + "Target anno " + euro(ta) + (if (ba > ta) " (incoerente)" else "") to (ba <= ta))
+        if (tm > 0 && ta > 0) coer.add("Target mese × 12 = " + euro(tm * 12) + (if (tm * 12 > ta) " > " else " ≤ ") + "Target anno " + euro(ta) + (if (tm * 12 > ta) " (incoerente)" else "") to (tm * 12 <= ta))
+        for ((t, ok) in coer) anTesto(cont, t, colore = if (ok) verde else rosso, size = 12f)
+    }
+
+    private fun dialogSuggerisciTarget() {
+        val oggi = LocalDate.now()
+        val movs = Repo.voci()
+        val n = anMesiStorico(movs, oggi)
+        val opz = ArrayList<Triple<String, Double, Double>>()
+        if (n >= 3) {
+            anStima(anTotaliMensili(movs, false, null, n, oggi))?.let {
+                opz.add(Triple("Storico spese (mediana ultimi $n mesi)", it.first, it.second))
+            }
+            anStima(anTotaliMensili(movs, true, null, n, oggi))?.let {
+                val m = Math.round(it.first * 0.8 * 100.0) / 100.0
+                opz.add(Triple("Da entrate: 80% della mediana (" + euro(it.first) + ")", m, Math.round(m * 12 * 100.0) / 100.0))
+            }
+        }
+        val cats = Repo.categorie()
+        val sm = cats.sumOf { Repo.budgetMensile(it) }
+        val sa = cats.sumOf { c -> Repo.budgetAnnuo(c).takeIf { it > 0 } ?: (Repo.budgetMensile(c) * 12) }
+        if (sm > 0 || sa > 0) opz.add(Triple("Somma dei budget delle categorie", if (sm > 0) sm else Math.round(sa / 12 * 100.0) / 100.0, sa))
+        if (opz.isEmpty()) {
+            aviso("Storico insufficiente: servono almeno 3 mesi chiusi")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Suggerisci target")
+            .setItems(opz.map { it.first + "\n" + euro(it.second) + "/mese · " + euro(it.third) + "/anno" }.toTypedArray()) { _, i ->
+                Repo.setTarget(opz[i].second, opz[i].third)
+                refresh()
+                aviso("Target aggiornato")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---- 50/30/20 ----
+    private fun tab503020(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val anni = anAnni()
+        val classi = listOf("Bisogni", "Desideri", "Risparmio")
+        val quote = mapOf("Bisogni" to 50.0, "Desideri" to 30.0, "Risparmio" to 20.0)
+        anRiga(cont) { r ->
+            anMenu(r, "Anno", listOf("Tutti") + anni.map { it.toString() }, anAnno) { anAnno = if (it == 0) "Tutti" else anni[it - 1].toString() }
+            anMenu(r, "Classe", listOf("Tutte") + classi, anClasse) { anClasse = (listOf("Tutte") + classi)[it] }
+        }
+        anContoFuturi(cont)
+        val anno = anAnno.toIntOrNull()
+        val filtraC = anClasse in classi
+        val movs = anMovs().filter { v ->
+            (anno == null || v.data.year == anno) && (anFuturi || !v.data.isAfter(oggi))
+        }
+
+        class Per(var entrate: Double = 0.0, val classi: HashMap<String, Double> = HashMap(), val na: HashMap<String, Double> = HashMap(), var n: Int = 0)
+        fun calcola(chiave: (Voce) -> Int): Map<Int, Per> {
+            val netti = HashMap<Int, HashMap<String, Double>>()
+            val conta = HashMap<Int, Int>()
+            for (v in movs) {
+                val k = chiave(v)
+                val imp = if (anEntrata(v)) -v.importo else v.importo
+                val m = netti.getOrPut(k) { HashMap() }
+                m[v.categoria] = (m[v.categoria] ?: 0.0) + imp
+                conta[k] = (conta[k] ?: 0) + 1
+            }
+            val out = HashMap<Int, Per>()
+            for ((k, m) in netti) {
+                val p = Per(n = conta[k] ?: 0)
+                for ((cat, x) in m) {
+                    val nn = Math.round(x * 100.0) / 100.0
+                    val cl = Repo.classe(cat)
+                    if (cl in classi) p.classi[cl] = (p.classi[cl] ?: 0.0) + nn
+                    else if (nn < 0) p.entrate += -nn
+                    else if (nn > 0) p.na[cat] = nn
+                }
+                out[k] = p
+            }
+            return out
+        }
+        val gruppi = calcola { if (anno != null) it.data.monthValue else it.data.year }
+        val tot = calcola { 0 }[0]
+        val chiavi = if (anno != null) (1..12).toList() else gruppi.keys.sorted()
+        val etich = anno?.toString() ?: "tutti gli anni"
+
+        sezione(cont, "METODO 50/30/20 · " + etich.uppercase() + (if (filtraC) " · " + anClasse.uppercase() else ""))
+        if (tot == null || tot.entrate <= 0) {
+            anTesto(cont, "Nessuna entrata nel periodo: la percentuale si calcola sulle entrate nette.", colore = medio)
+        } else {
+            anTesto(cont, "Entrate nette " + euro(tot.entrate), grassetto = true)
+            for (c in classi) {
+                if (filtraC && c != anClasse) continue
+                val v = tot.classi[c] ?: 0.0
+                val obiettivo = tot.entrate * quote[c]!! / 100
+                val ok = if (c == "Risparmio") v >= obiettivo else v <= obiettivo
+                anBarra(
+                    cont, c + " (" + (if (c == "Risparmio") "≥ " else "≤ ") + quote[c]!!.toInt() + "%)", v, maxOf(v, obiettivo),
+                    if (ok) verde else rosso, euro(v) + " · " + anPct(v / tot.entrate * 100) + (if (ok) " ✔" else " ✖")
+                )
+            }
+        }
+        var inRegola = 0
+        var conEntrate = 0
+        for (k in chiavi) {
+            val r = gruppi[k]
+            val nome = if (anno != null) MESI_IT[k - 1] else k.toString()
+            val futuro = anno != null && LocalDate.of(anno, k, 1).isAfter(oggi)
+            if (r == null || r.entrate <= 0) {
+                riga(cont, nome + (if (futuro) " (futuro)" else ""), if (r == null) "Nessun movimento" else "Nessuna entrata nel periodo", "", medio, null)
+                continue
+            }
+            val rel = classi.filter { !filtraC || it == anClasse }
+            val esiti = rel.associateWith { c ->
+                val p = (r.classi[c] ?: 0.0) / r.entrate * 100
+                if (c == "Risparmio") p >= quote[c]!! else p <= quote[c]!!
+            }
+            val fuori = esiti.count { !it.value }
+            conEntrate++
+            if (esiti.values.all { it }) inRegola++
+            val righe = rel.joinToString(" · ") { c ->
+                val v = r.classi[c] ?: 0.0
+                c.take(3) + " " + euro(v) + " (" + anPct(v / r.entrate * 100) + ")" + (if (esiti[c] == true) "✔" else "✖")
+            }
+            riga(
+                cont, nome + (if (futuro) " (futuro)" else ""),
+                "Entrate " + euro(r.entrate) + "\n" + righe + (if (r.na.isNotEmpty()) "\nSenza classe " + euro(r.na.values.sum()) else ""),
+                if (fuori == 0) "✔ in regola" else "$fuori fuori",
+                if (fuori == 0) verde else if (fuori == 1 && rel.size > 1) arancio else rosso, null
+            )
+        }
+        if (conEntrate > 0) anTesto(cont, "Periodi in regola: $inRegola su $conEntrate", grassetto = true, colore = if (inRegola == conEntrate) verde else arancio)
+        if (tot != null && tot.na.isNotEmpty()) {
+            val top3 = tot.na.entries.sortedByDescending { it.value }.take(3)
+            anTesto(
+                cont,
+                "Uscite senza classe: " + euro(tot.na.values.sum()) + " (" + top3.joinToString(", ") { it.key + " " + euro(it.value) } +
+                    ") · assegna la classe dalla scheda Categorie.",
+                colore = rosso, size = 12f
+            )
+        }
+        anTesto(cont, "Obiettivi: Bisogni ≤ 50% · Desideri ≤ 30% · Risparmio ≥ 20% delle entrate nette (uscite − entrate per categoria).", colore = medio, size = 12f)
+    }
+
+    private val CAT_ORDINI = listOf("Nome", "Spesa del mese", "N. operazioni")
+    private val CAT_MOSTRA = listOf("Tutte", "Solo senza operazioni")
+
+    private fun renderGestioneCategorie(cont: LinearLayout) {
         val ym = YearMonth.now()
-        val delMese = Repo.voci().filter { YearMonth.from(it.data) == ym }
-        val totali = delMese.groupBy { it.categoria }.mapValues { e -> e.value.sumOf { it.importo } }
+        val voci = Repo.voci()
+        val totali = voci.filter { YearMonth.from(it.data) == ym }.groupBy { it.categoria }
+            .mapValues { e -> e.value.sumOf { it.importo } }
+        val conteggi = voci.groupingBy { it.categoria }.eachCount()
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         val conti = Repo.conti().associate { it.id to it.nome }
         val tutte = Repo.categorie()
+        val senzaOp = tutte.count { (conteggi[it] ?: 0) == 0 }
+        vuoto(cont, tutte.size.toString() + " categorie · " + senzaOp + " senza operazioni")
+        if (catCerca.isNotBlank() || catSoloVuote || catOrdine != "Nome") {
+            vuoto(
+                cont,
+                "Filtro: " + (if (catCerca.isNotBlank()) "“" + catCerca.trim() + "” · " else "") +
+                    (if (catSoloVuote) "solo senza operazioni · " else "") + "ordine: " + catOrdine.lowercase()
+            )
+        }
+        val filtrate = tutte.filter { c ->
+            (catCerca.isBlank() || c.contains(catCerca.trim(), ignoreCase = true)) &&
+                (!catSoloVuote || (conteggi[c] ?: 0) == 0)
+        }
+        val ordine: Comparator<String> = when (catOrdine) {
+            "Spesa del mese" -> compareByDescending<String> { totali[it] ?: 0.0 }.thenBy { it.lowercase() }
+            "N. operazioni" -> compareByDescending<String> { conteggi[it] ?: 0 }.thenBy { it.lowercase() }
+            else -> compareBy<String> { it.lowercase() }
+        }
 
         for ((titolo, tipo) in listOf("USCITE" to "Uscita", "ENTRATE" to "Entrata")) {
-            val gruppo = tutte.filter { Repo.tipoCategoria(it) == tipo }.sortedBy { it.lowercase() }
-            sezione(cont, titolo + " · " + maiuscola(ym.format(FMT_MESE)))
+            val gruppo = filtrate.filter { Repo.tipoCategoria(it) == tipo }.sortedWith(ordine)
+            val aperto = if (tipo == "Uscita") catUsciteAperte else catEntrateAperte
+            riga(
+                cont, (if (aperto) "▼ " else "▶ ") + titolo + " · " + maiuscola(ym.format(FMT_MESE)) + " (" + gruppo.size + ")",
+                "", "", null
+            ) {
+                if (tipo == "Uscita") catUsciteAperte = !catUsciteAperte else catEntrateAperte = !catEntrateAperte
+                renderCategorie()
+            }
+            if (!aperto) continue
             if (gruppo.isEmpty()) vuoto(cont, "Nessuna categoria.")
             for (cat in gruppo) {
                 val bm = Repo.budgetMensile(cat)
                 val ba = Repo.budgetAnnuo(cat)
                 val classe = Repo.classe(cat)
+                val nOp = conteggi[cat] ?: 0
                 val sotto = listOfNotNull(
+                    if (nOp == 0) "nessuna operazione" else "$nOp operazioni",
                     if (bm > 0) "Budget " + euro(bm) + "/mese" else null,
                     if (ba > 0) euro(ba) + "/anno" else null,
                     classe.takeIf { it.isNotBlank() },
@@ -1436,6 +2502,133 @@ class MainActivity : AppCompatActivity() {
                 ) { dialogCategoria(cat) }
             }
         }
+    }
+
+    private fun menuStrumentiCategorie() {
+        OcBuilder(this)
+            .setTitle("Strumenti categorie")
+            .setItems(
+                arrayOf("🔎  Cerca, ordina e filtra", "🔀  Sposta o unisci categorie", "🗑️  Elimina categorie vuote")
+            ) { _, k ->
+                catTab = 8
+                when (k) {
+                    0 -> dialogCercaCategorie()
+                    1 -> dialogSpostaCategorie()
+                    else -> dialogEliminaVuote()
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogCercaCategorie() {
+        val (view, corpo) = corpoDialogo()
+        val etCerca = campoTesto(corpo, "Cerca nel nome", catCerca, InputType.TYPE_CLASS_TEXT, 40)
+        var ordine = catOrdine
+        var mostra = if (catSoloVuote) CAT_MOSTRA[1] else CAT_MOSTRA[0]
+        campoMenu(corpo, "Ordina per", CAT_ORDINI, ordine) { ordine = CAT_ORDINI[it] }
+        campoMenu(corpo, "Mostra", CAT_MOSTRA, mostra) { mostra = CAT_MOSTRA[it] }
+        OcBuilder(this)
+            .setTitle("Cerca e ordina")
+            .setView(view)
+            .setPositiveButton("Applica") { _, _ ->
+                catCerca = etCerca.text.toString()
+                catOrdine = ordine
+                catSoloVuote = mostra == CAT_MOSTRA[1]
+                refresh()
+            }
+            .setNegativeButton("Azzera") { _, _ ->
+                catCerca = ""
+                catOrdine = "Nome"
+                catSoloVuote = false
+                refresh()
+            }
+            .show()
+    }
+
+    private fun dialogSpostaCategorie() {
+        val conteggi = Repo.operazioniPerCategoria()
+        val cats = Repo.categorie().sortedBy { it.lowercase() }
+        if (cats.size < 2) {
+            aviso("Servono almeno due categorie")
+            return
+        }
+        val etichette = cats.map { it + " (" + (conteggi[it] ?: 0) + ")" }.toTypedArray()
+        val sel = BooleanArray(cats.size)
+        OcBuilder(this)
+            .setTitle("Sposta da quali categorie?")
+            .setMultiChoiceItems(etichette, sel) { _, i, on -> sel[i] = on }
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Avanti") { _, _ ->
+                val scelte = cats.filterIndexed { i, _ -> sel[i] }
+                if (scelte.isEmpty()) aviso("Nessuna categoria scelta") else dialogDestinazioneSposta(scelte)
+            }
+            .show()
+    }
+
+    private fun dialogDestinazioneSposta(origini: List<String>) {
+        val conteggi = Repo.operazioniPerCategoria()
+        val n = origini.sumOf { conteggi[it] ?: 0 }
+        val dest = Repo.categorie().filter { it !in origini }.sortedBy { it.lowercase() }
+        if (dest.isEmpty()) {
+            aviso("Nessuna categoria di destinazione disponibile")
+            return
+        }
+        val (view, corpo) = corpoDialogo()
+        var scelta = dest[0]
+        campoMenu(corpo, "Sposta in", dest, scelta) { scelta = dest[it] }
+        val chk = MaterialCheckBox(this)
+        chk.text = "Elimina le categorie di origine (tranne Generica)"
+        chk.isChecked = true
+        corpo.addView(chk)
+        OcBuilder(this)
+            .setTitle("Sposta $n operazioni")
+            .setMessage(
+                origini.joinToString(", ") +
+                    "\n\nLe operazioni prendono il tipo (Entrata/Uscita) della categoria di destinazione. " +
+                    "Budget e metodo 50/30/20 delle categorie eliminate si perdono."
+            )
+            .setView(view)
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Sposta") { _, _ ->
+                val (m, err) = Repo.spostaCategorie(origini, scelta, chk.isChecked)
+                if (err != null) aviso(err) else {
+                    refresh()
+                    aviso("Spostate $m operazioni")
+                }
+            }
+            .show()
+    }
+
+    private fun dialogEliminaVuote() {
+        val vuote = Repo.categorieVuote().sortedBy { it.lowercase() }
+        if (vuote.isEmpty()) {
+            aviso("Nessuna categoria vuota: sposta prima le operazioni")
+            return
+        }
+        val sel = BooleanArray(vuote.size)
+        OcBuilder(this)
+            .setTitle("Elimina categorie vuote")
+            .setMultiChoiceItems(vuote.toTypedArray(), sel) { _, i, on -> sel[i] = on }
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Elimina") { _, _ ->
+                val scelte = vuote.filterIndexed { i, _ -> sel[i] }
+                if (scelte.isEmpty()) {
+                    aviso("Nessuna categoria scelta")
+                } else {
+                    OcBuilder(this)
+                        .setTitle("Eliminare " + scelte.size + " categorie?")
+                        .setMessage(scelte.joinToString(", "))
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Elimina") { _, _ ->
+                            val n = Repo.eliminaCategorieVuote(scelte)
+                            refresh()
+                            aviso("Eliminate $n categorie")
+                        }
+                        .show()
+                }
+            }
+            .show()
     }
 
     private fun dialogCategoria(cat: String?) {
@@ -1539,16 +2732,24 @@ class MainActivity : AppCompatActivity() {
             barra(cont, "Quest'anno · " + oggi.year, usciteAnno.sumOf { it.importo }, Repo.targetAnno, "")
         }
 
-        val conBudgetM = Repo.categorie().filter { Repo.budgetMensile(it) > 0 }.sortedBy { it.lowercase() }
+        val spesoM = usciteMese.groupBy { it.categoria }.mapValues { e -> e.value.sumOf { it.importo } }
+        val conBudgetM = Repo.categorie().filter { Repo.budgetMensile(it) > 0 }
+            .sortedByDescending { (spesoM[it] ?: 0.0) / Repo.budgetMensile(it) }
         if (conBudgetM.isNotEmpty()) {
             sezione(cont, "BUDGET MENSILI PER CATEGORIA")
+            val sfM = conBudgetM.count { (spesoM[it] ?: 0.0) > Repo.budgetMensile(it) }
+            if (sfM > 0) vuoto(cont, "⚠️ " + sfM + (if (sfM == 1) " categoria sopra budget" else " categorie sopra budget") + " questo mese")
             for (c in conBudgetM) {
                 barra(cont, c, usciteMese.filter { it.categoria == c }.sumOf { it.importo }, Repo.budgetMensile(c), "")
             }
         }
-        val conBudgetA = Repo.categorie().filter { Repo.budgetAnnuo(it) > 0 }.sortedBy { it.lowercase() }
+        val spesoA = usciteAnno.groupBy { it.categoria }.mapValues { e -> e.value.sumOf { it.importo } }
+        val conBudgetA = Repo.categorie().filter { Repo.budgetAnnuo(it) > 0 }
+            .sortedByDescending { (spesoA[it] ?: 0.0) / Repo.budgetAnnuo(it) }
         if (conBudgetA.isNotEmpty()) {
             sezione(cont, "BUDGET ANNUALI PER CATEGORIA")
+            val sfA = conBudgetA.count { (spesoA[it] ?: 0.0) > Repo.budgetAnnuo(it) }
+            if (sfA > 0) vuoto(cont, "⚠️ " + sfA + (if (sfA == 1) " categoria sopra budget" else " categorie sopra budget") + " quest'anno")
             for (c in conBudgetA) {
                 barra(cont, c, usciteAnno.filter { it.categoria == c }.sumOf { it.importo }, Repo.budgetAnnuo(c), "")
             }

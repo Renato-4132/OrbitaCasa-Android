@@ -1115,6 +1115,89 @@ object Repo {
         return true
     }
 
+    fun operazioniPerCategoria(): Map<String, Int> = voci().groupingBy { it.categoria }.eachCount()
+
+    private fun rimuoviCategoria(nome: String) {
+        val a = db.getJSONArray("categorie")
+        for (i in 0 until a.length()) {
+            if (a.optString(i) == nome) {
+                a.remove(i)
+                break
+            }
+        }
+        for (k in listOf(
+            "categorie_tipi", "categorie_classi", "categorie_conti_risparmio",
+            "budget_categorie", "budget_annuale_categorie"
+        )) {
+            db.optJSONObject(k)?.remove(nome)
+        }
+    }
+
+    fun categorieVuote(): List<String> {
+        val usate = HashSet<String>()
+        voci().forEach { usate.add(it.categoria) }
+        db.optJSONObject("ricorrenze")?.let { r ->
+            for (id in r.keys()) r.optJSONObject(id)?.let { usate.add(str(it, "cat")) }
+        }
+        db.optJSONObject("pianificate")?.optJSONArray("piani")?.let { pa ->
+            for (i in 0 until pa.length()) pa.optJSONObject(i)?.let { usate.add(str(it, "categoria")) }
+        }
+        return categorie().filter { it != "Generica" && it !in usate }
+    }
+
+    fun eliminaCategorieVuote(nomi: List<String>): Int {
+        val ok = categorieVuote().toSet()
+        var n = 0
+        for (c in nomi) {
+            if (c in ok) {
+                rimuoviCategoria(c)
+                n++
+            }
+        }
+        if (n > 0) save()
+        return n
+    }
+
+    fun spostaCategorie(origini: List<String>, dest: String, eliminaOrigini: Boolean): Pair<Int, String?> {
+        val da = origini.filter { it != dest }.toSet()
+        if (da.isEmpty()) return 0 to "Scegli almeno una categoria di origine diversa dalla destinazione"
+        if (categorie().none { it == dest }) return 0 to "Categoria di destinazione non trovata"
+        val tipoDest = tipoCategoria(dest)
+        var n = 0
+        val sp = db.optJSONArray("spese")
+        if (sp != null) {
+            for (i in 0 until sp.length()) {
+                val en = sp.optJSONObject(i)?.optJSONArray("entries") ?: continue
+                for (j in 0 until en.length()) {
+                    val e = en.optJSONObject(j) ?: continue
+                    if (str(e, "categoria") in da) {
+                        e.put("categoria", dest)
+                        e.put("tipo", tipoDest)
+                        n++
+                    }
+                }
+            }
+        }
+        db.optJSONObject("ricorrenze")?.let { r ->
+            for (id in r.keys()) {
+                val o = r.optJSONObject(id) ?: continue
+                if (str(o, "cat") in da) {
+                    o.put("cat", dest)
+                    if (o.has("tipo")) o.put("tipo", tipoDest)
+                }
+            }
+        }
+        db.optJSONObject("pianificate")?.optJSONArray("piani")?.let { pa ->
+            for (i in 0 until pa.length()) {
+                val o = pa.optJSONObject(i) ?: continue
+                if (str(o, "categoria") in da) o.put("categoria", dest)
+            }
+        }
+        if (eliminaOrigini) for (c in da) if (c != "Generica") rimuoviCategoria(c)
+        save()
+        return n to null
+    }
+
     fun conti(): List<Conto> {
         val a = pf.optJSONArray("conti") ?: return emptyList()
         val out = ArrayList<Conto>()
