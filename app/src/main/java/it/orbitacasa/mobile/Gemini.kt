@@ -129,7 +129,6 @@ object Gemini {
 
     fun analizzaTesto(ctx: Context, prompt: String): JSONObject = esegui(ctx, null, null, prompt)
 
-    /** Risposta in testo libero (non JSON), per le domande sul database. */
     fun chiediTesto(ctx: Context, prompt: String): String {
         val chiave = chiave(ctx)
         if (chiave.isEmpty()) throw Errore("Imposta la chiave API Gemini")

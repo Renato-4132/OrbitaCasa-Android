@@ -414,7 +414,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🔍", "Analisi Categorie") { mostra(Pagina.ANALISI) },
                 Tessera("🔁", "Checkout") { mostra(Pagina.CHECKOUT) },
                 Tessera("📉", "Proiezione Mese") { mostra(Pagina.PREVISIONE) },
-                Tessera("💳", "Estratti per metodo") { mostra(Pagina.ESTRATTI) },
+                Tessera("💳", "Estratti") { mostra(Pagina.ESTRATTI) },
                 Tessera("🤖", "Chiedi al Database") { mostra(Pagina.CHIEDI) },
             )
         )
@@ -1436,7 +1436,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ======================= ANALISI CATEGORIE (schede) =======================
     private val AN_SCHEDE = listOf(
         "🔍 Dettaglio", "Σ Aggrega", "⏳ Time Machine", "📈 Trend",
         "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20"
@@ -1495,7 +1494,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- helper comuni ----
     private fun anEntrata(v: Voce) = v.tipo.trim().equals("Entrata", ignoreCase = true)
     private fun anUscita(v: Voce) = v.tipo.trim().equals("Uscita", ignoreCase = true)
     private fun anPct(x: Double) = String.format(Locale.ITALY, "%.1f%%", x)
@@ -1509,7 +1507,6 @@ class MainActivity : AppCompatActivity() {
     private fun anAnni(): List<Int> =
         (Repo.voci().map { it.data.year } + LocalDate.now().year).distinct().sortedDescending()
 
-    /** Movimenti filtrati per conto (le date si filtrano a parte). */
     private fun anMovs(): List<Voce> = Repo.voci().filter { anConto.isEmpty() || it.conto == anConto }
 
     private fun anMenu(cont: LinearLayout, hint: String, voci: List<String>, sel: String, on: (Int) -> Unit) =
@@ -1646,7 +1643,6 @@ class MainActivity : AppCompatActivity() {
         b.show()
     }
 
-    // ---- Dettaglio ----
     private fun tabDettaglio(cont: LinearLayout) {
         val oggi = LocalDate.now()
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -1716,7 +1712,6 @@ class MainActivity : AppCompatActivity() {
         if (sel.size > 150) anTesto(cont, "… altri " + (sel.size - 150) + " movimenti non mostrati", colore = medio, size = 12f)
     }
 
-    // ---- Aggrega ----
     private class AnAgg(var num: Int = 0, var usc: Double = 0.0, var ent: Double = 0.0, var max: Double = 0.0) {
         val vol get() = if (usc > 0) usc else ent
     }
@@ -1868,7 +1863,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Time Machine ----
     private fun tabTimeMachine(cont: LinearLayout) {
         val oggi = LocalDate.now()
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -1931,7 +1925,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ---- Trend mensile ----
     private fun tabTrend(cont: LinearLayout) {
         val oggi = LocalDate.now()
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -1999,7 +1992,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Distribuzione ----
     private class AnGr(var n: Int = 0, var u: Double = 0.0, var e: Double = 0.0, val voci: ArrayList<Voce> = ArrayList())
 
     private fun tabDistribuzione(cont: LinearLayout) {
@@ -2074,7 +2066,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ---- Budget superato ----
     private class AnSf(
         val cat: String, val anno: Int, val mese: Int?, val bud: Double, val speso: Double,
         val num: Int, val quando: LocalDate?, val voci: List<Voce>,
@@ -2104,7 +2095,6 @@ class MainActivity : AppCompatActivity() {
         return fin.map { tot[it] ?: 0.0 }
     }
 
-    /** (mediana mensile, stima annua, mesi con dati) oppure null se lo storico è troppo corto. */
     private fun anStima(valori: List<Double>): Triple<Double, Double, Int>? {
         val attivi = valori.filter { it > 0.004 }.sorted()
         if (attivi.size < 3) return null
@@ -2229,7 +2219,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---- Target ----
     private fun tabTarget(cont: LinearLayout) {
         val oggi = LocalDate.now()
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -2348,7 +2337,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---- 50/30/20 ----
     private fun tab503020(cont: LinearLayout) {
         val oggi = LocalDate.now()
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -3033,7 +3021,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Forza il testo del pulsante su una sola riga, riducendolo se non entra. */
     private fun unaRiga(b: MaterialButton): MaterialButton {
         val dp = resources.displayMetrics.density
         b.maxLines = 1
@@ -3245,7 +3232,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Estratti per metodo e conti ----
     private var esAnno = ""
     private var esMese = 0
     private var esFuturi = false
@@ -3344,7 +3330,6 @@ class MainActivity : AppCompatActivity() {
         anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
     }
 
-    // ---- Chiedi al Database ----
     private class ChiediMsg(val domanda: String, var risposta: String?, var errore: Boolean = false)
 
     private val chiediStorico = ArrayList<ChiediMsg>()
@@ -3619,23 +3604,9 @@ class MainActivity : AppCompatActivity() {
         val tU = ris.filter { it.tipo == "Uscita" }.sumOf { it.importo }
         val filtri = (if (rcTesto.isNotBlank()) listOf("Parola chiave: '" + rcTesto.trim() + "'") else emptyList()) +
             Ricerca.descrizioneFiltri(rc)
-        val sb = StringBuilder()
-        sb.append("RISULTATI RICERCA (").append(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append(")\n")
-        sb.append("Filtri: ").append(if (filtri.isEmpty()) "Nessuno" else filtri.joinToString(", ")).append("\n")
-        sb.append("Operazioni trovate: ").append(ris.size).append("\n\n")
-        sb.append("Entrate: ").append(euro(tE)).append("\nUscite: ").append(euro(tU)).append("\nSaldo: ").append(euro(tE - tU)).append("\n\n")
-        for (v in ris) {
-            sb.append(v.data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append(" | ").append(v.categoria).append(" | ")
-                .append(v.descrizione).append(" | ").append(v.tipo).append(" | ").append(euro(v.importo))
-            if (v.conto.isNotBlank()) sb.append(" | ").append(v.conto)
-            if (v.hashtag.isNotEmpty()) sb.append(" | ").append(v.hashtag.joinToString(" ") { "#$it" })
-            sb.append("\n")
-        }
-        val i = android.content.Intent(android.content.Intent.ACTION_SEND)
-        i.type = "text/plain"
-        i.putExtra(android.content.Intent.EXTRA_SUBJECT, "Risultati ricerca OrbitaCasa")
-        i.putExtra(android.content.Intent.EXTRA_TEXT, sb.toString())
-        startActivity(android.content.Intent.createChooser(i, "Condividi risultati"))
+        val filtriTxt = if (filtri.isEmpty()) "Nessuno" else filtri.joinToString(", ")
+        val f = RicercaPdf.crea(this, ris, filtriTxt, tE, tU)
+        RicercaPdf.condividi(this, f)
     }
 
     private fun controllaFineMese() {

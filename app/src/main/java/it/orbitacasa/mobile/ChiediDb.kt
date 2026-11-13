@@ -6,7 +6,6 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Costruisce il contesto e il prompt per "Chiedi al Database" (Gemini). */
 object ChiediDb {
     private val F = DateTimeFormatter.ofPattern("dd-MM-yyyy")
     private const val MAX_CONTESTO = 60_000
@@ -60,7 +59,6 @@ object ChiediDb {
         }
         sb.append("\n\n")
 
-        // --- periodi relativi
         val lunedi = oggi.with(DayOfWeek.MONDAY)
         val mp = YearMonth.from(oggi).minusMonths(1)
         val periodi = linkedMapOf(
@@ -81,7 +79,6 @@ object ChiediDb {
                 .append("): ").append(riepilogo(l, 8)).append("\n")
         }
 
-        // --- mese per mese
         sb.append("\nRIEPILOGO MESE PER MESE, CON CATEGORIE (ultimi 24 mesi con movimenti)\n")
         val perMese = passati.groupBy { YearMonth.from(it.data) }.toSortedMap(compareByDescending<YearMonth> { it }).entries.take(24)
         for ((ym, l) in perMese) {
@@ -89,7 +86,6 @@ object ChiediDb {
                 .append(riepilogo(l, 6)).append("\n")
         }
 
-        // --- ultimi 12 mesi: categorie e metodi
         val da12 = oggi.minusMonths(12)
         val u12 = passati.filter { it.data.isAfter(da12) }
         val catAnno = u12.filter { it.tipo != "Entrata" }.groupBy { cat(it) }
@@ -107,7 +103,6 @@ object ChiediDb {
             }
         }
 
-        // --- conti e trasferimenti
         val conti = Repo.conti()
         if (conti.isNotEmpty()) {
             sb.append("\nCONTI (saldo attuale)\n")
@@ -126,7 +121,6 @@ object ChiediDb {
             }
         }
 
-        // --- budget e target
         val ym = YearMonth.from(oggi)
         val speseMese = passati.filter { it.tipo == "Uscita" && YearMonth.from(it.data) == ym }
             .groupBy { it.categoria }.mapValues { it.value.sumOf { v -> v.importo } }
@@ -150,7 +144,6 @@ object ChiediDb {
             sb.append("\nTARGET DI SPESA: mensile ").append(e(Repo.targetMese)).append(", annuo ").append(e(Repo.targetAnno)).append("\n")
         }
 
-        // --- finanziamenti
         runCatching {
             val fin = Fin.elenco()
             if (fin.isNotEmpty()) {
@@ -171,7 +164,6 @@ object ChiediDb {
             }
         }
 
-        // --- fondo risparmio
         runCatching {
             val att = Fondo.fondoAttuale()
             val ob = Fondo.obiettivoAnnuale()
@@ -182,7 +174,6 @@ object ChiediDb {
             }
         }
 
-        // --- movimenti recenti
         val recenti = tutti.filter { !it.data.isBefore(oggi.minusDays(60)) }
             .sortedWith(compareByDescending<Voce> { it.data }.thenByDescending { it.ora })
             .take(150)

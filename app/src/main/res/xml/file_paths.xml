@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="apk" path="apk/" />
     <files-path name="docs" path="db/" />
+    <cache-path name="pdf" path="pdf/" />
 </paths>
