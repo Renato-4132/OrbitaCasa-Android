@@ -205,6 +205,8 @@ class MainActivity : AppCompatActivity() {
                 dialogAvvisoCk()
             } else if (pagina == Pagina.RICERCA) {
                 condividiRicerca()
+            } else if (pagina == Pagina.ESTRATTI) {
+                condividiEstratti()
 
             } else if (pagina == Pagina.DOCUMENTI) {
                 dialogFiltriDoc()
@@ -3238,7 +3240,7 @@ class MainActivity : AppCompatActivity() {
     private var esVista = 0
 
     private fun renderEstratti() {
-        intestaLista("💳 Estratti per metodo e conti", "")
+        intestaLista("💳 Estratti per metodo e conti", "", "📤  Condividi")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -3328,6 +3330,65 @@ class MainActivity : AppCompatActivity() {
             riga(cont, titolo, sotto, (if (net >= 0) "+" else "−") + euro(abs(net)), if (net >= 0) verde else rosso, click)
         }
         anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
+    }
+
+    private fun condividiEstratti() {
+        val oggi = LocalDate.now()
+        val annoN = esAnno.toIntOrNull()
+        val voci = Repo.voci().filter {
+            (esFuturi || !it.data.isAfter(oggi)) &&
+                (annoN == null || it.data.year == annoN) &&
+                (esMese == 0 || it.data.monthValue == esMese)
+        }
+        if (voci.isEmpty()) { aviso("Nessuna operazione nel periodo scelto"); return }
+        val perConto = esVista == 1
+        val gruppi = LinkedHashMap<String, ArrayList<EstrattiPdf.Riga>>()
+        for (v in voci) {
+            val k = if (perConto) v.conto.trim() else v.metodo.trim()
+            val tag = if (v.hashtag.isNotEmpty()) v.hashtag.joinToString(" ") { "#$it" } else ""
+            gruppi.getOrPut(k) { ArrayList() }.add(
+                EstrattiPdf.Riga(
+                    v.data, v.categoria, (v.descrizione + " " + tag).trim(),
+                    if (perConto) v.metodo.trim() else v.conto.trim(), v.importo, v.tipo == "Entrata"
+                )
+            )
+        }
+        if (perConto) {
+            val nomi = Repo.conti().associate { it.id to it.nome }
+            for (t in Repo.trasferimenti()) {
+                if (!esFuturi && t.data.isAfter(oggi)) continue
+                if (annoN != null && t.data.year != annoN) continue
+                if (esMese != 0 && t.data.monthValue != esMese) continue
+                val imp = Math.round(t.importo * 100.0) / 100.0
+                val nDa = nomi[t.da].orEmpty()
+                val nA = nomi[t.a].orEmpty()
+                if (nDa.isNotEmpty()) {
+                    gruppi.getOrPut(nDa) { ArrayList() }.add(
+                        EstrattiPdf.Riga(t.data, "Trasferimento", ("verso " + nA + " " + t.note).trim(), "", imp, false)
+                    )
+                }
+                if (nA.isNotEmpty()) {
+                    gruppi.getOrPut(nA) { ArrayList() }.add(
+                        EstrattiPdf.Riga(t.data, "Trasferimento", ("da " + nDa + " " + t.note).trim(), "", imp, true)
+                    )
+                }
+            }
+        }
+        val sezioni = gruppi.map { (k, l) ->
+            EstrattiPdf.Sez(
+                if (k.isBlank()) (if (perConto) "Senza conto" else "Non specificato") else k,
+                l.sortedByDescending { it.data }
+            )
+        }.sortedByDescending { it.e + it.u }
+        val tE = voci.filter { it.tipo == "Entrata" }.sumOf { it.importo }
+        val tU = voci.filter { it.tipo == "Uscita" }.sumOf { it.importo }
+        val periodo = (if (esMese == 0) "Tutti i mesi" else Ricerca.MESI[esMese - 1]) + " " + (annoN?.toString() ?: "tutti gli anni")
+        val titolo = if (perConto) "Estratti per conto" else "Estratti per metodo di pagamento"
+        val f = EstrattiPdf.crea(
+            this, titolo, periodo, if (perConto) "Metodo" else "Conto",
+            sezioni, voci.size, tE, tU, if (perConto) "estratti_conti" else "estratti_metodi"
+        )
+        EstrattiPdf.condividi(this, f, titolo)
     }
 
     private class ChiediMsg(val domanda: String, var risposta: String?, var errore: Boolean = false)
