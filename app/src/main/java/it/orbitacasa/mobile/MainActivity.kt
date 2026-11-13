@@ -4447,7 +4447,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val PEN_SEZ = listOf("Riepilogo", "Piano", "Versam.", "Valoriz.", "Riscatti")
+    private val PEN_SEZ = listOf("Riepilogo", "Piano del fondo", "Versamenti", "Valorizzazioni", "Riscatti / Anticipazioni")
 
     private fun penChiave() = when (penVista) {
         2 -> Pensione.VERSAMENTI
@@ -4490,15 +4490,17 @@ class MainActivity : AppCompatActivity() {
         val d = Pensione.dati()
         Pensione.errore?.let { vuoto(cont, "⚠️ $it") }
 
-        val rv = LinearLayout(this)
-        rv.orientation = LinearLayout.HORIZONTAL
-        PEN_SEZ.forEachIndexed { i, t ->
-            rv.addView(
-                unaRiga(pulsanteSel(t, penVista == i) { penVista = i; renderPensione() }),
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            )
+        val scelta = pulsanteSel("Vista:  " + PEN_SEZ[penVista] + "   ▾", true) {
+            OcBuilder(this)
+                .setTitle("Scegli la vista")
+                .setItems(PEN_SEZ.mapIndexed { i, t -> (if (i == penVista) "● " else "○ ") + t }.toTypedArray()) { _, i ->
+                    penVista = i
+                    renderPensione()
+                }
+                .setNegativeButton("Chiudi", null)
+                .show()
         }
-        cont.addView(rv)
+        cont.addView(scelta, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         when (penVista) {
             0 -> penRiepilogo(cont, d)
