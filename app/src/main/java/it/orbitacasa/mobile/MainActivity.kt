@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private var meseCal: YearMonth = YearMonth.now()
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
+    private var penVista = 0
     private var scadutiAperti = false
     private var catCerca = ""
     private var catOrdine = "Nome"
@@ -159,6 +160,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.FINANZIAMENTI -> dialogFin(null)
                 Pagina.FONDO -> dialogObiettivoFondo()
                 Pagina.CASACARE -> dialogCasaCare(null)
+                Pagina.PENSIONE -> penAggiungi()
                 Pagina.PIANIFICA -> dialogNuovoPiano()
                 Pagina.DOCUMENTI, Pagina.DOCPERS -> nuovoDocumento()
                 Pagina.UTENZE -> dialogNuovaLettura()
@@ -193,6 +195,8 @@ class MainActivity : AppCompatActivity() {
                 dialogImportiFondo()
             } else if (pagina == Pagina.CASACARE) {
                 dialogFiltriCasa()
+            } else if (pagina == Pagina.PENSIONE) {
+                esportaPensione()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -363,7 +367,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -429,6 +433,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🔁", "Ricorrenze") { mostra(Pagina.RICORRENZE) },
                 Tessera("💶", "Finanziamenti") { mostra(Pagina.FINANZIAMENTI) },
                 Tessera("💰", "Fondo Risparmio") { mostra(Pagina.FONDO) },
+                Tessera("🏖️", "Fondo Pensione") { mostra(Pagina.PENSIONE) },
             )
         )
         gruppo(
@@ -481,6 +486,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.NOTIFICHE, "📩", "Notifiche"),
         Dest(Pagina.FINANZIAMENTI, "💶", "Finanz."),
         Dest(Pagina.FONDO, "💰", "Fondo"),
+        Dest(Pagina.PENSIONE, "🏖️", "Pensione"),
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
         Dest(Pagina.DOCPERS, "🪪", "Personali"),
         Dest(Pagina.UTENZE, "💡", "Utenze"),
@@ -1075,6 +1081,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.AUTOPARK, Pagina.IMMOBIL, Pagina.PET -> renderScheda()
             Pagina.FONDO -> renderFondo()
             Pagina.CASACARE -> renderCasaCare()
+            Pagina.PENSIONE -> renderPensione()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -4437,6 +4444,334 @@ class MainActivity : AppCompatActivity() {
             dlg.dismiss()
             refresh()
             aviso("Obiettivo aggiunto")
+        }
+    }
+
+    private val PEN_SEZ = listOf("📊 Riepilogo", "📋 Piano", "💶 Versamenti", "📈 Valorizzazioni", "↩️ Riscatti")
+
+    private fun penChiave() = when (penVista) {
+        2 -> Pensione.VERSAMENTI
+        3 -> Pensione.VALORIZZAZIONI
+        4 -> Pensione.RISCATTI
+        else -> ""
+    }
+
+    private fun penAggiungi() {
+        when (penVista) {
+            1 -> dialogPianoPensione()
+            3 -> dialogVocePensione(Pensione.VALORIZZAZIONI, null)
+            4 -> dialogVocePensione(Pensione.RISCATTI, null)
+            else -> dialogVocePensione(Pensione.VERSAMENTI, null)
+        }
+    }
+
+    private fun esportaPensione() {
+        val k = penChiave()
+        if (k.isEmpty()) return
+        val d = Pensione.dati()
+        val titolo = when (k) {
+            Pensione.VERSAMENTI -> "Versamenti fondo pensione"
+            Pensione.VALORIZZAZIONI -> "Valorizzazioni fondo pensione"
+            else -> "Riscatti fondo pensione"
+        }
+        val f = try {
+            PensionePdf.crea(this, d, k)
+        } catch (e: Exception) {
+            aviso("Errore nella creazione del PDF: " + e.message)
+            return
+        }
+        PensionePdf.condividi(this, f, titolo)
+    }
+
+    private fun renderPensione() {
+        val azioni = listOf("➕  Nuovo versamento", "✏️  Modifica piano", "➕  Nuovo versamento", "➕  Nuova valorizzazione", "➕  Nuovo riscatto")
+        intestaLista("🏖️ Fondo Pensione", azioni[penVista], if (penVista in 2..4) "📄  Esporta PDF" else null)
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val d = Pensione.dati()
+        Pensione.errore?.let { vuoto(cont, "⚠️ $it") }
+
+        val hs = android.widget.HorizontalScrollView(this)
+        hs.isHorizontalScrollBarEnabled = false
+        val barraSez = LinearLayout(this)
+        barraSez.orientation = LinearLayout.HORIZONTAL
+        PEN_SEZ.forEachIndexed { i, t ->
+            val b = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+            b.text = t
+            if (i == penVista) giallo(b)
+            b.setOnClickListener { penVista = i; renderPensione() }
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.marginEnd = 8
+            barraSez.addView(b, lp)
+        }
+        hs.addView(barraSez)
+        cont.addView(hs)
+
+        when (penVista) {
+            0 -> penRiepilogo(cont, d)
+            1 -> penPiano(cont, d)
+            else -> penElenco(cont, d, penChiave())
+        }
+    }
+
+    private fun penRiepilogo(cont: LinearLayout, d: Pensione.Dati) {
+        val dp = resources.displayMetrics.density
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val blu = ContextCompat.getColor(this, R.color.oc_blue)
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val t = Pensione.totali(d)
+        val p = d.piano
+        val intest = listOf(p.nome, p.gestore, p.comparto).filter { it.isNotBlank() }.joinToString(" · ")
+        if (intest.isNotEmpty()) vuoto(cont, intest)
+        if (d.vers.isEmpty() && d.valor.isEmpty() && d.risc.isEmpty()) {
+            vuoto(cont, "Nessun dato: aggiungi versamenti e valorizzazioni, oppure sincronizza col desktop.")
+        }
+
+        sezione(cont, "SITUAZIONE")
+        riga(cont, "Totale versato", "", euro(t.versato), null, null)
+        riga(cont, "Controvalore attuale", t.ultimaValor?.let { "al " + it.data } ?: "nessuna valorizzazione", euro(t.controvalore), null, null)
+        riga(cont, "Totale riscattato", "", euro(t.riscattato), null, null)
+        riga(
+            cont, "Rendimento", String.format(Locale.ITALY, "%.1f", t.rendPct) + "%",
+            segnoEuro(t.rendEur), if (t.rendEur >= 0) verde else rosso, null
+        )
+
+        sezione(cont, "VERSATO PER TIPO")
+        for ((tipo, imp) in t.perTipo) riga(cont, tipo, "", euro(imp), null, null)
+        if (t.deducibileAnno > Pensione.LIMITE_DEDUCIBILE_ANNUO) {
+            riga(
+                cont, "⚠ Superato il limite deducibile " + LocalDate.now().year,
+                "Versamenti lavoratore + datore + volontari, contro un tetto di " + euro(Pensione.LIMITE_DEDUCIBILE_ANNUO),
+                euro(t.deducibileAnno), arancio, null
+            )
+        }
+
+        val tfr = Pensione.confrontoTfr(d)
+        if (tfr.versato > 0) {
+            sezione(cont, "CONFRONTO CON TFR IN AZIENDA (STIMA)")
+            riga(cont, "TFR versato al fondo", "", euro(tfr.versato), null, null)
+            riga(
+                cont, "Rivalutazione teorica in azienda",
+                "tasso stimato " + String.format(Locale.ITALY, "%.2f", tfr.tassoAnnuo * 100) + "%/anno",
+                euro(tfr.teorico), null, null
+            )
+            riga(cont, "Differenza", "", segnoEuro(tfr.teorico - tfr.versato), null, null)
+            vuoto(
+                cont,
+                "Stima approssimativa: 1,5% fisso + 75% dell'inflazione stimata (si imposta in Piano) su ogni versamento TFR " +
+                    "dalla sua data a oggi. Non considera la fiscalità del fondo né quella del TFR in azienda."
+            )
+        }
+
+        sezione(cont, "PROIEZIONE A SCADENZA")
+        val pr = Pensione.proiezione(d)
+        if (pr == null) {
+            vuoto(cont, "Imposta una data di pensionamento futura nella sezione Piano per vedere la proiezione.")
+        } else {
+            riga(
+                cont, "Capitale lordo stimato",
+                "tra " + String.format(Locale.ITALY, "%.1f", pr.anniMancanti) + " anni · rendimento netto " +
+                    String.format(Locale.ITALY, "%.2f", pr.tassoNetto * 100) + "%/anno",
+                euro(pr.lordo), null, null
+            )
+            riga(
+                cont, "Aliquota sulla prestazione",
+                String.format(Locale.ITALY, "%.1f", pr.anniIscr) + " anni di iscrizione alla scadenza",
+                String.format(Locale.ITALY, "%.1f", pr.aliquota * 100) + "%", null, null
+            )
+            riga(cont, "Capitale netto stimato", "dopo la tassazione della prestazione", euro(pr.netto), verde, null)
+        }
+
+        sezione(cont, "ANDAMENTO · VERSATO NETTO E CONTROVALORE")
+        val punti = Pensione.andamento(d)
+        if (punti.isEmpty()) {
+            vuoto(cont, "Aggiungi almeno una valorizzazione per vedere il grafico.")
+            return
+        }
+        val tl = TextView(this)
+        val legTxt = "■ Versato netto     ■ Controvalore"
+        val sp = android.text.SpannableString(legTxt)
+        sp.setSpan(android.text.style.ForegroundColorSpan(blu), 0, 1, 0)
+        val k2 = legTxt.lastIndexOf('■')
+        sp.setSpan(android.text.style.ForegroundColorSpan(verde), k2, k2 + 1, 0)
+        tl.text = sp
+        tl.textSize = 12f
+        tl.setPadding(4, (4 * dp).toInt(), 4, (4 * dp).toInt())
+        cont.addView(tl)
+        val g = GraficoView(this)
+        g.imposta(
+            GraficoView.Modo.LINEA,
+            punti.map { String.format(Locale.ITALY, "%02d/%02d", it.data.monthValue, it.data.year % 100) },
+            punti.map { it.versato }, punti.map { it.controvalore }, blu, verde, grigio,
+            ContextCompat.getColor(this, R.color.oc_border), grigio,
+            ContextCompat.getColor(this, R.color.oc_surface),
+        )
+        val det = TextView(this)
+        det.textSize = 13f
+        det.setPadding(8, (6 * dp).toInt(), 8, (6 * dp).toInt())
+        det.text = "Tocca il grafico per vedere i dettagli."
+        det.setTextColor(grigio)
+        det.minLines = 2
+        g.alSelezionare = { i ->
+            val x = punti[i]
+            det.text = Pensione.fmt(x.data) + "\nVersato netto " + euro(x.versato) + " · Controvalore " + euro(x.controvalore)
+            det.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        }
+        cont.addView(g, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (190 * dp).toInt()))
+        cont.addView(det)
+    }
+
+    private fun penPiano(cont: LinearLayout, d: Pensione.Dati) {
+        val p = d.piano
+        fun v(s: String) = s.ifBlank { "—" }
+        fun n(x: Double, u: String) = String.format(Locale.ITALY, "%.2f", x) + u
+        val apri = { dialogPianoPensione() }
+        sezione(cont, "DATI DEL PIANO")
+        riga(cont, "Nome fondo", "", v(p.nome), null, apri)
+        riga(cont, "Gestore", "", v(p.gestore), null, apri)
+        riga(cont, "Comparto", "", v(p.comparto), null, apri)
+        riga(cont, "Tipo piano", "", p.tipo, null, apri)
+        riga(cont, "Data adesione", "", v(p.adesione), null, apri)
+        riga(cont, "Inflazione media stimata", "usata per il confronto con la rivalutazione del TFR", n(p.inflazione, "%"), null, apri)
+        riga(cont, "Note", "", v(p.note), null, apri)
+        sezione(cont, "PROIEZIONE A SCADENZA E COSTI")
+        riga(cont, "Data prevista pensionamento", "", v(p.dataPensione), null, apri)
+        riga(cont, "Versamento annuo stimato", "", euro(p.versAnnuo), null, apri)
+        riga(cont, "Rendimento atteso", "all'anno", n(p.rendAtteso, "%"), null, apri)
+        riga(cont, "Costo di gestione (ISC)", "all'anno; riduce il rendimento atteso", n(p.costoGestione, "%"), null, apri)
+    }
+
+    private fun penElenco(cont: LinearLayout, d: Pensione.Dati, chiave: String) {
+        val l = Pensione.ordinate(
+            when (chiave) {
+                Pensione.VERSAMENTI -> d.vers
+                Pensione.VALORIZZAZIONI -> d.valor
+                else -> d.risc
+            }
+        )
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessuna voce. Tocca il pulsante in alto per aggiungerne una.")
+            return
+        }
+        if (chiave != Pensione.VALORIZZAZIONI) {
+            riga(cont, l.size.toString() + " voci", "", euro(l.sumOf { it.importo }), null, null)
+        }
+        for (m in l) {
+            val sotto = listOf(m.tipo, m.motivo, m.note).filter { it.isNotBlank() }.joinToString(" · ")
+            riga(cont, m.data, sotto, euro(m.importo), null) { menuVocePensione(chiave, m) }
+        }
+    }
+
+    private fun menuVocePensione(chiave: String, m: Pensione.Mov) {
+        OcBuilder(this)
+            .setTitle(m.data + " · " + euro(m.importo))
+            .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                if (k == 0) dialogVocePensione(chiave, m) else OcBuilder(this)
+                    .setTitle("Eliminare la voce?")
+                    .setMessage(m.data + " · " + euro(m.importo))
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Elimina") { _, _ ->
+                        val err = Pensione.elimina(chiave, m.id)
+                        if (err != null) aviso(err) else { refresh(); aviso("Voce eliminata") }
+                    }
+                    .show()
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogVocePensione(chiave: String, m: Pensione.Mov?) {
+        val (view, corpo) = corpoDialogo()
+        var dt: LocalDate? = m?.let { Pensione.data(it.data) } ?: LocalDate.now()
+        bottoneData(corpo, "Data", dt, false) { dt = it }
+        var tipo = m?.tipo?.takeIf { it.isNotBlank() } ?: ""
+        if (chiave != Pensione.VALORIZZAZIONI) {
+            val base = if (chiave == Pensione.VERSAMENTI) Pensione.TIPI_VERSAMENTO else Pensione.TIPI_RISCATTO
+            if (tipo.isEmpty()) tipo = base[0]
+            val voci = if (tipo in base) base else base + tipo
+            campoMenu(corpo, "Tipo", voci, tipo) { tipo = voci[it] }
+        }
+        val etImp = campoTesto(
+            corpo, if (chiave == Pensione.VALORIZZAZIONI) "Controvalore (€)" else "Importo (€)",
+            if (m != null) String.format(Locale.ITALY, "%.2f", m.importo) else "", TIPO_DECIMALE, 12
+        )
+        val cap = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        val etMotivo = if (chiave == Pensione.RISCATTI) campoTesto(corpo, "Motivo", m?.motivo ?: "", cap, 30) else null
+        val etNote = campoTesto(corpo, "Note", m?.note ?: "", cap, if (chiave == Pensione.RISCATTI) 30 else 40)
+        val nome = when (chiave) {
+            Pensione.VERSAMENTI -> "versamento"
+            Pensione.VALORIZZAZIONI -> "valorizzazione"
+            else -> "riscatto"
+        }
+        val dlg = OcBuilder(this)
+            .setTitle(if (m == null) "Nuovo $nome" else "Modifica $nome")
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val imp = importoOk(etImp.text.toString())
+            if (imp == null) { etImp.error = "Importo non valido"; return@setOnClickListener }
+            val err = Pensione.salvaVoce(
+                chiave, m?.id, dt, tipo, imp,
+                etMotivo?.text?.toString() ?: "", etNote.text.toString()
+            )
+            if (err != null) { aviso(err); return@setOnClickListener }
+            dlg.dismiss()
+            refresh()
+            aviso("Voce salvata")
+        }
+    }
+
+    private fun dialogPianoPensione() {
+        val p = Pensione.dati().piano
+        val (view, corpo) = corpoDialogo()
+        val cap = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        fun nt(x: Double) = String.format(Locale.ITALY, "%.2f", x)
+        val etNome = campoTesto(corpo, "Nome fondo", p.nome, cap, 60)
+        val etGest = campoTesto(corpo, "Gestore", p.gestore, cap, 60)
+        val etComp = campoTesto(corpo, "Comparto", p.comparto, cap, 60)
+        var tipo = p.tipo
+        val voci = if (tipo in Pensione.TIPI_PIANO) Pensione.TIPI_PIANO else Pensione.TIPI_PIANO + tipo
+        campoMenu(corpo, "Tipo piano", voci, tipo) { tipo = voci[it] }
+        var ades: LocalDate? = Pensione.data(p.adesione)
+        bottoneData(corpo, "Data adesione (pressione lunga = nessuna)", ades, true) { ades = it }
+        val etInfl = campoTesto(corpo, "Inflazione media stimata (%/anno)", nt(p.inflazione), TIPO_DECIMALE_NEG, 7)
+        val etNote = campoTesto(corpo, "Note", p.note, cap, 80)
+        var pens: LocalDate? = Pensione.data(p.dataPensione)
+        bottoneData(corpo, "Data prevista pensionamento (pressione lunga = nessuna)", pens, true) { pens = it }
+        val etVers = campoTesto(corpo, "Versamento annuo stimato (€)", if (p.versAnnuo > 0) nt(p.versAnnuo) else "", TIPO_DECIMALE, 12)
+        val etRend = campoTesto(corpo, "Rendimento atteso (%/anno)", nt(p.rendAtteso), TIPO_DECIMALE_NEG, 7)
+        val etCosto = campoTesto(corpo, "Costo di gestione annuo (% ISC)", nt(p.costoGestione), TIPO_DECIMALE_NEG, 7)
+        val dlg = OcBuilder(this)
+            .setTitle("Piano fondo pensione")
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            fun pct(et: com.google.android.material.textfield.TextInputEditText, nomeCampo: String): Double? {
+                val x = if (et.text.isNullOrBlank()) null else num(et.text.toString())
+                if (x == null || x < -100 || x > 100) { et.error = "$nomeCampo non valido"; return null }
+                return x
+            }
+            val infl = pct(etInfl, "Valore") ?: return@setOnClickListener
+            val rend = pct(etRend, "Valore") ?: return@setOnClickListener
+            val costo = pct(etCosto, "Valore") ?: return@setOnClickListener
+            val vers = importoOk(etVers.text.toString(), ammettiZero = true)
+            if (vers == null) { etVers.error = "Importo non valido"; return@setOnClickListener }
+            val err = Pensione.salvaPiano(
+                etNome.text.toString(), etGest.text.toString(), etComp.text.toString(), tipo,
+                ades?.format(FMT_DATA) ?: "", infl, etNote.text.toString(),
+                pens?.format(FMT_DATA) ?: "", vers, rend, costo
+            )
+            if (err != null) { aviso(err); return@setOnClickListener }
+            dlg.dismiss()
+            refresh()
+            aviso("Piano salvato")
         }
     }
 

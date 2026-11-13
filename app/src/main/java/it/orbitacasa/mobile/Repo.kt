@@ -179,6 +179,7 @@ object Repo {
         Pet.init(dir)
         Fondo.init(dir)
         Casa.init(dir)
+        Pensione.init(dir)
         Doc.init(dir)
         Utenze.init(dir)
         Prom.init(dir)

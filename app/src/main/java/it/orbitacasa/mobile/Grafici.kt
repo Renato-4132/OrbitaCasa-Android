@@ -153,7 +153,7 @@ class GraficoView(ctx: Context) : View(ctx) {
         super.onDraw(c)
         val n = etichette.size
         if (n == 0) return
-        val valori = (a + (if (modo == Modo.BARRE_DOPPIE) b else emptyList())).filterNotNull()
+        val valori = (a + (if (modo == Modo.BARRE_DOPPIE || modo == Modo.LINEA) b else emptyList())).filterNotNull()
         val minV = min(0.0, valori.minOrNull() ?: 0.0)
         val maxV = max(0.0, valori.maxOrNull() ?: 0.0)
         val (lo, hi, step) = scala(minV, maxV)
@@ -217,26 +217,29 @@ class GraficoView(ctx: Context) : View(ctx) {
                 }
             }
             Modo.LINEA -> {
-                val path = Path()
-                var aperto = false
-                p.style = Paint.Style.STROKE
-                p.strokeWidth = 2 * dp
-                p.color = colA
-                for (i in 0 until n) {
-                    val v = a.getOrNull(i)
-                    if (v == null) { aperto = false; continue }
-                    val x = (sinistra + slot * (i + 0.5)).toFloat()
-                    if (!aperto) { path.moveTo(x, yPx(v)); aperto = true } else path.lineTo(x, yPx(v))
-                }
-                c.drawPath(path, p)
-                p.style = Paint.Style.FILL
-                for (i in 0 until n) {
-                    val v = a.getOrNull(i) ?: continue
-                    val x = (sinistra + slot * (i + 0.5)).toFloat()
-                    p.color = colPunto
-                    c.drawCircle(x, yPx(v), 4.5f * dp, p)
-                    p.color = colA
-                    c.drawCircle(x, yPx(v), 3f * dp, p)
+                for ((serie, col) in listOf(a to colA, b to colB)) {
+                    if (serie.isEmpty()) continue
+                    val path = Path()
+                    var aperto = false
+                    p.style = Paint.Style.STROKE
+                    p.strokeWidth = 2 * dp
+                    p.color = col
+                    for (i in 0 until n) {
+                        val v = serie.getOrNull(i)
+                        if (v == null) { aperto = false; continue }
+                        val x = (sinistra + slot * (i + 0.5)).toFloat()
+                        if (!aperto) { path.moveTo(x, yPx(v)); aperto = true } else path.lineTo(x, yPx(v))
+                    }
+                    c.drawPath(path, p)
+                    p.style = Paint.Style.FILL
+                    for (i in 0 until n) {
+                        val v = serie.getOrNull(i) ?: continue
+                        val x = (sinistra + slot * (i + 0.5)).toFloat()
+                        p.color = colPunto
+                        c.drawCircle(x, yPx(v), 4.5f * dp, p)
+                        p.color = col
+                        c.drawCircle(x, yPx(v), 3f * dp, p)
+                    }
                 }
             }
         }
