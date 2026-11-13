@@ -4,4 +4,3 @@ local.properties
 .idea/
 *.iml
 *.keystore
-!Profilo_Demo.zip
