@@ -7,7 +7,6 @@
 ![Android](https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white)
 ![Standalone](https://img.shields.io/badge/App-Standalone-4f46e5?style=flat-square)
-![Versione](https://img.shields.io/badge/VERSIONE-1.0.65-orange?style=flat-square)
 ![Cloud](https://img.shields.io/badge/Cloud-Zero_di_default-22c55e?style=flat-square)
 
 ---
