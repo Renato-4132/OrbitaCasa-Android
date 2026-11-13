@@ -4335,6 +4335,15 @@ class MainActivity : AppCompatActivity() {
 
         sezione(cont, "FONDO DI EMERGENZA")
         riga(cont, "Fondo attuale", "Spesa media " + euro(a.mediaU) + "/mese", euro(fondo), null, { dialogImportiFondo() })
+        val tasso = Fondo.tassoAnnuo()
+        if (tasso > 0) {
+            val annui = fondo * tasso / 100
+            riga(
+                cont, "Interessi stimati",
+                "tasso " + String.format(Locale.ITALY, "%.2f", tasso) + "% annuo (lordo) · " + euro(annui / 12) + "/mese",
+                euro(annui) + "/anno", verde, { dialogImportiFondo() }
+            )
+        }
         barraFondo(cont, "Obiettivo 3 mesi", fondo, a.fe3)
         barraFondo(cont, "Obiettivo 6 mesi", fondo, a.fe6)
         barraFondo(cont, "Obiettivo 12 mesi", fondo, a.fe12)
@@ -4409,6 +4418,7 @@ class MainActivity : AppCompatActivity() {
         fun testoNum(x: Double) = if (x > 0) String.format(Locale.ITALY, "%.2f", x) else ""
         val etFondo = campoTesto(corpo, "Fondo attuale (€)", testoNum(Fondo.fondoAttuale()), TIPO_DECIMALE, 12)
         val etAnn = campoTesto(corpo, "Obiettivo di risparmio annuale (€)", testoNum(Fondo.obiettivoAnnuale()), TIPO_DECIMALE, 12)
+        val etTasso = campoTesto(corpo, "Tasso di interesse annuo del fondo (%)", testoNum(Fondo.tassoAnnuo()), TIPO_DECIMALE, 6)
         val dlg = OcBuilder(this)
             .setTitle("Fondo risparmio")
             .setMessage("Lascia vuoto per zero.")
@@ -4422,7 +4432,9 @@ class MainActivity : AppCompatActivity() {
             val o = importoOk(etAnn.text.toString(), ammettiZero = true)
             if (f == null) { etFondo.error = "Importo non valido"; return@setOnClickListener }
             if (o == null) { etAnn.error = "Importo non valido"; return@setOnClickListener }
-            val err = Fondo.salvaImporti(o, f)
+            val t = importoOk(etTasso.text.toString(), ammettiZero = true)
+            if (t == null || t > 100.0) { etTasso.error = "Tasso non valido (0–100)"; return@setOnClickListener }
+            val err = Fondo.salvaImporti(o, f, t)
             if (err != null) { aviso(err); return@setOnClickListener }
             dlg.dismiss()
             refresh()

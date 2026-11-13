@@ -52,6 +52,7 @@ object Fondo {
 
     fun obiettivoAnnuale(): Double = leggi().optDouble("obiettivo_annuale", 0.0)
     fun fondoAttuale(): Double = leggi().optDouble("fondo_attuale", 0.0)
+    fun tassoAnnuo(): Double = leggi().optDouble("tasso_annuo", 0.0)
 
     fun obiettivi(): List<Obiettivo> {
         val a = leggi().optJSONArray("obiettivi") ?: return emptyList()
@@ -61,11 +62,13 @@ object Fondo {
         }
     }
 
-    fun salvaImporti(obiettivoAnnuale: Double, fondo: Double): String? {
+    fun salvaImporti(obiettivoAnnuale: Double, fondo: Double, tasso: Double? = null): String? {
         if (obiettivoAnnuale < 0 || fondo < 0) return "Valori non validi."
+        if (tasso != null && (tasso.isNaN() || tasso < 0 || tasso > 100)) return "Tasso non valido: inserisci un valore tra 0 e 100."
         return modifica {
             it.put("obiettivo_annuale", obiettivoAnnuale)
             it.put("fondo_attuale", fondo)
+            if (tasso != null) it.put("tasso_annuo", tasso)
             null
         }
     }
