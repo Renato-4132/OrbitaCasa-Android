@@ -141,6 +141,8 @@ object Pensione {
 
     fun ordinate(l: List<Mov>): List<Mov> = l.sortedByDescending { chiaveData(it.data) }
 
+    // ---- calcoli (stessi del desktop) ----
+
     fun anniIscrizione(d: Dati, rif: LocalDate = LocalDate.now()): Double {
         val ades = data(d.piano.adesione) ?: return 0.0
         return maxOf(ChronoUnit.DAYS.between(ades, rif) / 365.25, 0.0)
@@ -220,6 +222,8 @@ object Pensione {
                 d.risc.filter { chiaveData(it.data) <= dd }.sumOf { it.importo }
             Punto(dd, netto, v.importo)
         }
+
+    // ---- modifiche ----
 
     fun salvaPiano(
         nome: String, gestore: String, comparto: String, tipo: String, adesione: String,

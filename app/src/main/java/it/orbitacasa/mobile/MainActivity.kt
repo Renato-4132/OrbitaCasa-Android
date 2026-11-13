@@ -4447,7 +4447,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val PEN_SEZ = listOf("📊 Riepilogo", "📋 Piano", "💶 Versamenti", "📈 Valorizzazioni", "↩️ Riscatti")
+    private val PEN_SEZ = listOf("Riepilogo", "Piano", "Versam.", "Valoriz.", "Riscatti")
 
     private fun penChiave() = when (penVista) {
         2 -> Pensione.VERSAMENTI
@@ -4490,21 +4490,15 @@ class MainActivity : AppCompatActivity() {
         val d = Pensione.dati()
         Pensione.errore?.let { vuoto(cont, "⚠️ $it") }
 
-        val hs = android.widget.HorizontalScrollView(this)
-        hs.isHorizontalScrollBarEnabled = false
-        val barraSez = LinearLayout(this)
-        barraSez.orientation = LinearLayout.HORIZONTAL
+        val rv = LinearLayout(this)
+        rv.orientation = LinearLayout.HORIZONTAL
         PEN_SEZ.forEachIndexed { i, t ->
-            val b = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
-            b.text = t
-            if (i == penVista) giallo(b)
-            b.setOnClickListener { penVista = i; renderPensione() }
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.marginEnd = 8
-            barraSez.addView(b, lp)
+            rv.addView(
+                unaRiga(pulsanteSel(t, penVista == i) { penVista = i; renderPensione() }),
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            )
         }
-        hs.addView(barraSez)
-        cont.addView(hs)
+        cont.addView(rv)
 
         when (penVista) {
             0 -> penRiepilogo(cont, d)
