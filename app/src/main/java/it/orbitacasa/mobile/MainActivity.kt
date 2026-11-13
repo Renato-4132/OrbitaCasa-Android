@@ -1158,6 +1158,10 @@ class MainActivity : AppCompatActivity() {
         tvSub.visibility = if (sotto.isEmpty()) View.GONE else View.VISIBLE
         val tvImp = r.findViewById<TextView>(R.id.tvImp)
         tvImp.text = valore
+        // Valori lunghi (es. Note): limita la larghezza così il titolo non viene schiacciato
+        // e il valore va a capo.
+        tvImp.maxWidth = (resources.displayMetrics.widthPixels * 0.55f).toInt()
+        tvImp.gravity = android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
         if (colore != null) tvImp.setTextColor(colore)
         if (click != null) r.setOnClickListener { click() } else {
             r.isClickable = false
