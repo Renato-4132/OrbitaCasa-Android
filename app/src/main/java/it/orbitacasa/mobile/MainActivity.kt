@@ -85,8 +85,8 @@ class MainActivity : AppCompatActivity() {
     private var catCerca = ""
     private var catOrdine = "Nome"
     private var catSoloVuote = false
-    private var catUsciteAperte = true
-    private var catEntrateAperte = true
+    private var catUsciteAperte = false
+    private var catEntrateAperte = false
     private var meseProm: YearMonth = YearMonth.now()
     private var giornoProm: LocalDate? = LocalDate.now()
     private var giornoCal: LocalDate? = LocalDate.now()
@@ -1929,10 +1929,8 @@ class MainActivity : AppCompatActivity() {
         val anni = anAnni()
         val annoT = anAnno.toIntOrNull() ?: oggi.year
         val nomiCat = listOf(AN_TUTTE) + Repo.categorie().sortedBy { it.lowercase() }
-        anRiga(cont) { r ->
-            anMenu(r, "Anno", anni.map { it.toString() }, annoT.toString()) { anAnno = anni[it].toString() }
-            anMenu(r, "Categoria", nomiCat, if (anCat in nomiCat) anCat else AN_TUTTE) { anCat = nomiCat[it] }
-        }
+        anMenu(cont, "Anno", anni.map { it.toString() }, annoT.toString()) { anAnno = anni[it].toString() }
+        anMenu(cont, "Categoria", nomiCat, if (anCat in nomiCat) anCat else AN_TUTTE) { anCat = nomiCat[it] }
         anContoFuturi(cont)
         val n = IntArray(13)
         val u = DoubleArray(13)
