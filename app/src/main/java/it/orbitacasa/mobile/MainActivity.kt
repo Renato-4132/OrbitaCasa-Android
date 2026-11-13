@@ -2235,7 +2235,7 @@ class MainActivity : AppCompatActivity() {
         rb.orientation = LinearLayout.HORIZONTAL
         rb.addView(pulsanteSel("✏️ Imposta target", false) { dialogTarget() },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        rb.addView(pulsanteSel("💡 Suggerisci target", false) { dialogSuggerisciTarget() },
+        rb.addView(pulsanteSel("💡 Suggerisci", false) { dialogSuggerisciTarget() },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         cont.addView(rb)
 
