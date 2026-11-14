@@ -184,7 +184,7 @@ object Sync {
                     .putString("profilo", nome)
                     .putString("blocco", "")
                     .apply()
-                main.post { avanzamento("Il PC si sta riavviando...") }
+                main.post { avanzamento("OrbitaCasa sul PC si sta riavviando...") }
                 val nuovo = Http(nuovoUrl, token, improntaFissata(app))
                 var ok = false
                 val fineAttesa = System.currentTimeMillis() + 60_000L
@@ -200,7 +200,7 @@ object Sync {
                     }
                 }
                 if (!ok) {
-                    err = "Il PC non ha ancora riavviato il profilo «$nome». Il telefono è già passato a «$nome»: " +
+                    err = "OrbitaCasa sul PC non ha ancora riavviato il profilo «$nome». Il telefono è già passato a «$nome»: " +
                         "aspetta che OrbitaCasa sia pronta sul PC e poi sincronizza."
                 }
             } catch (e: SyncErr) {

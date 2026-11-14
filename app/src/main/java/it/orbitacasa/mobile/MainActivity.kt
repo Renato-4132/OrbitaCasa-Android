@@ -398,6 +398,15 @@ class MainActivity : AppCompatActivity() {
         val uscite = delMese.filter { it.tipo == "Uscita" }.sumOf { it.importo }
         val saldo = entrate - uscite
         vista<TextView>(R.id.rMese).text = maiuscola(ym.format(FMT_MESE))
+        vista<TextView>(R.id.tvProfiloHome).let { t ->
+            val prof = if (Sync.configurato(this)) Sync.profilo(this) else ""
+            if (prof.isBlank()) {
+                t.visibility = View.GONE
+            } else {
+                t.text = "👤 $prof"
+                t.visibility = View.VISIBLE
+            }
+        }
         vista<TextView>(R.id.rEntrate).text = euro(entrate)
         vista<TextView>(R.id.rUscite).text = euro(uscite)
         val tvSaldo = vista<TextView>(R.id.rSaldo)
@@ -3354,6 +3363,8 @@ class MainActivity : AppCompatActivity() {
         }
         anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
     }
+
+    // ===== Importa estratto / Controllo estratto (come le finestre del desktop) =====
 
     private fun menuImportaEstratto() {
         OcBuilder(this)
@@ -7816,6 +7827,7 @@ class MainActivity : AppCompatActivity() {
                                 Repo.cambiaDatiProfilo(applicationContext, coll, c.profiloPc)
                                 Sync.ricollega(applicationContext, c.profiloPc)
                                 refresh()
+                                riapriSync()
                                 eseguiSync(false)
                             } catch (e: Exception) {
                                 aviso("Ricollegamento non riuscito: " + e.message)
@@ -7897,10 +7909,10 @@ class MainActivity : AppCompatActivity() {
         stato.setPadding(4, 8, 4, 4)
         corpo.addView(stato)
 
-        OcBuilder(this)
+        dlgSync = OcBuilder(this)
             .setTitle("🔗 Sync con il PC")
             .setView(view)
-            .setPositiveButton("Sincronizza") { _, _ ->
+            .setPositiveButton("Sync") { _, _ ->
                 avviaSync(etUrl.text.toString(), etTok.text.toString(), chk.isChecked)
             }
             .setNeutralButton("Scollega") { _, _ ->
@@ -7910,6 +7922,15 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Chiudi", null)
             .show()
+        dlgSync?.setOnDismissListener { dlgSync = null }
+    }
+
+    private var dlgSync: androidx.appcompat.app.AlertDialog? = null
+
+    private fun riapriSync() {
+        dlgSync?.dismiss()
+        dlgSync = null
+        dialogSync()
     }
 
     private fun confermaCambioProfilo(nome: String, attivoPc: String, conPassword: Boolean) {
@@ -7923,7 +7944,7 @@ class MainActivity : AppCompatActivity() {
             box.addView(et)
             OcBuilder(this)
                 .setTitle("Profilo protetto")
-                .setMessage("Per passare a «$nome» serve la sua password (la stessa che usi sul PC). Il PC si riavvia con quel profilo e il telefono passa ai suoi dati.")
+                .setMessage("Per passare a «$nome» serve la sua password (la stessa che usi sul PC). OrbitaCasa sul PC si riavvia con quel profilo e il telefono passa ai suoi dati.")
                 .setView(box)
                 .setNegativeButton("Annulla", null)
                 .setPositiveButton("Continua") { _, _ ->
@@ -7941,7 +7962,7 @@ class MainActivity : AppCompatActivity() {
         OcBuilder(this)
             .setTitle("Passare a «$nome»?")
             .setMessage(
-                "Il PC salva i dati e si riavvia con il profilo «$nome» (ci vuole qualche decina di secondi). " +
+                "OrbitaCasa sul PC salva i dati e si riavvia con il profilo «$nome» (ci vuole qualche decina di secondi). " +
                     "Il telefono mette da parte i dati attuali e usa quelli di «$nome»; se non ne ha, li scarica dal PC. " +
                     "Non chiudere l'app finché non finisce."
             )
@@ -7962,6 +7983,7 @@ class MainActivity : AppCompatActivity() {
             if (isFinishing || isDestroyed) return@cambiaProfilo
             dlg.dismiss()
             refresh()
+            riapriSync()
             if (err == null) {
                 eseguiSync(false)
             } else {
