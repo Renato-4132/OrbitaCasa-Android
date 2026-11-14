@@ -80,6 +80,21 @@ class MainActivity : AppCompatActivity() {
     private var mese: YearMonth = YearMonth.now()
     private var sbloccata = false
     private var ultimoStop = 0L
+    private val handlerSync = android.os.Handler(android.os.Looper.getMainLooper())
+    private val timerSync = object : Runnable {
+        override fun run() {
+            if (isFinishing || isDestroyed) return
+            if (Sync.daPeriodico(this@MainActivity)) eseguiSync(true)
+            avviaTimerSync()
+        }
+    }
+
+    /** Sync a schermo acceso: gira solo mentre l'app è visibile (si ferma in onStop). */
+    private fun avviaTimerSync() {
+        handlerSync.removeCallbacks(timerSync)
+        val m = Sync.minFg(this)
+        if (m > 0) handlerSync.postDelayed(timerSync, m * 60_000L)
+    }
     private var syncAvvioFatto = false
     private var meseCal: YearMonth = YearMonth.now()
     private var casaCat = "Tutte"
@@ -313,6 +328,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         ultimoStop = SystemClock.elapsedRealtime()
+        handlerSync.removeCallbacks(timerSync)
         Notif.osservatore = null
     }
 
@@ -324,6 +340,8 @@ class MainActivity : AppCompatActivity() {
         val avvio = !syncAvvioFatto
         syncAvvioFatto = true
         if (Sync.daAutoSync(this, avvio)) eseguiSync(true, avvio)
+        avviaTimerSync()
+        SyncBg.assicura(applicationContext)
     }
 
     override fun onStart() {
@@ -7933,6 +7951,38 @@ class MainActivity : AppCompatActivity() {
         chk.text = "Sincronizza all'apertura dell'app"
         chk.isChecked = Sync.auto(this)
         corpo.addView(chk)
+
+        fun selettore(titolo: String, voci: List<String>, corrente: Int, alScelto: (Int) -> Unit) {
+            val t = TextView(ctxDialogo)
+            t.text = titolo
+            t.setPadding(4, 16, 4, 0)
+            corpo.addView(t)
+            val sp = android.widget.Spinner(ctxDialogo)
+            sp.adapter = ArrayAdapter(ctxDialogo, android.R.layout.simple_spinner_dropdown_item, voci)
+            sp.setSelection(corrente.coerceIn(0, voci.size - 1), false)
+            sp.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    alScelto(pos)
+                }
+
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+            corpo.addView(sp)
+        }
+        val vociBg = (0..12).map { if (it == 0) "Disattivato" else "ogni ${it * 5} minuti" }
+        selettore("Sync in background (app chiusa o in secondo piano)", vociBg, Sync.minBg(this) / 5) { k ->
+            if (k * 5 != Sync.minBg(this)) {
+                Sync.salvaBg(this, k * 5)
+                SyncBg.pianifica(applicationContext)
+            }
+        }
+        val vociFg = (0..5).map { if (it == 0) "Disattivato" else if (it == 1) "ogni minuto" else "ogni $it minuti" }
+        selettore("Sync a schermo acceso (app aperta)", vociFg, Sync.minFg(this)) { k ->
+            if (k != Sync.minFg(this)) {
+                Sync.salvaFg(this, k)
+                avviaTimerSync()
+            }
+        }
         val stato = TextView(ctxDialogo)
         val ult = Sync.ultima(this)
         stato.text = (
@@ -7951,6 +8001,7 @@ class MainActivity : AppCompatActivity() {
             }
             .setNeutralButton("Scollega") { _, _ ->
                 Sync.scollega(this)
+                SyncBg.pianifica(applicationContext)
                 aviso("Sincronizzazione scollegata")
                 refresh()
             }
