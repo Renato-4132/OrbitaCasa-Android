@@ -139,6 +139,14 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importaZip(uri)
         }
+    private val vocale =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            val t = r.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (r.resultCode == RESULT_OK && !t.isNullOrBlank()) {
+                chiediBozza = t
+                invioChiedi()
+            }
+        }
     private var estrattoControllo = false
     private var estrattoInCorso = false
     private var revisioneAperta = false
@@ -497,7 +505,7 @@ class MainActivity : AppCompatActivity() {
             cont, "Strumenti", "🛠️",
             listOf(
                 Tessera("🔀", "Importa / Esporta") { dialogImportaEsporta() },
-                Tessera("🔗", "Sync PC: " + if (Sync.configurato(this)) "attiva" else "no") { dialogSync() },
+                Tessera("🔗" + if (Sync.configurato(this)) " " + Sync.ultima(this).let { if (it > 0) java.text.SimpleDateFormat("HH:mm", Locale.ITALY).format(java.util.Date(it)) else "--:--" } else "", "Sync") { dialogSync() },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
                 Tessera("🎭", if (Repo.demoAttiva) "Esci dalla demo" else "Modalità demo") {
                     if (Repo.demoAttiva) confermaEsciDemo() else confermaEntraDemo()
@@ -4094,7 +4102,25 @@ class MainActivity : AppCompatActivity() {
         cont.addView(til)
         val inv = pulsanteSel(if (chiediInCorso) "⏳ Sto pensando…" else "➤ Chiedi", true) { invioChiedi() }
         inv.isEnabled = !chiediInCorso
-        cont.addView(inv)
+        val mic = pulsanteSel("🎤", false) {
+            val i = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "it-IT")
+                .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Fai la tua domanda")
+            try {
+                vocale.launch(i)
+            } catch (e: Exception) {
+                aviso("Riconoscimento vocale non disponibile")
+            }
+        }
+        mic.isEnabled = !chiediInCorso
+        val rigaChiedi = LinearLayout(this)
+        rigaChiedi.orientation = LinearLayout.HORIZONTAL
+        rigaChiedi.addView(inv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val lpMic = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpMic.marginStart = (8 * resources.displayMetrics.density).toInt()
+        rigaChiedi.addView(mic, lpMic)
+        cont.addView(rigaChiedi)
 
         if (chiediStorico.isEmpty()) {
             vuoto(cont, "Puoi chiedere totali e confronti (\"spese di settembre rispetto a agosto\"), dettagli per conto o categoria, " +
@@ -8148,7 +8174,7 @@ class MainActivity : AppCompatActivity() {
             }
             if (e.modificato || !auto) refresh()
             if (auto) {
-                if (e.ok && e.modificato) aviso("Sync PC: " + e.righe.first())
+                if (e.ok && e.righe.firstOrNull() != "Tutto già allineato") aviso("Sync PC: " + e.righe.first())
                 else if (!e.ok && e.blocco.isNotEmpty()) aviso("Sync PC fermata: " + (e.errore ?: ""))
             } else {
                 OcBuilder(this)
