@@ -191,14 +191,22 @@ object ChiediDb {
         return if (sb.length > MAX_CONTESTO) sb.substring(0, MAX_CONTESTO) + "\n[contesto troncato]" else sb.toString()
     }
 
-    fun prompt(domanda: String, cronologia: List<Pair<String, String>>): String {
+    fun prompt(domanda: String, cronologia: List<Pair<String, String>>, allegati: List<String> = emptyList()): String {
         val crono = if (cronologia.isEmpty()) "" else
             "CONVERSAZIONE PRECEDENTE:\n" +
                 cronologia.joinToString("\n") { "D: " + it.first + "\nR: " + it.second.take(1200) } + "\n\n"
+        val all = if (allegati.isEmpty()) "" else
+            "DOCUMENTI ALLEGATI (" + allegati.size + "), nell'ordine in cui sono allegati alla richiesta: " +
+                allegati.joinToString("; ") + ".\n" +
+                "Leggili e usali per rispondere. Se sono due o più bollette o fatture, confrontale voce per voce " +
+                "(periodo, consumi, prezzo unitario, quota fissa, oneri e imposte, totale) e dì chiaramente quale " +
+                "costa di più e perché, anche in percentuale. Usa i dati del database solo se servono " +
+                "(es. per confrontare con le spese registrate). Se un allegato non è leggibile, dillo.\n\n"
         return "Sei un assistente esperto di finanza personale integrato nell'app OrbitaCasa.\n" +
-            "Rispondi sulla base dei dati forniti sotto. Se un dato richiesto non è disponibile nel contesto, " +
+            "Rispondi sulla base dei dati forniti sotto e degli eventuali documenti allegati. Se un dato richiesto non è disponibile, " +
             "dillo chiaramente invece di inventare numeri.\n\n" +
             "DATI DEL DATABASE:\n" + contesto() + "\n\n" +
+            all +
             crono +
             "DOMANDA DELL'UTENTE:\n" + domanda.trim() + "\n\n" +
             "REGOLE DI RISPOSTA:\n" +

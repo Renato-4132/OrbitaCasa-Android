@@ -86,9 +86,12 @@ object Gemini {
         return l
     }
 
-    private fun chiama(chiave: String, modello: String, mime: String?, b64: String?, prompt: String, cfg: JSONObject): String {
+    private fun chiama(chiave: String, modello: String, mime: String?, b64: String?, prompt: String, cfg: JSONObject): String =
+        chiamaMulti(chiave, modello, if (mime != null && b64 != null) listOf(mime to b64) else emptyList(), prompt, cfg)
+
+    private fun chiamaMulti(chiave: String, modello: String, allegati: List<Pair<String, String>>, prompt: String, cfg: JSONObject): String {
         val parti = JSONArray()
-        if (mime != null && b64 != null) {
+        for ((mime, b64) in allegati) {
             parti.put(JSONObject().put("inline_data", JSONObject().put("mime_type", mime).put("data", b64)))
         }
         parti.put(JSONObject().put("text", prompt))
@@ -138,6 +141,33 @@ object Gemini {
         while (true) {
             try {
                 val t = chiama(chiave, modello, null, null, prompt, cfg).trim()
+                if (t.isEmpty()) throw Errore("Risposta vuota da Gemini")
+                return t
+            } catch (e: Exception) {
+                val m = e.message ?: ""
+                tent++
+                if (tent >= 3 || e is Errore || "HTTP 400" in m || "INVALID_ARGUMENT" in m ||
+                    ("HTTP 429" in m && Regex("retry in \\d+h").containsMatchIn(m))
+                ) throw e
+                Thread.sleep(3000L * tent)
+            }
+        }
+    }
+
+    private const val MAX_ALLEGATI = 12L * 1024 * 1024
+
+    fun chiediTestoAllegati(ctx: Context, prompt: String, files: List<File>): String {
+        if (files.isEmpty()) return chiediTesto(ctx, prompt)
+        val chiave = chiave(ctx)
+        if (chiave.isEmpty()) throw Errore("Imposta la chiave API Gemini")
+        if (files.sumOf { it.length() } > MAX_ALLEGATI) throw Errore("Allegati troppo pesanti (max 12 MB in totale)")
+        val all = files.map { mimeDi(it) to Base64.encodeToString(it.readBytes(), Base64.NO_WRAP) }
+        val modello = modello(ctx)
+        val cfg = JSONObject().put("temperature", 0.2)
+        var tent = 0
+        while (true) {
+            try {
+                val t = chiamaMulti(chiave, modello, all, prompt, cfg).trim()
                 if (t.isEmpty()) throw Errore("Risposta vuota da Gemini")
                 return t
             } catch (e: Exception) {

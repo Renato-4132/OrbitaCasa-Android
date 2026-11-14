@@ -147,6 +147,43 @@ class MainActivity : AppCompatActivity() {
                 invioChiedi()
             }
         }
+    private val chiediAllegati = ArrayList<Pair<java.io.File, String>>()
+    private val apriAllegatiChiedi =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (uris.isNullOrEmpty()) return@registerForActivityResult
+            val dir = java.io.File(cacheDir, "chiedi").also { it.mkdirs() }
+            for (u in uris) {
+                if (chiediAllegati.size >= 4) {
+                    aviso("Massimo 4 allegati")
+                    break
+                }
+                try {
+                    var nome = ""
+                    contentResolver.query(u, null, null, null, null)?.use { c ->
+                        if (c.moveToFirst()) {
+                            val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            if (i >= 0) nome = c.getString(i) ?: ""
+                        }
+                    }
+                    var ext = nome.substringAfterLast('.', "").lowercase()
+                    if (ext !in listOf("pdf", "jpg", "jpeg", "png", "webp", "heic")) {
+                        ext = when (contentResolver.getType(u)) {
+                            "application/pdf" -> "pdf"
+                            "image/png" -> "png"
+                            "image/webp" -> "webp"
+                            "image/heic" -> "heic"
+                            else -> "jpg"
+                        }
+                    }
+                    val dest = java.io.File(dir, "all_" + System.nanoTime() + "." + ext)
+                    contentResolver.openInputStream(u)!!.use { i -> dest.outputStream().use { o -> i.copyTo(o) } }
+                    chiediAllegati.add(dest to nome.ifBlank { "allegato." + ext })
+                } catch (e: Exception) {
+                    aviso("File non leggibile: " + e.message)
+                }
+            }
+            if (pagina == Pagina.CHIEDI) renderChiedi()
+        }
     private var estrattoControllo = false
     private var estrattoInCorso = false
     private var revisioneAperta = false
@@ -219,6 +256,8 @@ class MainActivity : AppCompatActivity() {
                 Pagina.CHIEDI -> {
                     chiediStorico.clear()
                     chiediBozza = ""
+                    chiediAllegati.forEach { it.first.delete() }
+                    chiediAllegati.clear()
                     renderChiedi()
                 }
                 else -> {}
@@ -4069,7 +4108,7 @@ class MainActivity : AppCompatActivity() {
         EstrattiPdf.condividi(this, f, titolo)
     }
 
-    private class ChiediMsg(val domanda: String, var risposta: String?, var errore: Boolean = false)
+    private class ChiediMsg(val domanda: String, var risposta: String?, var errore: Boolean = false, val allegati: String = "")
 
     private val chiediStorico = ArrayList<ChiediMsg>()
     private var chiediBozza = ""
@@ -4088,7 +4127,8 @@ class MainActivity : AppCompatActivity() {
         anTesto(
             cont,
             "Ogni domanda invia a Google Gemini un riepilogo dei tuoi dati: totali per periodo, categorie, conti, budget, " +
-                "finanziamenti e gli ultimi movimenti con la descrizione. Le risposte sono indicative.",
+                "finanziamenti e gli ultimi movimenti con la descrizione. Con 📎 puoi allegare PDF o foto (max 4, 12 MB in totale), " +
+                "ad esempio due bollette da confrontare: anche gli allegati vengono inviati a Gemini. Le risposte sono indicative.",
             colore = medio, size = 12f
         )
         val til = layoutInflater.inflate(R.layout.view_campo, cont, false) as TextInputLayout
@@ -4114,13 +4154,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
         mic.isEnabled = !chiediInCorso
+        val clip = pulsanteSel("📎", false) {
+            if (chiediAllegati.size >= 4) aviso("Massimo 4 allegati")
+            else apriAllegatiChiedi.launch(arrayOf("application/pdf", "image/*"))
+        }
+        clip.isEnabled = !chiediInCorso
         val rigaChiedi = LinearLayout(this)
         rigaChiedi.orientation = LinearLayout.HORIZONTAL
         rigaChiedi.addView(inv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val lpMic = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpMic.marginStart = (8 * resources.displayMetrics.density).toInt()
+        rigaChiedi.addView(clip, LinearLayout.LayoutParams(lpMic))
         rigaChiedi.addView(mic, lpMic)
         cont.addView(rigaChiedi)
+        for (a in chiediAllegati.toList()) {
+            cont.addView(pulsanteSel("✖  " + a.second.take(40), false) {
+                a.first.delete()
+                chiediAllegati.remove(a)
+                renderChiedi()
+            })
+        }
 
         if (chiediStorico.isEmpty()) {
             vuoto(cont, "Puoi chiedere totali e confronti (\"spese di settembre rispetto a agosto\"), dettagli per conto o categoria, " +
@@ -4130,6 +4183,7 @@ class MainActivity : AppCompatActivity() {
         val dp = resources.displayMetrics.density
         for (m in chiediStorico.asReversed()) {
             anTesto(cont, "❓ " + m.domanda, grassetto = true)
+            if (m.allegati.isNotEmpty()) anTesto(cont, "📎 " + m.allegati, colore = medio, size = 12f)
             val t = TextView(this)
             t.text = m.risposta ?: "…"
             t.setTextIsSelectable(true)
@@ -4150,15 +4204,17 @@ class MainActivity : AppCompatActivity() {
         }
         if (chiediInCorso) return
         val cronologia = chiediStorico.filter { !it.errore && it.risposta != null }.takeLast(4).map { it.domanda to it.risposta!! }
+        val allegati = chiediAllegati.toList()
         val prompt = try {
-            ChiediDb.prompt(d, cronologia)
+            ChiediDb.prompt(d, cronologia, allegati.map { it.second })
         } catch (e: Exception) {
             aviso("Impossibile preparare i dati: " + e.message)
             return
         }
-        val m = ChiediMsg(d, null)
+        val m = ChiediMsg(d, null, false, allegati.joinToString(", ") { it.second })
         chiediStorico.add(m)
         chiediBozza = ""
+        chiediAllegati.clear()
         chiediInCorso = true
         renderChiedi()
         val app = applicationContext
@@ -4166,9 +4222,11 @@ class MainActivity : AppCompatActivity() {
             var testo: String? = null
             var err: String? = null
             try {
-                testo = Gemini.chiediTesto(app, prompt)
+                testo = Gemini.chiediTestoAllegati(app, prompt, allegati.map { it.first })
             } catch (e: Exception) {
                 err = Gemini.messaggio(e)
+            } finally {
+                allegati.forEach { it.first.delete() }
             }
             runOnUiThread {
                 chiediInCorso = false
