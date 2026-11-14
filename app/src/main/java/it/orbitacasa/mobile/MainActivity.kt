@@ -4140,7 +4140,8 @@ class MainActivity : AppCompatActivity() {
         et.setText(chiediBozza)
         et.doAfterTextChanged { chiediBozza = it?.toString() ?: "" }
         cont.addView(til)
-        val inv = pulsanteSel(if (chiediInCorso) "⏳ Sto pensando…" else "➤ Chiedi", true) { invioChiedi() }
+        val inv = pulsanteSel(if (chiediInCorso) "⏳ Penso…" else "➤ Chiedi", true) { invioChiedi() }
+        inv.maxLines = 1
         inv.isEnabled = !chiediInCorso
         val mic = pulsanteSel("🎤", false) {
             val i = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
