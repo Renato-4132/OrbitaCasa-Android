@@ -13,6 +13,8 @@ import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -3352,8 +3354,6 @@ class MainActivity : AppCompatActivity() {
         }
         anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
     }
-
-    // ===== Importa estratto / Controllo estratto (come le finestre del desktop) =====
 
     private fun menuImportaEstratto() {
         OcBuilder(this)
@@ -7806,24 +7806,55 @@ class MainActivity : AppCompatActivity() {
                     OcBuilder(this)
                         .setTitle("Ricollega a «${c.profiloPc}»")
                         .setMessage(
-                            "I dati attuali del telefono (profilo «$coll») vengono messi da parte in una " +
-                                "copia di sicurezza e cancellati, poi si scaricano quelli del profilo " +
-                                "«${c.profiloPc}». Senza questo passaggio i due profili si mischierebbero."
+                            "I dati attuali del telefono (profilo «$coll») restano salvati sul telefono e " +
+                                "li ritrovi quando torni a quel profilo. Ora il telefono passa ai dati del " +
+                                "profilo «${c.profiloPc}» (se non ne ha, si scaricano dal PC)."
                         )
                         .setNegativeButton("Annulla", null)
                         .setPositiveButton("Ricollega") { _, _ ->
-                            thread {
-                                try {
-                                    Repo.azzeraPerNuovoProfilo(applicationContext, coll)
-                                    Sync.ricollega(applicationContext, c.profiloPc)
-                                    runOnUiThread { refresh(); eseguiSync(false) }
-                                } catch (e: Exception) {
-                                    runOnUiThread { aviso("Ricollegamento non riuscito: " + e.message) }
-                                }
+                            try {
+                                Repo.cambiaDatiProfilo(applicationContext, coll, c.profiloPc)
+                                Sync.ricollega(applicationContext, c.profiloPc)
+                                refresh()
+                                eseguiSync(false)
+                            } catch (e: Exception) {
+                                aviso("Ricollegamento non riuscito: " + e.message)
                             }
                         }
                         .show()
                 }
+            }
+        }
+        val btnCambia = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnCambia.text = "👤 Cambia profilo sul PC"
+        btnCambia.isAllCaps = false
+        btnCambia.visibility = if (Sync.configurato(this)) View.VISIBLE else View.GONE
+        corpo.addView(btnCambia)
+        btnCambia.setOnClickListener {
+            aviso("Leggo i profili del PC...")
+            Sync.elencoProfili(this) { el, err ->
+                if (isFinishing || isDestroyed) return@elencoProfili
+                if (el == null) {
+                    aviso(err ?: "Impossibile leggere i profili")
+                    return@elencoProfili
+                }
+                val etichette = el.profili.map {
+                    (if (it.nome == el.attivo) "✓ " else "") + it.nome +
+                        (if (!it.server) "  (Web Server spento)" else if (!it.ssl) "  (senza HTTPS)" else "")
+                }.toTypedArray()
+                OcBuilder(this)
+                    .setTitle("Profilo sul PC (attivo: ${el.attivo})")
+                    .setItems(etichette) { _, k ->
+                        val p = el.profili[k]
+                        when {
+                            p.nome == el.attivo -> aviso("Questo profilo è già attivo")
+                            !p.server -> aviso("Nel profilo «${p.nome}» il Web Server è spento: attivalo prima dal PC")
+                            !p.ssl -> aviso("Nel profilo «${p.nome}» l'HTTPS è disattivato: serve per il telefono")
+                            else -> confermaCambioProfilo(p.nome, el.attivo, p.password)
+                        }
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
             }
         }
         mostraControllo()
@@ -7852,11 +7883,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         btnQrTok.setOnClickListener { scansionaQr { v -> etTok.setText(v) } }
-        val tvGem = TextView(ctxDialogo)
-        tvGem.text = "🤖 Analisi automatica (Gemini)"
-        tvGem.setPadding(4, 16, 4, 4)
-        corpo.addView(tvGem)
-        val (etGemK, etGemM) = campiGemini(corpo)
         val chk = MaterialCheckBox(this)
         chk.text = "Sincronizza all'apertura dell'app"
         chk.isChecked = Sync.auto(this)
@@ -7875,10 +7901,6 @@ class MainActivity : AppCompatActivity() {
             .setTitle("🔗 Sync con il PC")
             .setView(view)
             .setPositiveButton("Sincronizza") { _, _ ->
-                val gk = etGemK.text.toString().trim()
-                if (gk.isNotEmpty() && (gk != Gemini.chiave(this) || etGemM.text.toString().trim() != Gemini.modello(this))) {
-                    Gemini.salva(this, gk, etGemM.text.toString())
-                }
                 avviaSync(etUrl.text.toString(), etTok.text.toString(), chk.isChecked)
             }
             .setNeutralButton("Scollega") { _, _ ->
@@ -7888,6 +7910,68 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Chiudi", null)
             .show()
+    }
+
+    private fun confermaCambioProfilo(nome: String, attivoPc: String, conPassword: Boolean) {
+        if (conPassword) {
+            val et = EditText(this)
+            et.hint = "Password del profilo «$nome»"
+            et.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            val box = FrameLayout(this)
+            val m = (20 * resources.displayMetrics.density).toInt()
+            box.setPadding(m, m / 2, m, 0)
+            box.addView(et)
+            OcBuilder(this)
+                .setTitle("Profilo protetto")
+                .setMessage("Per passare a «$nome» serve la sua password (la stessa che usi sul PC). Il PC si riavvia con quel profilo e il telefono passa ai suoi dati.")
+                .setView(box)
+                .setNegativeButton("Annulla", null)
+                .setPositiveButton("Continua") { _, _ ->
+                    val pw = et.text.toString()
+                    if (pw.isEmpty()) aviso("Inserisci la password")
+                    else eseguiCambioProfilo(nome, attivoPc, pw)
+                }
+                .show()
+            return
+        }
+        confermaCambioNormale(nome, attivoPc)
+    }
+
+    private fun confermaCambioNormale(nome: String, attivoPc: String) {
+        OcBuilder(this)
+            .setTitle("Passare a «$nome»?")
+            .setMessage(
+                "Il PC salva i dati e si riavvia con il profilo «$nome» (ci vuole qualche decina di secondi). " +
+                    "Il telefono mette da parte i dati attuali e usa quelli di «$nome»; se non ne ha, li scarica dal PC. " +
+                    "Non chiudere l'app finché non finisce."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Cambia") { _, _ -> eseguiCambioProfilo(nome, attivoPc, "") }
+            .show()
+    }
+
+    private fun eseguiCambioProfilo(nome: String, attivoPc: String, password: String) {
+        val dlg = OcBuilder(this)
+            .setTitle("Cambio profilo")
+            .setMessage("Richiesta al PC...")
+            .setCancelable(false)
+            .show()
+        Sync.cambiaProfilo(this, nome, attivoPc, password, { t ->
+            if (!isFinishing && !isDestroyed) dlg.setMessage(t)
+        }) { err ->
+            if (isFinishing || isDestroyed) return@cambiaProfilo
+            dlg.dismiss()
+            refresh()
+            if (err == null) {
+                eseguiSync(false)
+            } else {
+                OcBuilder(this)
+                    .setTitle("Cambio profilo")
+                    .setMessage(err)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
     }
 
     private fun scansionaQr(onResult: (String) -> Unit) {

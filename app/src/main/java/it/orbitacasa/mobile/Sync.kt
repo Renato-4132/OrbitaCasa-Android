@@ -123,6 +123,96 @@ object Sync {
         val messaggio: String
     )
 
+    class ProfiloPc(val nome: String, val server: Boolean, val ssl: Boolean, val porta: Int, val password: Boolean = false)
+
+    class ElencoProfili(val attivo: String, val profili: List<ProfiloPc>)
+
+    fun elencoProfili(c: Context, fine: (ElencoProfili?, String?) -> Unit) {
+        val app = c.applicationContext
+        Thread {
+            var el: ElencoProfili? = null
+            var err: String? = null
+            try {
+                if (!configurato(app)) throw SyncErr("Sincronizzazione non configurata")
+                profiloSalvato = profilo(app)
+                val r = Http(indirizzo(app), gettone(app), improntaFissata(app)).get("/api/sync/profili")
+                if (r.codice == 404) throw SyncErr("Il PC non supporta il cambio profilo: aggiorna OrbitaCasa sul PC")
+                verifica(r, "elenco profili")
+                val arr = r.json?.optJSONArray("profili") ?: throw SyncErr("Risposta non valida dal PC")
+                val l = ArrayList<ProfiloPc>()
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    l.add(ProfiloPc(o.optString("nome"), o.optBoolean("server"), o.optBoolean("ssl", true), o.optInt("porta", 8080), o.optBoolean("password")))
+                }
+                el = ElencoProfili(r.json?.optString("attivo").orEmpty(), l)
+            } catch (e: SyncErr) {
+                err = e.message
+            } catch (e: Exception) {
+                err = "PC non raggiungibile: ${e.message}"
+            }
+            main.post { fine(el, err) }
+        }.start()
+    }
+
+    fun cambiaProfilo(c: Context, nome: String, attivoPc: String, password: String, avanzamento: (String) -> Unit, fine: (String?) -> Unit) {
+        if (inCorso) {
+            fine("Sincronizzazione in corso: riprova tra poco")
+            return
+        }
+        inCorso = true
+        val app = c.applicationContext
+        Thread {
+            var err: String? = null
+            try {
+                if (!configurato(app)) throw SyncErr("Sincronizzazione non configurata")
+                profiloSalvato = profilo(app)
+                val http = Http(indirizzo(app), gettone(app), improntaFissata(app))
+                main.post { avanzamento("Richiesta al PC...") }
+                val r = http.post("/api/sync/cambia_profilo", JSONObject().put("nome", nome).put("password", password))
+                verifica(r, "cambio profilo")
+                val token = r.json?.optString("token").orEmpty()
+                val porta = r.json?.optInt("porta", 0) ?: 0
+                if (token.isBlank() || porta <= 0) throw SyncErr("Risposta del PC non valida")
+                val u = URL(indirizzo(app))
+                val nuovoUrl = "https://" + u.host + ":" + porta
+                val vecchio = profilo(app).ifBlank { attivoPc.ifBlank { "Principale" } }
+                main.post { avanzamento("Salvo i dati del profilo «$vecchio»...") }
+                suMain { Repo.cambiaDatiProfilo(app, vecchio, nome) }
+                prefs(app).edit()
+                    .putString("url", nuovoUrl)
+                    .putString("token", token)
+                    .putString("profilo", nome)
+                    .putString("blocco", "")
+                    .apply()
+                main.post { avanzamento("Il PC si sta riavviando...") }
+                val nuovo = Http(nuovoUrl, token, improntaFissata(app))
+                var ok = false
+                val fineAttesa = System.currentTimeMillis() + 60_000L
+                while (System.currentTimeMillis() < fineAttesa) {
+                    Thread.sleep(2500)
+                    try {
+                        val s = nuovo.get("/api/sync/stato")
+                        if (s.codice == 200 && s.json?.optString("profilo") == nome) {
+                            ok = true
+                            break
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+                if (!ok) {
+                    err = "Il PC non ha ancora riavviato il profilo «$nome». Il telefono è già passato a «$nome»: " +
+                        "aspetta che OrbitaCasa sia pronta sul PC e poi sincronizza."
+                }
+            } catch (e: SyncErr) {
+                err = e.message
+            } catch (e: Exception) {
+                err = "Errore: ${e.message}"
+            }
+            inCorso = false
+            main.post { fine(err) }
+        }.start()
+    }
+
     fun controlla(c: Context, fine: (Controllo) -> Unit) {
         val app = c.applicationContext
         Thread {
@@ -331,6 +421,7 @@ object Sync {
                     "(Configurazione sul PC).",
                 "token"
             )
+            r.codice == 403 -> throw SyncErr(r.json?.optString("errore").orEmpty().ifBlank { "Operazione non consentita dal PC" })
             r.codice == 429 -> throw SyncErr("Troppi tentativi errati: il PC ti ha bloccato per 10 minuti", "token")
             r.codice !in 200..299 -> {
                 val msg = r.json?.optString("errore").orEmpty().ifBlank { "errore HTTP ${r.codice}" }

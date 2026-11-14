@@ -1524,18 +1524,23 @@ object Repo {
         rev++
     }
 
-    fun azzeraPerNuovoProfilo(ctx: Context, nomeVecchio: String) {
-        val base = File(ctx.filesDir, "db_profili_prec")
-        val sicuro = nomeVecchio.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "profilo" }
-        val dest = File(base, sicuro + "_" + System.currentTimeMillis())
-        dest.mkdirs()
-        for (name in FILES) {
-            val f = File(dir, name)
-            if (f.exists()) f.copyTo(File(dest, name), overwrite = true)
+    private fun dirProfiliTel(ctx: Context) = File(ctx.filesDir, "profili_tel")
+
+    private fun dirSnapshot(ctx: Context, nome: String) =
+        File(dirProfiliTel(ctx), java.net.URLEncoder.encode(nome.ifBlank { "Principale" }, "UTF-8"))
+
+    fun cambiaDatiProfilo(ctx: Context, da: String, a: String) {
+        val snapDa = dirSnapshot(ctx, da)
+        snapDa.deleteRecursively()
+        if (!dir.copyRecursively(snapDa, overwrite = true)) {
+            snapDa.deleteRecursively()
+            throw IllegalStateException("Impossibile salvare i dati del profilo «$da»: cambio annullato")
         }
-        base.listFiles()?.sortedBy { it.name.substringAfterLast('_').toLongOrNull() ?: 0L }
-            ?.dropLast(3)?.forEach { it.deleteRecursively() }
         svuotaDir()
+        val snapA = dirSnapshot(ctx, a)
+        if (snapA.isDirectory) {
+            snapA.copyRecursively(dir, overwrite = true)
+        }
         ricaricaDopoScambio()
     }
 
