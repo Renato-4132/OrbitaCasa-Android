@@ -80,6 +80,7 @@ class MainActivity : AppCompatActivity() {
     private var mese: YearMonth = YearMonth.now()
     private var sbloccata = false
     private var ultimoStop = 0L
+    private var syncAvvioFatto = false
     private var meseCal: YearMonth = YearMonth.now()
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
@@ -320,7 +321,9 @@ class MainActivity : AppCompatActivity() {
         controllaFineMese()
         Avvisi.pianifica(applicationContext)
         if (pagina == Pagina.NOTIFICHE) renderLista()
-        if (Sync.daAutoSync(this)) eseguiSync(true)
+        val avvio = !syncAvvioFatto
+        syncAvvioFatto = true
+        if (Sync.daAutoSync(this, avvio)) eseguiSync(true, avvio)
     }
 
     override fun onStart() {
@@ -8081,10 +8084,17 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun eseguiSync(auto: Boolean) {
+    private fun eseguiSync(auto: Boolean, riprova: Boolean = false) {
         if (!auto) aviso("Sincronizzazione in corso...")
         Sync.sincronizza(this) { e ->
             if (isFinishing || isDestroyed) return@sincronizza
+            // All'avvio la rete può non essere ancora pronta: un solo nuovo tentativo dopo qualche secondo.
+            if (auto && riprova && !e.ok && e.blocco.isEmpty()) {
+                vista<View>(R.id.lockOverlay).postDelayed({
+                    if (!isFinishing && !isDestroyed && Sync.daAutoSync(this, true)) eseguiSync(true, false)
+                }, 5000)
+                return@sincronizza
+            }
             if (e.modificato || !auto) refresh()
             if (auto) {
                 if (e.ok && e.modificato) aviso("Sync PC: " + e.righe.first())

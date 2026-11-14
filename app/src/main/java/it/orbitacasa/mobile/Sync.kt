@@ -327,9 +327,15 @@ object Sync {
     fun configurato(c: Context): Boolean =
         indirizzo(c).isNotBlank() && gettone(c).isNotBlank() && improntaFissata(c).isNotBlank()
 
-    fun daAutoSync(c: Context): Boolean =
-        configurato(c) && auto(c) && blocco(c).isBlank() && !Repo.demoAttiva && !inCorso &&
-            System.currentTimeMillis() - ultima(c) > MAX_AUTO_MS
+    fun daAutoSync(c: Context, avvio: Boolean = false): Boolean {
+        if (!configurato(c) || !auto(c) || Repo.demoAttiva || inCorso) return false
+        val ora = System.currentTimeMillis()
+        // Dopo un errore di token/profilo si riprova al massimo ogni 10 minuti (1 solo tentativo
+        // per volta, così il PC non ti blocca), invece di restare fermi per sempre.
+        if (blocco(c).isNotBlank() && ora - prefs(c).getLong("ultimo_tentativo", 0L) < MAX_AUTO_MS) return false
+        if (avvio) return true
+        return ora - ultima(c) > MAX_AUTO_MS
+    }
 
     fun normalizzaUrl(s: String): String? {
         var t = s.trim()
@@ -584,6 +590,7 @@ object Sync {
         }
         inCorso = true
         val app = ctx.applicationContext
+        prefs(app).edit().putLong("ultimo_tentativo", System.currentTimeMillis()).apply()
         Thread {
             val esito = try {
                 esegui(app)
