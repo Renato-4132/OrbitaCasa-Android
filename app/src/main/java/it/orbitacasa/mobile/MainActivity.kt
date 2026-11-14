@@ -3522,6 +3522,14 @@ class MainActivity : AppCompatActivity() {
         val b = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
         b.text = testo
         b.isAllCaps = false
+        b.maxLines = 1
+        b.gravity = android.view.Gravity.CENTER
+        b.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        val p = (6 * resources.displayMetrics.density).toInt()
+        b.setPadding(p, b.paddingTop, p, b.paddingBottom)
+        b.insetTop = 0
+        b.insetBottom = 0
+        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(b, 9, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
         b.setOnClickListener { click() }
         return b
     }
@@ -3944,7 +3952,7 @@ class MainActivity : AppCompatActivity() {
             dialogRevisioneEstratto(es.mancanti.map { EstrattoImport.Mov(it.data, it.desc, it.importo, it.categoria, met) })
         }
 
-        piede.addView(bottoneDlg("📥 Importa mancanti") { importaMancanti() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.3f))
+        piede.addView(bottoneDlg("📥 Importa mancanti") { importaMancanti() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.5f))
         piede.addView(bottoneDlg("📤 Esporta") { esporta() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         piede.addView(bottoneDlg("Chiudi") { dlg.dismiss() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         ricalcola()
