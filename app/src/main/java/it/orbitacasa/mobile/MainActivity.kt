@@ -3529,9 +3529,24 @@ class MainActivity : AppCompatActivity() {
         b.setPadding(p, b.paddingTop, p, b.paddingBottom)
         b.insetTop = 0
         b.insetBottom = 0
-        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(b, 9, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+        b.textSize = 13f
         b.setOnClickListener { click() }
         return b
+    }
+
+    private fun aggiungiPiede(piede: LinearLayout, vararg voci: Pair<String, () -> Unit>) {
+        val d = resources.displayMetrics.density
+        voci.forEachIndexed { i, (t, f) ->
+            val b = bottoneDlg(t, f)
+            b.minHeight = 0
+            b.minimumHeight = 0
+            b.setPadding(0, 0, 0, 0)
+            b.insetTop = 0
+            b.insetBottom = 0
+            val lp = LinearLayout.LayoutParams(0, (48 * d).toInt(), 1f)
+            if (i > 0) lp.marginStart = (8 * d).toInt()
+            piede.addView(b, lp)
+        }
     }
 
     private fun dialogGrande(titolo: String, root: View): androidx.appcompat.app.AlertDialog {
@@ -3799,8 +3814,7 @@ class MainActivity : AppCompatActivity() {
             avvisoGrande("Completato", msg)
         }
 
-        piede.addView(bottoneDlg("💾 Salva") { salva() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        piede.addView(bottoneDlg("Chiudi") { dlg.dismiss() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        aggiungiPiede(piede, "💾 Salva" to { salva() }, "Chiudi" to { dlg.dismiss() })
         render()
     }
 
@@ -3952,9 +3966,7 @@ class MainActivity : AppCompatActivity() {
             dialogRevisioneEstratto(es.mancanti.map { EstrattoImport.Mov(it.data, it.desc, it.importo, it.categoria, met) })
         }
 
-        piede.addView(bottoneDlg("📥 Importa mancanti") { importaMancanti() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.5f))
-        piede.addView(bottoneDlg("📤 Esporta") { esporta() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        piede.addView(bottoneDlg("Chiudi") { dlg.dismiss() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        aggiungiPiede(piede, "📥 Importa" to { importaMancanti() }, "📤 Esporta" to { esporta() }, "Chiudi" to { dlg.dismiss() })
         ricalcola()
     }
 
