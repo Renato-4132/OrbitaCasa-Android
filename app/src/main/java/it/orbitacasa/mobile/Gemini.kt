@@ -151,7 +151,7 @@ object Gemini {
         }
     }
 
-    private fun esegui(ctx: Context, mime: String?, b64: String?, prompt: String): JSONObject {
+    private fun eseguiGrezzo(ctx: Context, mime: String?, b64: String?, prompt: String): String {
         val chiave = chiave(ctx)
         if (chiave.isEmpty()) throw Errore("Imposta la chiave API Gemini")
         val modello = modello(ctx)
@@ -175,6 +175,19 @@ object Gemini {
                 Thread.sleep(3000L * tent)
             }
         }
+        return testo
+    }
+
+    fun analizzaGrezzo(ctx: Context, file: File?, prompt: String): String {
+        if (chiave(ctx).isEmpty()) throw Errore("Imposta la chiave API Gemini")
+        if (file == null) return eseguiGrezzo(ctx, null, null, prompt)
+        if (file.length() > MAX_BYTES) throw Errore("File troppo grande per l'analisi (max 14 MB)")
+        val b64 = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+        return eseguiGrezzo(ctx, mimeDi(file), b64, prompt)
+    }
+
+    private fun esegui(ctx: Context, mime: String?, b64: String?, prompt: String): JSONObject {
+        val testo = eseguiGrezzo(ctx, mime, b64, prompt)
         val raw = testo.trim().replace("```json", "").replace("```", "").trim()
         return try {
             JSONObject(raw)

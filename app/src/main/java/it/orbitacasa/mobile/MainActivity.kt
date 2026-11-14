@@ -121,6 +121,13 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importaZip(uri)
         }
+    private var estrattoControllo = false
+    private var estrattoInCorso = false
+    private var revisioneAperta = false
+    private val apriEstratto =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) leggiEstratto(uri, estrattoControllo)
+        }
     private val apriPdfPensione =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importaPensione(uri)
@@ -182,6 +189,7 @@ class MainActivity : AppCompatActivity() {
                     val aperto = schedaAperta?.let { sc.per(it) }
                     if (aperto == null) dialogNuovaScheda() else dialogMovScheda(aperto, null)
                 }
+                Pagina.ESTRATTI -> menuImportaEstratto()
                 Pagina.CHIEDI -> {
                     chiediStorico.clear()
                     chiediBozza = ""
@@ -3253,7 +3261,7 @@ class MainActivity : AppCompatActivity() {
     private var esVista = 0
 
     private fun renderEstratti() {
-        intestaLista("💳 Estratti per metodo e conti", "", "📤  Condividi")
+        intestaLista("💳 Estratti per metodo e conti", "📥  Importa", "📤  Condividi")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -3343,6 +3351,603 @@ class MainActivity : AppCompatActivity() {
             riga(cont, titolo, sotto, (if (net >= 0) "+" else "−") + euro(abs(net)), if (net >= 0) verde else rosso, click)
         }
         anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
+    }
+
+    // ===== Importa estratto / Controllo estratto (come le finestre del desktop) =====
+
+    private fun menuImportaEstratto() {
+        OcBuilder(this)
+            .setTitle("Estratto conto")
+            .setItems(arrayOf("📥  Importa movimenti (con revisione)", "🔎  Controlla estratto (riconcilia)")) { _, i ->
+                avviaEstratto(i == 1)
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun avviaEstratto(controllo: Boolean) {
+        if (estrattoInCorso) {
+            aviso("Importazione già in corso.")
+            return
+        }
+        if (!controllo && revisioneAperta) {
+            aviso("Chiudi prima la finestra di revisione aperta.")
+            return
+        }
+        if (Gemini.chiave(this).isEmpty()) {
+            dialogChiaveGemini { avviaEstratto(controllo) }
+            return
+        }
+        estrattoControllo = controllo
+        apriEstratto.launch(
+            arrayOf(
+                "application/pdf", "image/*", "text/csv", "text/comma-separated-values",
+                "application/csv", "application/vnd.ms-excel", "text/plain"
+            )
+        )
+    }
+
+    private fun copiaEstratto(uri: Uri): java.io.File {
+        var nome = ""
+        contentResolver.query(uri, null, null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (i >= 0) nome = c.getString(i) ?: ""
+            }
+        }
+        var ext = nome.substringAfterLast('.', "").lowercase()
+        val tipo = contentResolver.getType(uri) ?: ""
+        if (ext !in listOf("pdf", "png", "jpg", "jpeg", "webp", "heic", "csv", "txt")) {
+            ext = when {
+                tipo == "application/pdf" -> "pdf"
+                tipo == "image/png" -> "png"
+                tipo == "image/webp" -> "webp"
+                tipo.startsWith("image/") -> "jpg"
+                tipo.contains("csv") || tipo == "application/vnd.ms-excel" || tipo == "text/plain" -> "csv"
+                else -> "pdf"
+            }
+        }
+        val f = java.io.File(cacheDir, "estratto_import.$ext")
+        contentResolver.openInputStream(uri)!!.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+        return f
+    }
+
+    private fun msgEstratto(e: Throwable): String {
+        val m = e.message ?: ""
+        return when {
+            e !is Gemini.Errore && ("HTTP 400" in m || "INVALID_ARGUMENT" in m) -> "File non supportato o danneggiato."
+            else -> Gemini.messaggio(e)
+        }
+    }
+
+    private fun avvisoGrande(titolo: String, msg: String) {
+        OcBuilder(this).setTitle(titolo).setMessage(msg).setPositiveButton("OK", null).show()
+    }
+
+    private fun leggiEstratto(uri: Uri, controllo: Boolean) {
+        if (estrattoInCorso) {
+            aviso("Importazione già in corso.")
+            return
+        }
+        val file = try {
+            copiaEstratto(uri)
+        } catch (e: Exception) {
+            aviso("File non leggibile: " + e.message)
+            return
+        }
+        val csv = file.extension.lowercase().let { it == "csv" || it == "txt" }
+        val attesa = OcBuilder(this)
+            .setTitle("🤖 Gemini sta analizzando…")
+            .setMessage(if (csv) "Lettura del CSV a blocchi di 100 righe: può richiedere un po' di tempo." else "Attendere…")
+            .setCancelable(false)
+            .create()
+        attesa.show()
+        estrattoInCorso = true
+        val cats = Repo.categorie()
+        Thread {
+            val r = runCatching { EstrattoImport.leggi(this, file, cats) }
+            runOnUiThread {
+                estrattoInCorso = false
+                try { attesa.dismiss() } catch (_: Exception) { }
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                r.onFailure { avvisoGrande("Errore IA", msgEstratto(it)) }
+                r.onSuccess { esitoLettura(it, file, csv, controllo) }
+            }
+        }.start()
+    }
+
+    private fun esitoLettura(l: EstrattoImport.Letto, file: java.io.File, csv: Boolean, controllo: Boolean) {
+        if (l.singolo) {
+            docStaged = file
+            dialogDocContabile(null)
+            return
+        }
+        val mov = l.movimenti
+        if (mov.isEmpty()) {
+            if (csv) {
+                when {
+                    l.quota != null -> avvisoGrande("Errore IA", "Quota giornaliera Gemini esaurita.\n" + EstrattoImport.attesaQuota(l.quota))
+                    l.blocchiFalliti > 0 -> avvisoGrande("Errore IA", "Gemini non ha risposto correttamente per nessun blocco del CSV.\nRiprova tra qualche minuto.")
+                    else -> avvisoGrande("Importazione", "Nessun movimento con data fino a oggi nel file.")
+                }
+            } else if (l.scartate > 0) {
+                avvisoGrande("Errore IA", "Gemini non ha restituito dati utilizzabili per questo documento.\nRiprova o controlla il file.")
+            } else {
+                avvisoGrande("Importazione", "Nessun movimento con data fino a oggi nel documento.")
+            }
+            return
+        }
+        if (controllo) dialogRiconciliaEstratto(mov) else dialogRevisioneEstratto(mov)
+        if (csv) {
+            if (l.quota != null) {
+                aviso("Quota giornaliera Gemini esaurita: importate solo le prime " + l.righeElaborate + " righe del CSV. " + EstrattoImport.attesaQuota(l.quota))
+            } else if (l.blocchiFalliti > 0 || l.scartate > 0) {
+                val parti = ArrayList<String>()
+                if (l.blocchiFalliti > 0) parti.add(l.blocchiFalliti.toString() + " blocco/i")
+                if (l.scartate > 0) parti.add(l.scartate.toString() + " riga/e")
+                aviso(parti.joinToString(" e ") + " del CSV non importate (errore Gemini o dati incompleti).")
+            } else if (l.futuri > 0) {
+                aviso(l.futuri.toString() + " movimenti con data futura ignorati.")
+            }
+        } else if (l.scartate > 0) {
+            aviso(l.scartate.toString() + " movimento/i non importato/i (dati incompleti nella risposta IA).")
+        } else if (l.futuri > 0) {
+            aviso(l.futuri.toString() + " movimenti con data futura ignorati.")
+        }
+    }
+
+    private fun rigaDlg(
+        cont: LinearLayout, titolo: String, sotto: String, valore: String, colore: Int?,
+        click: (() -> Unit)?,
+    ): View {
+        val r = inflDialogo.inflate(R.layout.item_voce, cont, false)
+        r.findViewById<TextView>(R.id.tvTit).text = titolo
+        val tvSub = r.findViewById<TextView>(R.id.tvSub)
+        tvSub.text = sotto
+        tvSub.visibility = if (sotto.isEmpty()) View.GONE else View.VISIBLE
+        val tvImp = r.findViewById<TextView>(R.id.tvImp)
+        tvImp.text = valore
+        tvImp.maxWidth = (resources.displayMetrics.widthPixels * 0.40f).toInt()
+        tvImp.gravity = android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
+        if (colore != null) tvImp.setTextColor(colore)
+        if (click != null) r.setOnClickListener { click() } else {
+            r.isClickable = false
+            r.isFocusable = false
+        }
+        cont.addView(r)
+        return r
+    }
+
+    private fun bottoneDlg(testo: String, click: () -> Unit): MaterialButton {
+        val b = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        b.text = testo
+        b.isAllCaps = false
+        b.setOnClickListener { click() }
+        return b
+    }
+
+    private fun dialogGrande(titolo: String, root: View): androidx.appcompat.app.AlertDialog {
+        val dlg = OcBuilder(this).setTitle(titolo).setView(root).create()
+        dlg.show()
+        dlg.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        return dlg
+    }
+
+    private fun dialogSceltaSemplice(titolo: String, hint: String, voci: List<String>, iniz: String, onOk: (Int) -> Unit) {
+        val (view, corpo) = corpoDialogo()
+        var sel = voci.indexOf(iniz).coerceAtLeast(0)
+        campoMenu(corpo, hint, voci, voci[sel]) { sel = it }
+        OcBuilder(this).setTitle(titolo).setView(view)
+            .setPositiveButton("Applica") { _, _ -> onOk(sel) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dialogTestoSemplice(titolo: String, hint: String, iniz: String, onOk: (String) -> Unit) {
+        val (view, corpo) = corpoDialogo()
+        val et = campoTesto(corpo, hint, iniz)
+        OcBuilder(this).setTitle(titolo).setView(view)
+            .setPositiveButton("Applica") { _, _ -> onOk(et.text.toString()) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private class RigaRev(
+        var inc: Boolean, var data: LocalDate, var desc: String, var imp: String,
+        var cat: String, var conto: String, var tag: String, var metodo: String,
+    )
+
+    private fun dialogRigaRev(r: RigaRev, dopo: () -> Unit) {
+        val (view, corpo) = corpoDialogo()
+        val chk = MaterialCheckBox(ctxDialogo)
+        chk.text = "Includi nell'importazione"
+        chk.isChecked = r.inc
+        corpo.addView(chk)
+        var data = r.data
+        bottoneData(corpo, "Data", data, false) { data = it ?: data }
+        val etDesc = campoTesto(corpo, "Descrizione", r.desc, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 100)
+        val etImp = campoTesto(corpo, "Importo € (negativo = uscita)", r.imp, TIPO_DECIMALE_NEG, 14)
+        var cat = r.cat
+        val cats = (Repo.categorie() + listOf("Generica", cat)).filter { it.isNotBlank() }.distinct()
+        campoMenu(corpo, "Categoria", cats, cat) { cat = cats[it] }
+        var conto = r.conto
+        val conti = (listOf("") + Repo.conti().map { it.nome } + listOf(conto)).distinct()
+        campoMenu(corpo, "Conto", conti.map { if (it.isBlank()) "Nessuno" else it }, if (conto.isBlank()) "Nessuno" else conto) { conto = conti[it] }
+        val etTag = campoTesto(corpo, "Tag", r.tag)
+        var metodo = r.metodo
+        val metodi = (listOf("") + Repo.METODI.map { it.first } + listOf(metodo)).distinct()
+        campoMenu(
+            corpo, "Metodo di pagamento", metodi.map { if (it.isBlank()) "Nessuno" else Repo.metodoConEmoji(it) },
+            if (metodo.isBlank()) "Nessuno" else Repo.metodoConEmoji(metodo)
+        ) { metodo = metodi[it] }
+        val dlg = OcBuilder(this).setTitle("Movimento da importare").setView(view)
+            .setPositiveButton("OK", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val testoImp = etImp.text.toString()
+            val n = if (testoImp.isBlank()) null else num(testoImp)
+            if (n == null || n > 1_000_000_000.0 || n < -1_000_000_000.0) {
+                etImp.error = "Importo non valido"
+                return@setOnClickListener
+            }
+            r.inc = chk.isChecked
+            r.data = data
+            r.desc = etDesc.text.toString()
+            r.imp = String.format(Locale.ITALY, "%.2f", n)
+            r.cat = cat
+            r.conto = conto
+            r.tag = etTag.text.toString()
+            r.metodo = metodo
+            dlg.dismiss()
+            dopo()
+        }
+    }
+
+    private fun dialogRevisioneEstratto(movimenti: List<EstrattoImport.Mov>) {
+        if (revisioneAperta) {
+            aviso("Chiudi prima la finestra di revisione aperta.")
+            return
+        }
+        revisioneAperta = true
+        val memoria = Repo.memoriaCategorie()
+        val cats0 = Repo.categorie()
+        val principale = Repo.contoPrincipale()?.nome ?: ""
+        val righe = movimenti.sortedBy { it.data }.map { m ->
+            val daMem = memoria.optString(m.desc.trim().uppercase(), "")
+            val fin = daMem.ifEmpty { if (m.categoria in cats0) m.categoria else "" }.ifEmpty { "Generica" }
+            RigaRev(true, m.data, m.desc, String.format(Locale.ITALY, "%.2f", m.importo), fin, principale, "", m.metodo)
+        }.toMutableList()
+        var colOrd = 1
+        var discendente = false
+        val dp = resources.displayMetrics.density
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+
+        val root = LinearLayout(ctxDialogo)
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding((12 * dp).toInt(), (4 * dp).toInt(), (12 * dp).toInt(), (4 * dp).toInt())
+        root.minimumHeight = (resources.displayMetrics.heightPixels * 0.78f).toInt()
+        val barra = LinearLayout(ctxDialogo)
+        barra.orientation = LinearLayout.HORIZONTAL
+        val hs = android.widget.HorizontalScrollView(ctxDialogo)
+        hs.isHorizontalScrollBarEnabled = false
+        hs.addView(barra)
+        root.addView(hs)
+        val lblInfo = TextView(ctxDialogo)
+        lblInfo.textSize = 12f
+        lblInfo.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
+        lblInfo.setPadding(4, 8, 4, 4)
+        root.addView(lblInfo)
+        val scroll = android.widget.ScrollView(ctxDialogo)
+        val lista = LinearLayout(ctxDialogo)
+        lista.orientation = LinearLayout.VERTICAL
+        scroll.addView(lista)
+        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        val piede = LinearLayout(ctxDialogo)
+        piede.orientation = LinearLayout.HORIZONTAL
+        root.addView(piede)
+
+        fun render() {
+            lista.removeAllViews()
+            lblInfo.text = righe.size.toString() + " movimenti · " + righe.count { it.inc } +
+                " selezionati · tocca per modificare, tieni premuto per includere/escludere"
+            for (r in righe) {
+                val imp = num(r.imp)
+                val sotto = listOfNotNull(
+                    r.data.format(FMT_DATA), r.cat.ifBlank { null }, r.conto.ifBlank { null },
+                    r.metodo.ifBlank { null }, r.tag.ifBlank { null }
+                ).joinToString(" · ")
+                val valore = if (imp == null) r.imp else (if (imp >= 0) "+" else "−") + euro(abs(imp))
+                val v = rigaDlg(
+                    lista, (if (r.inc) "☑ " else "☐ ") + r.desc, sotto, valore,
+                    if (imp != null && imp >= 0) verde else rosso
+                ) { dialogRigaRev(r) { render() } }
+                v.alpha = if (r.inc) 1f else 0.45f
+                v.setOnLongClickListener {
+                    r.inc = !r.inc
+                    render()
+                    true
+                }
+            }
+        }
+
+        fun ordina(c: Int) {
+            if (colOrd == c) discendente = !discendente else {
+                colOrd = c
+                discendente = false
+            }
+            val cmp: Comparator<RigaRev> = when (c) {
+                1 -> compareBy<RigaRev> { it.data }
+                2 -> compareBy<RigaRev> { it.desc.trim().lowercase() }
+                3 -> compareBy<RigaRev> { num(it.imp) ?: 0.0 }
+                4 -> compareBy<RigaRev> { it.cat.lowercase() }
+                5 -> compareBy<RigaRev> { it.conto.lowercase() }
+                6 -> compareBy<RigaRev> { it.tag.trim().lowercase() }
+                else -> compareBy<RigaRev> { it.metodo.lowercase() }
+            }
+            righe.sortWith(if (discendente) cmp.reversed() else cmp)
+            render()
+        }
+
+        fun nuovaCategoria() {
+            dialogTestoSemplice("Nuova categoria", "Nome categoria", "") { t ->
+                val nome = t.trim()
+                if (nome.isEmpty()) return@dialogTestoSemplice
+                if (Repo.aggiungiCategoria(nome, "Uscita")) aviso("Creata categoria «$nome»")
+                else aviso("Categoria «$nome» esiste già.")
+            }
+        }
+
+        fun perTutti() {
+            OcBuilder(this)
+                .setTitle("Per tutte le righe")
+                .setItems(
+                    arrayOf(
+                        "🏦  Conto per tutti", "🏷️  Tag per tutti", "💳  Metodo per tutti",
+                        "➕  Nuova categoria", "☑  Seleziona tutti", "☐  Deseleziona tutti"
+                    )
+                ) { _, i ->
+                    when (i) {
+                        0 -> {
+                            val conti = listOf("") + Repo.conti().map { it.nome }
+                            dialogSceltaSemplice(
+                                "Conto per tutti", "Conto", conti.map { if (it.isBlank()) "(nessuno)" else it },
+                                if (principale.isBlank()) "(nessuno)" else principale
+                            ) { k ->
+                                righe.forEach { it.conto = conti[k] }
+                                aviso("Conto «" + (if (conti[k].isBlank()) "(nessuno)" else conti[k]) + "» applicato a tutte le righe.")
+                                render()
+                            }
+                        }
+                        1 -> dialogTestoSemplice("Tag per tutti", "Tag", "") { t ->
+                            righe.forEach { it.tag = t }
+                            aviso("Tag applicati a tutte le righe.")
+                            render()
+                        }
+                        2 -> {
+                            val metodi = listOf("") + Repo.METODI.map { it.first }
+                            dialogSceltaSemplice(
+                                "Metodo per tutti", "Metodo", metodi.map { if (it.isBlank()) "Nessuno" else Repo.metodoConEmoji(it) },
+                                "Nessuno"
+                            ) { k ->
+                                righe.forEach { it.metodo = metodi[k] }
+                                aviso("Metodo «" + metodi[k] + "» applicato a tutte le righe.")
+                                render()
+                            }
+                        }
+                        3 -> nuovaCategoria()
+                        4 -> { righe.forEach { it.inc = true }; render() }
+                        else -> { righe.forEach { it.inc = false }; render() }
+                    }
+                }
+                .setNegativeButton("Chiudi", null)
+                .show()
+        }
+
+        barra.addView(bottoneDlg("🔀 Ordina") {
+            val nomi = listOf("Data", "Descrizione", "Importo €", "Categoria", "Conto", "Tag", "Metodo")
+            OcBuilder(this).setTitle("Ordina per")
+                .setItems(nomi.mapIndexed { k, n -> if (k + 1 == colOrd) n + (if (discendente) " ▼" else " ▲") else n }.toTypedArray()) { _, k -> ordina(k + 1) }
+                .setNegativeButton("Chiudi", null).show()
+        })
+        barra.addView(bottoneDlg("⚙ Per tutti") { perTutti() })
+
+        val dlg = dialogGrande("Revisione Movimenti IA Gemini", root)
+        dlg.setOnDismissListener { revisioneAperta = false }
+
+        fun salva() {
+            var duplicati = 0
+            val errori = ArrayList<String>()
+            val pre = HashMap<LocalDate, ArrayList<Pair<Long, String>>>()
+            for (v in Repo.voci()) pre.getOrPut(v.data) { ArrayList() }.add(Math.round(abs(v.importo) * 100.0) to v.tipo)
+            val nuove = ArrayList<Repo.NuovaVoce>()
+            val mem = Repo.memoriaCategorie()
+            for (r in righe) {
+                if (!r.inc) continue
+                val imp = if (r.imp.isBlank()) null else num(r.imp)
+                if (imp == null) {
+                    errori.add("Importo non valido: " + r.imp)
+                    continue
+                }
+                val desc = r.desc.trim().take(100)
+                val cat = r.cat.ifBlank { "Generica" }
+                val tipo = if (imp >= 0) "Entrata" else "Uscita"
+                val k = Math.round(abs(imp) * 100.0)
+                if (pre[r.data]?.any { it.first == k && it.second == tipo } == true) {
+                    duplicati++
+                    continue
+                }
+                nuove.add(Repo.NuovaVoce(r.data, cat, desc, abs(imp), tipo, r.metodo, parseTags(r.tag), r.conto))
+                mem.put(desc.trim().uppercase(), cat)
+            }
+            Repo.salvaVociBlocco(nuove)
+            try { Repo.salvaMemoriaCategorie(mem) } catch (_: Exception) { }
+            dlg.dismiss()
+            refresh()
+            var msg = nuove.size.toString() + " importati, " + duplicati + " duplicati ignorati."
+            if (errori.isNotEmpty()) msg += "\n⚠️ " + errori.size + " righe saltate per errori."
+            avvisoGrande("Completato", msg)
+        }
+
+        piede.addView(bottoneDlg("💾 Salva") { salva() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        piede.addView(bottoneDlg("Chiudi") { dlg.dismiss() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        render()
+    }
+
+    private fun dialogRiconciliaEstratto(righe: List<EstrattoImport.Mov>) {
+        val conti = Repo.voci().map { it.conto }.filter { it.isNotBlank() }.distinct().sorted()
+        val metodiLista = listOf(EstrattoImport.CONTO_CORRENTE) + Repo.METODI.map { it.first }
+        val contiLista = listOf("(tutti i conti)") + conti
+        val filtri = listOf("Tutti", "Mancanti", "In più", "Riconciliati", "Addebiti carta")
+        val giorniLista = (0..10).map { it.toString() }
+        var metodoSel = EstrattoImport.CONTO_CORRENTE
+        var contoSel = contiLista[0]
+        var giorni = EstrattoImport.GIORNI_TOLLERANZA
+        var filtro = "Tutti"
+        var esito: EstrattoImport.Esito? = null
+        var tab: List<EstrattoImport.RigaTab> = emptyList()
+        val dp = resources.displayMetrics.density
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val azzurro = android.graphics.Color.parseColor("#61AFEF")
+
+        val root = LinearLayout(ctxDialogo)
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding((12 * dp).toInt(), (4 * dp).toInt(), (12 * dp).toInt(), (4 * dp).toInt())
+        root.minimumHeight = (resources.displayMetrics.heightPixels * 0.78f).toInt()
+        var tilConto: TextInputLayout? = null
+        val lblRiep = TextView(ctxDialogo)
+        val lblQuad = TextView(ctxDialogo)
+        val lista = LinearLayout(ctxDialogo)
+        lista.orientation = LinearLayout.VERTICAL
+
+        fun ricalcola() {
+            val metodo = if (metodoSel == EstrattoImport.CONTO_CORRENTE) null else metodoSel
+            val contoQ = if (metodo != null || contoSel.startsWith("(")) null else contoSel
+            tilConto?.isEnabled = metodo == null
+            val es = EstrattoImport.riconciliaEstratto(righe, contoQ, metodo, giorni)
+            esito = es
+            tab = EstrattoImport.righeTabella(es, filtro)
+            val testata = EstrattoImport.testata(es, righe, metodoSel, contoSel, giorni, filtro)
+            lblRiep.text = testata[1]
+            lblQuad.text = if (testata.size > 2) testata[2] else ""
+            lblQuad.visibility = if (lblQuad.text.isEmpty()) View.GONE else View.VISIBLE
+            lista.removeAllViews()
+            if (tab.isEmpty()) {
+                val t = TextView(ctxDialogo)
+                t.text = "Nessuna riga per il filtro scelto."
+                t.setPadding(8, 8, 8, 8)
+                lista.addView(t)
+            }
+            for (t in tab) {
+                val colore = when (t.stato) {
+                    "OK" -> verde
+                    "MANCA" -> rosso
+                    "IN PIÙ" -> arancio
+                    else -> azzurro
+                }
+                val testa = listOf(t.data, t.conto, t.metodo, t.tag).filter { it.isNotBlank() }.joinToString(" · ")
+                val sotto = testa + (if (t.db != "—") "\n" + t.db else "")
+                val id = EstrattoImport.idPerRiga(es, t)
+                val click: (() -> Unit)? = when {
+                    id != null -> { { Repo.voci().firstOrNull { it.id == id }?.let { v -> dialogVoce(v) } } }
+                    t.stato == "MANCA" -> {
+                        {
+                            es.mancanti.firstOrNull {
+                                it.data.format(FMT_DATA) == t.data && EstrattoImport.fmt(it.importo) == t.importo && it.desc == t.desc
+                            }?.let { m ->
+                                dialogVoce(
+                                    null, m.data, m.categoria.ifBlank { "Generica" }, abs(m.importo),
+                                    if (m.importo >= 0) "Entrata" else "Uscita", m.desc
+                                )
+                            }
+                        }
+                    }
+                    else -> null
+                }
+                rigaDlg(lista, "[" + t.stato + "] " + (if (t.desc.isBlank()) "—" else t.desc), sotto, t.importo + " €", colore, click)
+            }
+        }
+
+        anRiga(root) { r ->
+            campoMenu(r, "Estratto di", metodiLista, metodoSel) { metodoSel = metodiLista[it]; ricalcola() }
+            tilConto = campoMenu(r, "Conto", contiLista, contoSel) { contoSel = contiLista[it]; ricalcola() }
+        }
+        anRiga(root) { r ->
+            campoMenu(r, "Tolleranza giorni", giorniLista, giorni.toString()) { giorni = it; ricalcola() }
+            campoMenu(r, "Mostra", filtri, filtro) { filtro = filtri[it]; ricalcola() }
+        }
+        lblRiep.textSize = 12f
+        lblRiep.setTypeface(null, Typeface.BOLD)
+        lblRiep.setPadding(4, 8, 4, 2)
+        lblQuad.textSize = 12f
+        lblQuad.setTypeface(null, Typeface.BOLD)
+        lblQuad.setPadding(4, 2, 4, 4)
+        root.addView(lblRiep)
+        root.addView(lblQuad)
+        val scroll = android.widget.ScrollView(ctxDialogo)
+        scroll.addView(lista)
+        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        val piede = LinearLayout(ctxDialogo)
+        piede.orientation = LinearLayout.HORIZONTAL
+        root.addView(piede)
+        val dlg = dialogGrande("Controllo Estratto Conto", root)
+
+        fun esporta() {
+            val es = esito ?: return
+            val testo = EstrattoImport.testoEsportazione(es, righe, tab, metodoSel, contoSel, giorni, filtro)
+            if (testo.isEmpty()) {
+                aviso("Nessun dato da esportare.")
+                return
+            }
+            val tv = TextView(ctxDialogo)
+            tv.typeface = Typeface.MONOSPACE
+            tv.textSize = 9f
+            tv.text = testo
+            tv.setPadding(16, 16, 16, 16)
+            val sv = android.widget.ScrollView(ctxDialogo)
+            val h = android.widget.HorizontalScrollView(ctxDialogo)
+            h.addView(tv)
+            sv.addView(h)
+            OcBuilder(this)
+                .setTitle("Esportazione Controllo Estratto")
+                .setView(sv)
+                .setPositiveButton("PDF") { _, _ ->
+                    try {
+                        EstrattiPdf.condividi(this, EstrattoImport.creaPdf(this, testo), "Controllo estratto")
+                    } catch (e: Exception) {
+                        aviso("Errore PDF: " + e.message)
+                    }
+                }
+                .setNeutralButton("TXT") { _, _ ->
+                    val i = Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, testo)
+                        .putExtra(Intent.EXTRA_SUBJECT, "Controllo estratto")
+                    startActivity(Intent.createChooser(i, "Condividi controllo estratto"))
+                }
+                .setNegativeButton("Chiudi", null)
+                .show()
+        }
+
+        fun importaMancanti() {
+            val es = esito ?: return
+            if (es.mancanti.isEmpty()) {
+                aviso("Nessun movimento mancante da importare.")
+                return
+            }
+            val met = if (metodoSel == EstrattoImport.CONTO_CORRENTE) "" else metodoSel
+            dlg.dismiss()
+            dialogRevisioneEstratto(es.mancanti.map { EstrattoImport.Mov(it.data, it.desc, it.importo, it.categoria, met) })
+        }
+
+        piede.addView(bottoneDlg("📥 Importa mancanti") { importaMancanti() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.3f))
+        piede.addView(bottoneDlg("📤 Esporta") { esporta() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        piede.addView(bottoneDlg("Chiudi") { dlg.dismiss() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        ricalcola()
     }
 
     private fun condividiEstratti() {

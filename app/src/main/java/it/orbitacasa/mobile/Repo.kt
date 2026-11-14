@@ -565,6 +565,47 @@ object Repo {
         save()
     }
 
+    class NuovaVoce(
+        val data: LocalDate,
+        val categoria: String,
+        val descrizione: String,
+        val importo: Double,
+        val tipo: String,
+        val metodo: String,
+        val hashtag: List<String>,
+        val conto: String,
+    )
+
+    fun salvaVociBlocco(l: List<NuovaVoce>) {
+        if (l.isEmpty()) return
+        val ora = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        for (n in l) {
+            val e = JSONObject().put("id_spesa", nuovoId()).put("ora", ora)
+            e.put("categoria", n.categoria)
+            e.put("descrizione", n.descrizione)
+            e.put("importo", Math.round(n.importo * 100.0) / 100.0)
+            e.put("tipo", n.tipo)
+            setOpt(e, "metodo_pagamento", n.metodo)
+            setOpt(e, "conto", n.conto)
+            if (n.hashtag.isNotEmpty()) e.put("hashtag", JSONArray(n.hashtag))
+            inserisciEntry(n.data, e)
+        }
+        save()
+    }
+
+    fun memoriaCategorie(): JSONObject = try {
+        JSONObject(File(dir, "memoria_categorie.json").readText(Charsets.UTF_8))
+    } catch (_: Exception) {
+        JSONObject()
+    }
+
+    fun salvaMemoriaCategorie(m: JSONObject) {
+        val f = File(dir, "memoria_categorie.json")
+        val tmp = File(dir, "memoria_categorie.json.tmp")
+        tmp.writeText(m.toString(2), Charsets.UTF_8)
+        Files.move(tmp.toPath(), f.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    }
+
     private fun inserisciEntry(data: LocalDate, e: JSONObject) {
         val sp = db.getJSONArray("spese")
         val chiave = data.format(DF)
