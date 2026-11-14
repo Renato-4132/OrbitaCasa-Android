@@ -61,5 +61,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:text="Sblocca" />
+
+        <TextView
+            android:id="@+id/txtUltimoAccesso"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
     </LinearLayout>
 </FrameLayout>

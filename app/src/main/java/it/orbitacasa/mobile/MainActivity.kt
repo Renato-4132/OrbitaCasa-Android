@@ -405,7 +405,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun mostraBlocco(si: Boolean) {
         vista<View>(R.id.lockOverlay).visibility = if (si) View.VISIBLE else View.GONE
+        if (si) {
+            val t = getSharedPreferences("orbita", MODE_PRIVATE).getLong("ultimo_accesso", 0L)
+            vista<TextView>(R.id.txtUltimoAccesso).text = if (t > 0) "Ultimo accesso: " + fmtAccesso(t) else ""
+        }
     }
+
+    private fun fmtAccesso(t: Long): String =
+        java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(t), java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
 
     private fun chiediAutenticazione() {
         val auth = Lock.authenticators()
@@ -419,6 +427,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.getMainExecutor(this),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val sp = getSharedPreferences("orbita", MODE_PRIVATE)
+                    val prec = sp.getLong("ultimo_accesso", 0L)
+                    sp.edit().putLong("accesso_prec", prec)
+                        .putLong("ultimo_accesso", System.currentTimeMillis()).apply()
                     sbloccata = true
                     mostraBlocco(false)
                     controllaFineMese()
@@ -466,6 +478,15 @@ class MainActivity : AppCompatActivity() {
         val uscite = delMese.filter { it.tipo == "Uscita" }.sumOf { it.importo }
         val saldo = entrate - uscite
         vista<TextView>(R.id.rMese).text = maiuscola(ym.format(FMT_MESE))
+        vista<TextView>(R.id.tvAccessoPrec).let { t ->
+            val prec = getSharedPreferences("orbita", MODE_PRIVATE).getLong("accesso_prec", 0L)
+            if (Repo.lockOn && prec > 0) {
+                t.text = "Accesso precedente: " + fmtAccesso(prec)
+                t.visibility = View.VISIBLE
+            } else {
+                t.visibility = View.INVISIBLE
+            }
+        }
         vista<TextView>(R.id.tvProfiloHome).let { t ->
             val prof = if (Sync.configurato(this)) Sync.profilo(this) else ""
             if (prof.isBlank()) {
