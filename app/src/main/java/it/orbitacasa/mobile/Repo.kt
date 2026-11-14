@@ -1524,6 +1524,21 @@ object Repo {
         rev++
     }
 
+    fun azzeraPerNuovoProfilo(ctx: Context, nomeVecchio: String) {
+        val base = File(ctx.filesDir, "db_profili_prec")
+        val sicuro = nomeVecchio.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "profilo" }
+        val dest = File(base, sicuro + "_" + System.currentTimeMillis())
+        dest.mkdirs()
+        for (name in FILES) {
+            val f = File(dir, name)
+            if (f.exists()) f.copyTo(File(dest, name), overwrite = true)
+        }
+        base.listFiles()?.sortedBy { it.name.substringAfterLast('_').toLongOrNull() ?: 0L }
+            ?.dropLast(3)?.forEach { it.deleteRecursively() }
+        svuotaDir()
+        ricaricaDopoScambio()
+    }
+
     fun entraDemo(ctx: Context, zip: File): List<String> {
         if (demoAttiva) throw IllegalStateException("Modalità demo già attiva")
         val reale = File(ctx.filesDir, "db_reale")

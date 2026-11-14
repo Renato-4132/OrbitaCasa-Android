@@ -7758,6 +7758,75 @@ class MainActivity : AppCompatActivity() {
             "e la copia del telefono resta in una cartella di sicurezza."
         info.setPadding(4, 4, 4, 12)
         corpo.addView(info)
+        val tvPc = TextView(ctxDialogo)
+        tvPc.textSize = 15f
+        tvPc.setPadding(4, 4, 4, 4)
+        corpo.addView(tvPc)
+        val tvProf = TextView(ctxDialogo)
+        tvProf.setPadding(4, 0, 4, 8)
+        corpo.addView(tvProf)
+        val btnRicollega = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnRicollega.text = "🔁 Ricollega a questo profilo"
+        btnRicollega.isAllCaps = false
+        btnRicollega.visibility = View.GONE
+        corpo.addView(btnRicollega)
+        fun mostraControllo() {
+            if (!Sync.configurato(this)) {
+                tvPc.text = "⚪ Non configurato"
+                tvProf.text = ""
+                return
+            }
+            tvPc.text = "⚪ Controllo del PC..."
+            tvProf.text = if (Sync.profilo(this).isNotBlank()) "Profilo collegato: ${Sync.profilo(this)}" else ""
+            Sync.controlla(this) { c ->
+                if (isFinishing || isDestroyed) return@controlla
+                val coll = Sync.profilo(this)
+                tvPc.text = when {
+                    !c.online -> "🔴 PC offline · " + c.messaggio
+                    !c.tokenOk -> "🟠 PC raggiungibile · " + c.messaggio
+                    else -> "🟢 PC online"
+                }
+                val righe = ArrayList<String>()
+                if (coll.isNotBlank()) righe.add("Profilo collegato: $coll")
+                var diverso = false
+                if (c.online && c.tokenOk) {
+                    if (c.profiloPc.isBlank()) {
+                        righe.add("Il PC non comunica il profilo attivo (aggiorna OrbitaCasa sul PC)")
+                    } else {
+                        righe.add("Profilo attivo sul PC: ${c.profiloPc}")
+                        if (coll.isNotBlank() && coll != c.profiloPc) {
+                            righe.add("⚠ Profilo diverso: la sincronizzazione è bloccata")
+                            diverso = true
+                        }
+                    }
+                }
+                tvProf.text = righe.joinToString("\n")
+                btnRicollega.visibility = if (diverso) View.VISIBLE else View.GONE
+                btnRicollega.setOnClickListener {
+                    OcBuilder(this)
+                        .setTitle("Ricollega a «${c.profiloPc}»")
+                        .setMessage(
+                            "I dati attuali del telefono (profilo «$coll») vengono messi da parte in una " +
+                                "copia di sicurezza e cancellati, poi si scaricano quelli del profilo " +
+                                "«${c.profiloPc}». Senza questo passaggio i due profili si mischierebbero."
+                        )
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Ricollega") { _, _ ->
+                            thread {
+                                try {
+                                    Repo.azzeraPerNuovoProfilo(applicationContext, coll)
+                                    Sync.ricollega(applicationContext, c.profiloPc)
+                                    runOnUiThread { refresh(); eseguiSync(false) }
+                                } catch (e: Exception) {
+                                    runOnUiThread { aviso("Ricollegamento non riuscito: " + e.message) }
+                                }
+                            }
+                        }
+                        .show()
+                }
+            }
+        }
+        mostraControllo()
         val etUrl = campoTesto(
             corpo, "Indirizzo del PC (es. https://192.168.1.20:8081)", Sync.indirizzo(this),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
@@ -7882,6 +7951,7 @@ class MainActivity : AppCompatActivity() {
             if (e.modificato || !auto) refresh()
             if (auto) {
                 if (e.ok && e.modificato) aviso("Sync PC: " + e.righe.first())
+                else if (!e.ok && e.blocco.isNotEmpty()) aviso("Sync PC fermata: " + (e.errore ?: ""))
             } else {
                 OcBuilder(this)
                     .setTitle(if (e.ok) "✅ Sync con il PC" else "Sync non riuscita")

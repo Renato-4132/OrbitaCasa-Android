@@ -89,14 +89,17 @@ object Sync {
     private const val MAX_FILE_CHARS = 8 * 1024 * 1024
     private val EST_DOC = setOf("pdf", "jpg", "jpeg", "png", "webp", "gif", "heic")
 
-    private class SyncErr(msg: String) : Exception(msg)
+    private class SyncErr(msg: String, val tipo: String = "") : Exception(msg)
 
-    class Esito(val righe: List<String>, val errore: String?, val modificato: Boolean) {
+    class Esito(val righe: List<String>, val errore: String?, val modificato: Boolean, val blocco: String = "") {
         val ok: Boolean get() = errore == null
     }
 
     @Volatile
     private var inCorso = false
+
+    @Volatile
+    private var profiloSalvato = ""
     private val main = Handler(Looper.getMainLooper())
 
     private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -106,12 +109,57 @@ object Sync {
     fun improntaFissata(c: Context): String = prefs(c).getString("impronta", "") ?: ""
     fun auto(c: Context): Boolean = prefs(c).getBoolean("auto", false)
     fun ultima(c: Context): Long = prefs(c).getLong("ultima", 0L)
+    fun profilo(c: Context): String = prefs(c).getString("profilo", "") ?: ""
+    fun blocco(c: Context): String = prefs(c).getString("blocco", "") ?: ""
+
+    fun ricollega(c: Context, profiloPc: String) {
+        prefs(c).edit().putString("profilo", profiloPc).putString("blocco", "").apply()
+    }
+
+    class Controllo(
+        val online: Boolean,
+        val tokenOk: Boolean,
+        val profiloPc: String,
+        val messaggio: String
+    )
+
+    fun controlla(c: Context, fine: (Controllo) -> Unit) {
+        val app = c.applicationContext
+        Thread {
+            val r = try {
+                if (!configurato(app)) {
+                    Controllo(false, false, "", "Sincronizzazione non configurata")
+                } else {
+                    leggiImpronta(indirizzo(app))
+                    if (blocco(app) == "token") {
+                        Controllo(true, false, "", "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}")
+                    } else {
+                        val rs = Http(indirizzo(app), gettone(app), improntaFissata(app)).get("/api/sync/stato")
+                        when {
+                            rs.codice == 401 -> {
+                                prefs(app).edit().putString("blocco", "token").apply()
+                                Controllo(true, false, "", "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}")
+                            }
+                            rs.codice == 429 -> Controllo(true, false, "", "PC raggiungibile ma ti ha bloccato per 10 minuti")
+                            rs.codice !in 200..299 -> Controllo(true, false, "", "Il PC ha risposto con errore HTTP ${rs.codice}")
+                            else -> Controllo(true, true, rs.json?.optString("profilo").orEmpty(), "PC online")
+                        }
+                    }
+                }
+            } catch (e: SSLException) {
+                Controllo(false, false, "", "Certificato del PC cambiato o non valido")
+            } catch (e: Exception) {
+                Controllo(false, false, "", "PC non raggiungibile")
+            }
+            main.post { fine(r) }
+        }.start()
+    }
 
     fun configurato(c: Context): Boolean =
         indirizzo(c).isNotBlank() && gettone(c).isNotBlank() && improntaFissata(c).isNotBlank()
 
     fun daAutoSync(c: Context): Boolean =
-        configurato(c) && auto(c) && !Repo.demoAttiva && !inCorso &&
+        configurato(c) && auto(c) && blocco(c).isBlank() && !Repo.demoAttiva && !inCorso &&
             System.currentTimeMillis() - ultima(c) > MAX_AUTO_MS
 
     fun normalizzaUrl(s: String): String? {
@@ -144,6 +192,7 @@ object Sync {
             .putString("url", indirizzoNuovo)
             .putString("token", token.trim())
             .putBoolean("auto", auto)
+            .putString("blocco", "")
         if (!stessoServer(vecchio, indirizzoNuovo)) e.putString("impronta", "")
         e.apply()
     }
@@ -276,8 +325,13 @@ object Sync {
 
     private fun verifica(r: Http.Risp, cosa: String) {
         when {
-            r.codice == 401 -> throw SyncErr("Token non valido: controllalo in Configurazione sul PC")
-            r.codice == 429 -> throw SyncErr("Troppi tentativi errati: il PC ti ha bloccato per 10 minuti")
+            r.codice == 401 -> throw SyncErr(
+                "Token non valido per il profilo ${profiloSalvato.ifBlank { "collegato" }}. " +
+                    "Il PC potrebbe aver cambiato profilo: controllalo e reinserisci il token " +
+                    "(Configurazione sul PC).",
+                "token"
+            )
+            r.codice == 429 -> throw SyncErr("Troppi tentativi errati: il PC ti ha bloccato per 10 minuti", "token")
             r.codice !in 200..299 -> {
                 val msg = r.json?.optString("errore").orEmpty().ifBlank { "errore HTTP ${r.codice}" }
                 throw SyncErr("$cosa: $msg")
@@ -364,7 +418,7 @@ object Sync {
             val esito = try {
                 esegui(app)
             } catch (e: SyncErr) {
-                Esito(emptyList(), e.message, false)
+                Esito(emptyList(), e.message, false, e.tipo)
             } catch (e: SSLException) {
                 Esito(
                     emptyList(),
@@ -378,6 +432,9 @@ object Sync {
                 Esito(emptyList(), "Errore: ${e.message}", false)
             }
             inCorso = false
+            if (esito.ok || esito.blocco.isNotEmpty()) {
+                prefs(app).edit().putString("blocco", esito.blocco).apply()
+            }
             main.post { fine(esito) }
         }.start()
     }
@@ -386,11 +443,26 @@ object Sync {
         if (Repo.demoAttiva) throw SyncErr("La sincronizzazione non è disponibile in modalità demo")
         if (!configurato(app)) throw SyncErr("Sincronizzazione non configurata")
         val http = Http(indirizzo(app), gettone(app), improntaFissata(app))
+        profiloSalvato = profilo(app)
         val s = http.get("/api/sync/stato")
         verifica(s, "stato")
         if (s.json?.optBoolean("ok") != true) throw SyncErr("Il PC non ha risposto correttamente")
         if ((s.json?.optInt("proto", 0) ?: 0) != PROTO) {
             throw SyncErr("Versione della sincronizzazione sul PC non compatibile: aggiorna OrbitaCasa sul PC")
+        }
+        val profiloPc = s.json?.optString("profilo").orEmpty()
+        if (profiloPc.isNotBlank()) {
+            val salvato = profilo(app)
+            if (salvato.isBlank()) {
+                prefs(app).edit().putString("profilo", profiloPc).apply()
+            } else if (salvato != profiloPc) {
+                throw SyncErr(
+                    "Il PC ora usa il profilo «$profiloPc», il telefono era collegato a «$salvato». " +
+                        "Sincronizzazione fermata per non mischiare i dati. Rimetti il profilo «$salvato» " +
+                        "sul PC, oppure apri Sync e tocca «Ricollega a questo profilo».",
+                    "profilo"
+                )
+            }
         }
         potaBackup(app)
         val c = Ctx(app, http, leggiStato())
