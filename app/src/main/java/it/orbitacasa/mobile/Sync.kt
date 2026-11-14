@@ -120,8 +120,70 @@ object Sync {
         val online: Boolean,
         val tokenOk: Boolean,
         val profiloPc: String,
-        val messaggio: String
+        val messaggio: String,
+        val segui: String = ""
     )
+
+    private fun chiaveCred(nome: String) = "cred_" + java.net.URLEncoder.encode(nome, "UTF-8")
+
+    private fun salvaCred(app: Context, nome: String, url: String, token: String) {
+        if (nome.isBlank() || token.isBlank() || url.isBlank()) return
+        prefs(app).edit()
+            .putString(chiaveCred(nome), JSONObject().put("url", url).put("token", token).toString())
+            .apply()
+    }
+
+    private class Alt(val nome: String, val url: String, val token: String)
+
+    @Volatile
+    private var ultimaRicerca = 0L
+
+    @Volatile
+    private var ultimoTrovato: Alt? = null
+
+    private fun cercaAlternativa(app: Context): Alt? {
+        val ora = System.currentTimeMillis()
+        if (ora - ultimaRicerca < 60_000L) return ultimoTrovato
+        ultimaRicerca = ora
+        ultimoTrovato = null
+        val attuale = profilo(app)
+        for ((k, v) in prefs(app).all) {
+            if (!k.startsWith("cred_") || v !is String) continue
+            val nome = java.net.URLDecoder.decode(k.removePrefix("cred_"), "UTF-8")
+            if (nome == attuale) continue
+            try {
+                val o = JSONObject(v)
+                val url = o.optString("url")
+                val tok = o.optString("token")
+                val r = Http(url, tok, improntaFissata(app)).get("/api/sync/stato")
+                if (r.codice == 200 && r.json?.optString("profilo") == nome) {
+                    ultimoTrovato = Alt(nome, url, tok)
+                    break
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return ultimoTrovato
+    }
+
+    fun segui(c: Context, nome: String): Boolean {
+        val app = c.applicationContext
+        val v = prefs(app).getString(chiaveCred(nome), null) ?: return false
+        return try {
+            val o = JSONObject(v)
+            prefs(app).edit()
+                .putString("url", o.getString("url"))
+                .putString("token", o.getString("token"))
+                .putString("profilo", nome)
+                .putString("blocco", "")
+                .apply()
+            ultimaRicerca = 0L
+            ultimoTrovato = null
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     class ProfiloPc(val nome: String, val server: Boolean, val ssl: Boolean, val porta: Int, val password: Boolean = false)
 
@@ -184,6 +246,7 @@ object Sync {
                     .putString("profilo", nome)
                     .putString("blocco", "")
                     .apply()
+                salvaCred(app, nome, nuovoUrl, token)
                 main.post { avanzamento("OrbitaCasa sul PC si sta riavviando...") }
                 val nuovo = Http(nuovoUrl, token, improntaFissata(app))
                 var ok = false
@@ -222,17 +285,33 @@ object Sync {
                 } else {
                     leggiImpronta(indirizzo(app))
                     if (blocco(app) == "token") {
-                        Controllo(true, false, "", "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}")
+                        val alt = cercaAlternativa(app)
+                        Controllo(
+                            true, false, "",
+                            if (alt != null) "Il PC è passato al profilo «${alt.nome}»"
+                            else "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}",
+                            alt?.nome.orEmpty()
+                        )
                     } else {
                         val rs = Http(indirizzo(app), gettone(app), improntaFissata(app)).get("/api/sync/stato")
                         when {
                             rs.codice == 401 -> {
                                 prefs(app).edit().putString("blocco", "token").apply()
-                                Controllo(true, false, "", "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}")
+                                val alt = cercaAlternativa(app)
+                                Controllo(
+                                    true, false, "",
+                                    if (alt != null) "Il PC è passato al profilo «${alt.nome}»"
+                                    else "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}",
+                                    alt?.nome.orEmpty()
+                                )
                             }
                             rs.codice == 429 -> Controllo(true, false, "", "PC raggiungibile ma ti ha bloccato per 10 minuti")
                             rs.codice !in 200..299 -> Controllo(true, false, "", "Il PC ha risposto con errore HTTP ${rs.codice}")
-                            else -> Controllo(true, true, rs.json?.optString("profilo").orEmpty(), "PC online")
+                            else -> {
+                                val pp = rs.json?.optString("profilo").orEmpty()
+                                salvaCred(app, pp, indirizzo(app), gettone(app))
+                                Controllo(true, true, pp, "PC online")
+                            }
                         }
                     }
                 }
@@ -536,6 +615,16 @@ object Sync {
         val http = Http(indirizzo(app), gettone(app), improntaFissata(app))
         profiloSalvato = profilo(app)
         val s = http.get("/api/sync/stato")
+        if (s.codice == 401) {
+            val alt = cercaAlternativa(app)
+            if (alt != null) {
+                throw SyncErr(
+                    "Il PC è passato al profilo «${alt.nome}» (il telefono era collegato a «${profilo(app).ifBlank { "?" }}»). " +
+                        "Apri Sync e tocca «Segui il PC su ${alt.nome}» per passare ai suoi dati.",
+                    "token"
+                )
+            }
+        }
         verifica(s, "stato")
         if (s.json?.optBoolean("ok") != true) throw SyncErr("Il PC non ha risposto correttamente")
         if ((s.json?.optInt("proto", 0) ?: 0) != PROTO) {
@@ -543,6 +632,7 @@ object Sync {
         }
         val profiloPc = s.json?.optString("profilo").orEmpty()
         if (profiloPc.isNotBlank()) {
+            salvaCred(app, profiloPc, indirizzo(app), gettone(app))
             val salvato = profilo(app)
             if (salvato.isBlank()) {
                 prefs(app).edit().putString("profilo", profiloPc).apply()

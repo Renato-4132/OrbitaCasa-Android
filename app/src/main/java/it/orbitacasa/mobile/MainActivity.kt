@@ -7812,6 +7812,37 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 tvProf.text = righe.joinToString("\n")
+                if (c.segui.isNotBlank()) {
+                    btnRicollega.text = "➡ Segui il PC su «${c.segui}»"
+                    btnRicollega.visibility = View.VISIBLE
+                    btnRicollega.setOnClickListener {
+                        OcBuilder(this)
+                            .setTitle("Segui il PC su «${c.segui}»")
+                            .setMessage(
+                                "Il PC ora usa il profilo «${c.segui}». I dati del profilo «$coll» restano " +
+                                    "salvati sul telefono. Il telefono passa ai dati di «${c.segui}» " +
+                                    "(se non ne ha, si scaricano dal PC)."
+                            )
+                            .setNegativeButton("Annulla", null)
+                            .setPositiveButton("Segui") { _, _ ->
+                                try {
+                                    Repo.cambiaDatiProfilo(applicationContext, coll.ifBlank { "Principale" }, c.segui)
+                                    if (Sync.segui(applicationContext, c.segui)) {
+                                        refresh()
+                                        riapriSync()
+                                        eseguiSync(false)
+                                    } else {
+                                        aviso("Credenziali del profilo non trovate")
+                                    }
+                                } catch (e: Exception) {
+                                    aviso("Operazione non riuscita: " + e.message)
+                                }
+                            }
+                            .show()
+                    }
+                    return@controlla
+                }
+                btnRicollega.text = "🔁 Ricollega a questo profilo"
                 btnRicollega.visibility = if (diverso) View.VISIBLE else View.GONE
                 btnRicollega.setOnClickListener {
                     OcBuilder(this)
