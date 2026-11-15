@@ -340,7 +340,7 @@ object Sync {
             } catch (e: SSLException) {
                 Controllo(false, false, "", "Certificato del PC cambiato o non valido")
             } catch (e: Exception) {
-                Controllo(false, false, "", "PC non raggiungibile")
+                Controllo(false, false, "", "non raggiungibile")
             }
             main.post { fine(r) }
         }.start()

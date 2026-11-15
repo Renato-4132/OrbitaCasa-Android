@@ -7890,10 +7890,8 @@ class MainActivity : AppCompatActivity() {
         }
         val (view, corpo) = corpoDialogo()
         val info = TextView(ctxDialogo)
-        info.text = "Sincronizza movimenti, categorie, archivi e documenti con OrbitaCasa sul PC, " +
-            "nella rete di casa. Indirizzo e token sono quelli della Configurazione sul PC " +
-            "(il token è lo stesso del webhook). Se un dato cambia su entrambi, vince il PC " +
-            "e la copia del telefono resta in una cartella di sicurezza."
+        info.text = "Sincronizza movimenti, categorie, archivi e documenti con OrbitaCasa Desktop, " +
+            "anche quando sei fuori casa. Indirizzo e token si trovano nella Configurazione di Desktop."
         info.setPadding(4, 4, 4, 12)
         corpo.addView(info)
         val tvPc = TextView(ctxDialogo)
@@ -7920,18 +7918,18 @@ class MainActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@controlla
                 val coll = Sync.profilo(this)
                 tvPc.text = when {
-                    !c.online -> "🔴 PC offline · " + c.messaggio
-                    !c.tokenOk -> "🟠 PC raggiungibile · " + c.messaggio
-                    else -> "🟢 PC online"
+                    !c.online -> "🔴 Desktop offline · " + c.messaggio
+                    !c.tokenOk -> "🟠 Desktop raggiungibile · " + c.messaggio
+                    else -> "🟢 Desktop online"
                 }
                 val righe = ArrayList<String>()
                 if (coll.isNotBlank()) righe.add("Profilo collegato: $coll")
                 var diverso = false
                 if (c.online && c.tokenOk) {
                     if (c.profiloPc.isBlank()) {
-                        righe.add("Il PC non comunica il profilo attivo (aggiorna OrbitaCasa sul PC)")
+                        righe.add("Desktop non comunica il profilo attivo (aggiorna OrbitaCasa Desktop)")
                     } else {
-                        righe.add("Profilo attivo sul PC: ${c.profiloPc}")
+                        righe.add("Profilo attivo su Desktop: ${c.profiloPc}")
                         if (coll.isNotBlank() && coll != c.profiloPc) {
                             righe.add("⚠ Profilo diverso: la sincronizzazione è bloccata")
                             diverso = true
@@ -7996,7 +7994,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val btnCambia = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
-        btnCambia.text = "👤 Cambia profilo sul PC"
+        btnCambia.text = "👤 Cambia profilo su Desktop"
         btnCambia.isAllCaps = false
         btnCambia.visibility = if (Sync.configurato(this)) View.VISIBLE else View.GONE
         corpo.addView(btnCambia)
@@ -8013,7 +8011,7 @@ class MainActivity : AppCompatActivity() {
                         (if (!it.server) "  (Web Server spento)" else if (!it.ssl) "  (senza HTTPS)" else "")
                 }.toTypedArray()
                 OcBuilder(this)
-                    .setTitle("Profilo sul PC (attivo: ${el.attivo})")
+                    .setTitle("Profilo su Desktop (attivo: ${el.attivo})")
                     .setItems(etichette) { _, k ->
                         val p = el.profili[k]
                         when {
@@ -8029,7 +8027,7 @@ class MainActivity : AppCompatActivity() {
         }
         mostraControllo()
         val etUrl = campoTesto(
-            corpo, "Indirizzo del PC (es. https://192.168.1.20:8081)", Sync.indirizzo(this),
+            corpo, "Indirizzo di Desktop (es. https://192.168.1.20:8081)", Sync.indirizzo(this),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         )
         val btnQrUrl = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
@@ -8100,7 +8098,7 @@ class MainActivity : AppCompatActivity() {
         corpo.addView(stato)
 
         dlgSync = OcBuilder(this)
-            .setTitle("🔗 Sync con il PC")
+            .setTitle("🔗 Sync con OrbitaCasa Desktop")
             .setView(view)
             .setPositiveButton("Sync") { _, _ ->
                 avviaSync(etUrl.text.toString(), etTok.text.toString(), chk.isChecked)
@@ -8258,7 +8256,7 @@ class MainActivity : AppCompatActivity() {
                 else if (!e.ok && e.blocco.isNotEmpty()) aviso("Sync PC fermata: " + (e.errore ?: ""))
             } else {
                 OcBuilder(this)
-                    .setTitle(if (e.ok) "✅ Sync con il PC" else "Sync non riuscita")
+                    .setTitle(if (e.ok) "✅ Sync con OrbitaCasa Desktop" else "Sync non riuscita")
                     .setMessage(if (e.ok) e.righe.joinToString("\n") else (e.errore ?: "Errore sconosciuto"))
                     .setPositiveButton("OK", null)
                     .show()
