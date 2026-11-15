@@ -406,6 +406,14 @@ class MainActivity : AppCompatActivity() {
     private fun mostraBlocco(si: Boolean) {
         vista<View>(R.id.lockOverlay).visibility = if (si) View.VISIBLE else View.GONE
         if (si) {
+            vista<android.widget.ImageView>(R.id.imgLogoLock).let { iv ->
+                iv.outlineProvider = object : android.view.ViewOutlineProvider() {
+                    override fun getOutline(v: View, o: android.graphics.Outline) {
+                        o.setRoundRect(0, 0, v.width, v.height, v.width * 0.22f)
+                    }
+                }
+                iv.clipToOutline = true
+            }
             val t = getSharedPreferences("orbita", MODE_PRIVATE).getLong("ultimo_accesso", 0L)
             vista<TextView>(R.id.txtUltimoAccesso).text = if (t > 0) "Ultimo accesso: " + fmtAccesso(t) else ""
         }
