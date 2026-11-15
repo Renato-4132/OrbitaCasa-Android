@@ -5353,17 +5353,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun penEtichettaAggiungi() =
+        listOf("➕  Nuovo versamento", "✏️  Modifica piano", "➕  Nuovo versamento", "➕  Nuova valorizzazione", "➕  Nuovo riscatto")[penVista]
+
     private fun menuPdfPensione() {
         val voci = ArrayList<String>()
         val azioni = ArrayList<() -> Unit>()
+        voci.add(penEtichettaAggiungi())
+        azioni.add { penAggiungi() }
+        voci.add("📥  Carica estratto del fondo (PDF)")
+        azioni.add { apriPdfPensione.launch(arrayOf("application/pdf")) }
         if (penVista in 2..4) {
             voci.add("📤  Esporta PDF")
             azioni.add { esportaPensione() }
         }
-        voci.add("📥  Importa PDF del fondo")
-        azioni.add { apriPdfPensione.launch(arrayOf("application/pdf")) }
         OcBuilder(this)
-            .setTitle("PDF Fondo Pensione")
+            .setTitle("Fondo Pensione")
             .setItems(voci.toTypedArray()) { _, i -> azioni[i]() }
             .setNegativeButton("Chiudi", null)
             .show()
@@ -5444,8 +5449,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderPensione() {
-        val azioni = listOf("➕  Nuovo versamento", "✏️  Modifica piano", "➕  Nuovo versamento", "➕  Nuova valorizzazione", "➕  Nuovo riscatto")
-        intestaLista("🏖️ Fondo Pensione", azioni[penVista], "📄  PDF")
+        intestaLista("🏖️ Fondo Pensione", "", "🔀  Azioni")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val d = Pensione.dati()
         Pensione.errore?.let { vuoto(cont, "⚠️ $it") }
