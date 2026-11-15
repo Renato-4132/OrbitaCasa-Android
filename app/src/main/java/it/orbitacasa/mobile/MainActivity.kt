@@ -89,6 +89,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Sync a schermo acceso: gira solo mentre l'app è visibile (si ferma in onStop). */
     private fun avviaTimerSync() {
         handlerSync.removeCallbacks(timerSync)
         val m = Sync.minFg(this)
@@ -296,6 +297,9 @@ class MainActivity : AppCompatActivity() {
                 schedaAperta?.let { sc.per(it) }?.let { menuScheda(it) }
             }
         }
+
+        frecciaPiccola(vista<MaterialButton>(R.id.btnPrev))
+        frecciaPiccola(vista<MaterialButton>(R.id.btnNext))
         vista<View>(R.id.btnPrev).setOnClickListener {
             mese = mese.minusMonths(1)
             renderMovimenti()
@@ -3270,11 +3274,17 @@ class MainActivity : AppCompatActivity() {
         riga2.orientation = LinearLayout.HORIZONTAL
         riga2.gravity = android.view.Gravity.CENTER_VERTICAL
         val lpPer = { LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
-        riga2.addView(pulsanteSel("Anno", !grafSempre) { grafSempre = false; renderGrafici() }, lpPer())
-        riga2.addView(pulsanteSel("Sempre", grafSempre) { grafSempre = true; renderGrafici() }, lpPer())
+        fun unaRiga(b: MaterialButton): MaterialButton {
+            b.maxLines = 1
+            b.setPadding((6 * dp).toInt(), b.paddingTop, (6 * dp).toInt(), b.paddingBottom)
+            b.setAutoSizeTextTypeUniformWithConfiguration(10, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+            return b
+        }
+        riga2.addView(unaRiga(pulsanteSel("Anno", !grafSempre) { grafSempre = false; renderGrafici() }), lpPer())
+        riga2.addView(unaRiga(pulsanteSel("Sempre", grafSempre) { grafSempre = true; renderGrafici() }), lpPer())
         if (!grafSempre) {
             val i = anni.indexOf(grafAnno)
-            val larg = (44 * dp).toInt()
+            val larg = (38 * dp).toInt()
             fun nav(t: String, ok: Boolean, vai: () -> Unit): MaterialButton {
                 val b = pulsanteSel(t, false) { vai() }
                 b.setPadding(0, 0, 0, 0)
@@ -3290,14 +3300,14 @@ class MainActivity : AppCompatActivity() {
             lbl.gravity = android.view.Gravity.CENTER
             val next = nav("›", i < anni.size - 1) { grafAnno = anni[i + 1]; renderGrafici() }
             riga2.addView(prev, LinearLayout.LayoutParams(larg, (40 * dp).toInt()))
-            riga2.addView(lbl, LinearLayout.LayoutParams((48 * dp).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT))
+            riga2.addView(lbl, LinearLayout.LayoutParams((44 * dp).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT))
             riga2.addView(next, LinearLayout.LayoutParams(larg, (40 * dp).toInt()))
         }
-        // Meteo del periodo mostrato: anno selezionato oppure saldo complessivo ("Sempre")
+
         val vociPeriodo = if (grafSempre) voci else voci.filter { it.data.year == grafAnno }
         val saldoPeriodo = vociPeriodo.filter { it.tipo == "Entrata" }.sumOf { it.importo } -
             vociPeriodo.filter { it.tipo == "Uscita" }.sumOf { it.importo }
-        if (voci.isNotEmpty()) riga2.addView(nuovoMeteo(saldoPeriodo >= 0, (28 * dp).toInt()))
+        if (voci.isNotEmpty()) riga2.addView(nuovoMeteo(saldoPeriodo >= 0, (20 * dp).toInt()))
         cont.addView(riga2)
 
         if (voci.isEmpty()) {
@@ -4393,6 +4403,19 @@ class MainActivity : AppCompatActivity() {
                 boxTot, "Trovate " + ris.size + " operazioni", sotto,
                 (if (netto >= 0) "+" else "−") + euro(abs(netto)), if (netto >= 0) verde else rosso, null
             )
+
+            val rigaTot = boxTot.getChildAt(boxTot.childCount - 1)
+            val tvTitTot = rigaTot.findViewById<TextView>(R.id.tvTit)
+            val colTit = tvTitTot.parent as LinearLayout
+            val posTit = colTit.indexOfChild(tvTitTot)
+            colTit.removeView(tvTitTot)
+            tvTitTot.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            val rigaTit = LinearLayout(this)
+            rigaTit.orientation = LinearLayout.HORIZONTAL
+            rigaTit.gravity = android.view.Gravity.CENTER_VERTICAL
+            rigaTit.addView(tvTitTot)
+            rigaTit.addView(nuovoMeteo(netto >= 0, (20 * resources.displayMetrics.density).toInt()))
+            colTit.addView(rigaTit, posTit, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
             val speso = HashMap<Triple<Int, Int, String>, Double>()
             for (v in voci) if (v.tipo == "Uscita") {
@@ -7383,7 +7406,7 @@ class MainActivity : AppCompatActivity() {
         centro.orientation = LinearLayout.HORIZONTAL
         centro.gravity = android.view.Gravity.CENTER
         centro.addView(titolo)
-        centro.addView(nuovoMeteo(saldoMeseCal >= 0, (28 * dp).toInt()))
+        centro.addView(nuovoMeteo(saldoMeseCal >= 0, (24 * dp).toInt()))
         centro.setOnClickListener {
             meseCal = YearMonth.now()
             giornoCal = oggi
