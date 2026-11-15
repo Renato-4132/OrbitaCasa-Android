@@ -30,65 +30,60 @@
             android:orientation="horizontal" />
     </LinearLayout>
 
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/lockOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/oc_bg"
         android:clickable="true"
         android:focusable="true"
-        android:padding="32dp"
+        android:gravity="top|center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingTop="48dp"
+        android:paddingEnd="32dp"
         android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/imgLogoLock"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="OrbitaCasa"
+                android:src="@mipmap/ic_launcher" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="OrbitaCasa"
+                android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="App bloccata"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSblocca"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Sblocca" />
 
         <TextView
             android:id="@+id/txtUltimoAccesso"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="top|center_horizontal"
             android:layout_marginTop="16dp"
             android:textAppearance="?attr/textAppearanceBodySmall" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:id="@+id/imgLogoLock"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:contentDescription="OrbitaCasa"
-                    android:src="@mipmap/ic_launcher" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:text="OrbitaCasa"
-                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="App bloccata"
-                android:textAppearance="?attr/textAppearanceBodyLarge" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSblocca"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="Sblocca" />
-        </LinearLayout>
-    </FrameLayout>
+    </LinearLayout>
 </FrameLayout>
