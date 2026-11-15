@@ -103,6 +103,13 @@ class GraficoView(ctx: Context) : View(ctx) {
 
     var alSelezionare: ((Int) -> Unit)? = null
 
+    /** Formato dell'asse Y (default: euro). */
+    var prefissoAsse = "€ "
+    var suffissoAsse = ""
+    var decimaliAsse = 0
+    /** Se false la scala segue i dati invece di includere sempre lo zero (es. peso). */
+    var includiZero = true
+
     private val dp = resources.displayMetrics.density
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
 
@@ -135,9 +142,9 @@ class GraficoView(ctx: Context) : View(ctx) {
         val t = if (x >= 1000) {
             String.format(Locale.ITALY, "%.1f", x / 1000).removeSuffix(",0") + "k"
         } else {
-            String.format(Locale.ITALY, "%.0f", x)
+            String.format(Locale.ITALY, "%." + decimaliAsse + "f", x)
         }
-        return (if (v < 0) "-" else "") + "€ " + t
+        return (if (v < 0) "-" else "") + prefissoAsse + t + suffissoAsse
     }
 
     private fun scala(minV: Double, maxV: Double): Triple<Double, Double, Double> {
@@ -154,8 +161,8 @@ class GraficoView(ctx: Context) : View(ctx) {
         val n = etichette.size
         if (n == 0) return
         val valori = (a + (if (modo == Modo.BARRE_DOPPIE || modo == Modo.LINEA) b else emptyList())).filterNotNull()
-        val minV = min(0.0, valori.minOrNull() ?: 0.0)
-        val maxV = max(0.0, valori.maxOrNull() ?: 0.0)
+        val minV = if (includiZero) min(0.0, valori.minOrNull() ?: 0.0) else (valori.minOrNull() ?: 0.0)
+        val maxV = if (includiZero) max(0.0, valori.maxOrNull() ?: 0.0) else (valori.maxOrNull() ?: 0.0)
         val (lo, hi, step) = scala(minV, maxV)
 
         p.textSize = 11 * dp

@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -100,6 +100,11 @@ class MainActivity : AppCompatActivity() {
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
     private var penVista = 0
+    private var dietVista = 0
+    private var dietSett = 0
+    private var dietPassiMese = 0
+    private var dietPassiAnno = LocalDate.now().year
+    private var dietAlimentiControllati = false
     private var scadutiAperti = false
     private var catCerca = ""
     private var catOrdine = "Nome"
@@ -235,6 +240,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.FONDO -> dialogObiettivoFondo()
                 Pagina.CASACARE -> dialogCasaCare(null)
                 Pagina.PENSIONE -> penAggiungi()
+                Pagina.DIETA -> menuDieta()
                 Pagina.PIANIFICA -> dialogNuovoPiano()
                 Pagina.DOCUMENTI, Pagina.DOCPERS -> nuovoDocumento()
                 Pagina.UTENZE -> dialogNuovaLettura()
@@ -274,6 +280,8 @@ class MainActivity : AppCompatActivity() {
                 dialogFiltriCasa()
             } else if (pagina == Pagina.PENSIONE) {
                 menuPdfPensione()
+            } else if (pagina == Pagina.DIETA) {
+                menuDieta()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -530,7 +538,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -644,6 +652,12 @@ class MainActivity : AppCompatActivity() {
             )
         )
         gruppo(
+            cont, "Benessere", "🥗",
+            listOf(
+                Tessera("🥗", "Dieta") { mostra(Pagina.DIETA) },
+            )
+        )
+        gruppo(
             cont, "Strumenti", "🛠️",
             listOf(
                 Tessera("🔀", "Importa / Esporta") { dialogImportaEsporta() },
@@ -681,6 +695,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.FINANZIAMENTI, "💶", "Finanz."),
         Dest(Pagina.FONDO, "💰", "Fondo"),
         Dest(Pagina.PENSIONE, "🏖️", "Pensione"),
+        Dest(Pagina.DIETA, "🥗", "Dieta"),
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
         Dest(Pagina.DOCPERS, "🪪", "Personali"),
         Dest(Pagina.UTENZE, "💡", "Utenze"),
@@ -1279,6 +1294,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.FONDO -> renderFondo()
             Pagina.CASACARE -> renderCasaCare()
             Pagina.PENSIONE -> renderPensione()
+            Pagina.DIETA -> renderDieta()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -5683,6 +5699,850 @@ class MainActivity : AppCompatActivity() {
             refresh()
             aviso("Voce salvata")
         }
+    }
+
+    // ================================================================ DIETA
+
+    private val DIET_SEZ = listOf("Piano settimanale", "Confronto settimane", "Peso", "Fabbisogno calorico", "Passi", "Alimenti personalizzati")
+
+    private fun dietNum(x: Double): String = if (x == Math.rint(x)) x.toLong().toString() else Dieta.fmt1(x)
+
+    private fun renderDieta() {
+        intestaLista("🥗 Dieta", "", "🔀  Azioni")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        dietControllaAlimenti()
+        cont.addView(
+            pulsanteSel("Vista:  " + DIET_SEZ[dietVista] + "   ▾", true) {
+                OcBuilder(this)
+                    .setTitle("Vista")
+                    .setItems(DIET_SEZ.toTypedArray()) { _, k ->
+                        dietVista = k
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        )
+        val corpo = LinearLayout(this)
+        corpo.orientation = LinearLayout.VERTICAL
+        when (dietVista) {
+            0 -> dietPiano(corpo)
+            1 -> dietConfronto(corpo)
+            2 -> dietPeso(corpo)
+            3 -> dietFabb(corpo)
+            4 -> dietPassi(corpo)
+            else -> dietCustom(corpo)
+        }
+        for (e in Dieta.errori()) vuoto(cont, "⚠️ $e")
+        cont.addView(corpo)
+    }
+
+    private fun dietControllaAlimenti() {
+        if (dietAlimentiControllati) return
+        dietAlimentiControllati = true
+        if (Dieta.aggiornamentoDovuto()) dietAggiornaAlimenti(true)
+    }
+
+    private fun dietAggiornaAlimenti(silenzioso: Boolean) {
+        if (!silenzioso) aviso("Download del database alimenti…")
+        Thread {
+            val r = try { Result.success(Dieta.scaricaAlimenti()) } catch (e: Exception) { Result.failure(e) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed || silenzioso) return@runOnUiThread
+                val n = r.getOrNull()
+                if (n != null) aviso("Database aggiornato: $n alimenti") else aviso("Aggiornamento non riuscito: " + (r.exceptionOrNull()?.message ?: "errore di rete"))
+            }
+        }.start()
+    }
+
+    private fun dietEsito(err: String?, ok: String) {
+        if (err != null) aviso(err) else {
+            refresh()
+            aviso(ok)
+        }
+    }
+
+    private fun dietBarraMacro(cont: LinearLayout, prot: Int, gras: Int, carb: Int) {
+        val tot = (prot + gras + carb).toDouble()
+        if (tot <= 0) return
+        val dp = resources.displayMetrics.density
+        val barra = LinearLayout(this)
+        barra.orientation = LinearLayout.HORIZONTAL
+        fun seg(v: Int, col: Int) {
+            if (v <= 0) return
+            val x = View(this)
+            x.setBackgroundColor(col)
+            barra.addView(x, LinearLayout.LayoutParams(0, (8 * dp).toInt(), v.toFloat()))
+        }
+        seg(prot, android.graphics.Color.parseColor("#3D7FD4"))
+        seg(gras, android.graphics.Color.parseColor("#CC3333"))
+        seg(carb, android.graphics.Color.parseColor("#C98314"))
+        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lp.setMargins((8 * dp).toInt(), 0, (8 * dp).toInt(), (4 * dp).toInt())
+        cont.addView(barra, lp)
+    }
+
+    private fun dietPiano(cont: LinearLayout) {
+        val p = Dieta.piano()
+        if (p.sett.isEmpty()) {
+            vuoto(cont, "Nessuna settimana nel piano. Usa Azioni → Ripristina piano predefinito.")
+            return
+        }
+        if (dietSett !in p.sett.indices) dietSett = 0
+        if (p.sett.size <= 4) {
+            val rigaS = LinearLayout(this)
+            rigaS.orientation = LinearLayout.HORIZONTAL
+            for ((i, s) in p.sett.withIndex()) {
+                val b = pulsanteSel(s.titolo.replace("Settimana", "Sett."), i == dietSett) {
+                    dietSett = i
+                    renderLista()
+                }
+                rigaS.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            cont.addView(rigaS)
+        } else {
+            cont.addView(pulsanteSel(p.sett[dietSett].titolo + "   ▾", true) {
+                OcBuilder(this)
+                    .setItems(p.sett.map { it.titolo }.toTypedArray()) { _, k ->
+                        dietSett = k
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            })
+        }
+        val s = p.sett[dietSett]
+        val m = s.medie()
+        val t = s.totali()
+        sezione(cont, "RIEPILOGO · " + s.titolo.uppercase())
+        riga(
+            cont, "Media giornaliera",
+            "P " + m[1] + " g · G " + m[2] + " g · C " + m[3] + " g · Z " + m[4] + " g · F " + m[5] + " g",
+            Dieta.fmtInt(m[0]) + " kcal", ContextCompat.getColor(this, R.color.oc_green), null
+        )
+        dietBarraMacro(cont, m[1], m[2], m[3])
+        riga(cont, "Totale settimana", "", Dieta.fmtInt(t[0]) + " kcal", null, null)
+        sezione(cont, "GIORNI (tocca per modificare i pasti)")
+        for ((gi, g) in s.giorni.withIndex()) {
+            val sotto = (0 until 4).joinToString("\n") { Dieta.PASTI_ETICHETTA[it] + ": " + g.pasti[it].ifBlank { "—" } } +
+                "\nP " + g.tot[1] + " · G " + g.tot[2] + " · C " + g.tot[3] + " · Z " + g.tot[4] + " · F " + g.tot[5]
+            riga(cont, g.nome, sotto, Dieta.fmtInt(g.tot[0]) + " kcal", null) { dietMenuGiorno(dietSett, gi) }
+        }
+    }
+
+    private fun dietMenuGiorno(s: Int, g: Int) {
+        val p = Dieta.piano()
+        val giorno = p.sett.getOrNull(s)?.giorni?.getOrNull(g) ?: return
+        fun corto(t: String) = if (t.length > 34) t.take(33) + "…" else t.ifBlank { "—" }
+        val voci = ArrayList<String>()
+        for (i in 0 until 4) voci.add(Dieta.PASTI_ETICHETTA[i] + " — " + corto(giorno.pasti[i]))
+        voci.add("📋  Copia giorno in…")
+        voci.add("🧹  Azzera giorno")
+        OcBuilder(this)
+            .setTitle(giorno.nome + " · " + p.sett[s].titolo)
+            .setItems(voci.toTypedArray()) { _, k ->
+                when {
+                    k < 4 -> dietDialogComposizione(s, g, k)
+                    k == 4 -> dietDialogCopia(p, s, g)
+                    else -> OcBuilder(this)
+                        .setTitle("Azzerare " + giorno.nome + "?")
+                        .setMessage("Pasti, composizioni e valori nutrizionali del giorno verranno cancellati.")
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Azzera") { _, _ -> dietEsito(Dieta.azzeraGiorno(s, g), "Giorno azzerato") }
+                        .show()
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dietDialogCopia(p: Dieta.Piano, s: Int, g: Int) {
+        val (view, corpo) = corpoDialogo()
+        val nomiS = p.sett.map { it.titolo }
+        var ds = s
+        var dg = g
+        var tilG: TextInputLayout? = null
+        campoMenu(corpo, "Settimana di destinazione", nomiS, nomiS[s]) { i ->
+            ds = i
+            val nomi = p.sett[i].giorni.map { it.nome }
+            if (dg >= nomi.size) dg = 0
+            (tilG?.editText as? MaterialAutoCompleteTextView)?.let {
+                it.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, nomi))
+                it.setText(nomi.getOrElse(dg) { "" }, false)
+            }
+        }
+        tilG = campoMenu(corpo, "Giorno di destinazione", p.sett[s].giorni.map { it.nome }, p.sett[s].giorni[g].nome) { dg = it }
+        OcBuilder(this)
+            .setTitle("Copia " + p.sett[s].giorni[g].nome)
+            .setView(view)
+            .setPositiveButton("Copia") { _, _ ->
+                val err = Dieta.copiaGiorno(s, g, ds, dg)
+                dietEsito(err, "Giorno copiato (il nome del giorno di destinazione resta invariato)")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dietDialogComposizione(s: Int, g: Int, pasto: Int) {
+        val piano = Dieta.piano()
+        val giorno = piano.sett.getOrNull(s)?.giorni?.getOrNull(g) ?: return
+        val items = ArrayList(piano.composizione(s, g, pasto))
+        val tutti = Dieta.alimenti()
+        val (view, corpo) = corpoDialogo()
+        val dp = resources.displayMetrics.density
+        val tvTot = TextView(ctxDialogo)
+        tvTot.setTypeface(null, Typeface.BOLD)
+        tvTot.setPadding(4, 4, 4, (8 * dp).toInt())
+        corpo.addView(tvTot)
+        val box = LinearLayout(ctxDialogo)
+        box.orientation = LinearLayout.VERTICAL
+        corpo.addView(box)
+
+        lateinit var ridisegna: () -> Unit
+        fun modificaGrammi(i: Int) {
+            val it0 = items[i]
+            val (v2, c2) = corpoDialogo()
+            val et = campoTesto(c2, "Grammi", dietNum(it0.g), TIPO_DECIMALE, 6)
+            OcBuilder(this)
+                .setTitle(it0.nome)
+                .setView(v2)
+                .setPositiveButton("OK") { _, _ ->
+                    val ng = num(et.text.toString())
+                    if (ng == null || ng <= 0 || ng > 5000) {
+                        aviso("Grammi non validi")
+                        return@setPositiveButton
+                    }
+                    val a = tutti.firstOrNull { x -> x.nome == it0.nome }
+                    items[i] = if (a != null) Dieta.voce(a, ng)
+                    else Dieta.Item(it0.nome, ng, it0.v.map { x -> Dieta.round1(x * ng / it0.g) })
+                    ridisegna()
+                }
+                .setNegativeButton("Annulla", null)
+                .show()
+        }
+        ridisegna = {
+            box.removeAllViews()
+            if (items.isEmpty()) {
+                val t = TextView(ctxDialogo)
+                t.text = "Nessun alimento. Aggiungine uno."
+                t.setPadding(4, 8, 4, 8)
+                box.addView(t)
+            }
+            for ((i, x) in items.withIndex()) {
+                val t = TextView(ctxDialogo)
+                t.text = x.nome + " · " + dietNum(x.g) + " g\n" + dietNum(x.v[0]) + " kcal · P " + dietNum(x.v[1]) +
+                    " · G " + dietNum(x.v[2]) + " · C " + dietNum(x.v[3])
+                t.setPadding(4, (8 * dp).toInt(), 4, (8 * dp).toInt())
+                t.setOnClickListener {
+                    OcBuilder(this)
+                        .setTitle(x.nome)
+                        .setItems(arrayOf("✏️  Cambia grammi", "🗑️  Rimuovi")) { _, k ->
+                            if (k == 0) modificaGrammi(i) else {
+                                items.removeAt(i)
+                                ridisegna()
+                            }
+                        }
+                        .setNegativeButton("Chiudi", null)
+                        .show()
+                }
+                box.addView(t)
+            }
+            val tot = DoubleArray(6)
+            for (x in items) for (k in 0 until 6) tot[k] += x.v[k]
+            tvTot.text = "Totale: " + dietNum(Dieta.round1(tot[0])) + " kcal · P " + dietNum(Dieta.round1(tot[1])) +
+                " · G " + dietNum(Dieta.round1(tot[2])) + " · C " + dietNum(Dieta.round1(tot[3])) +
+                " · Z " + dietNum(Dieta.round1(tot[4])) + " · F " + dietNum(Dieta.round1(tot[5]))
+        }
+        ridisegna()
+        val btnAdd = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnAdd.text = "➕  Aggiungi alimento"
+        btnAdd.isAllCaps = false
+        btnAdd.setOnClickListener {
+            dietDialogScegli(tutti) { x ->
+                items.add(x)
+                ridisegna()
+            }
+        }
+        corpo.addView(btnAdd)
+        val btnClr = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnClr.text = "🧹  Svuota composizione"
+        btnClr.isAllCaps = false
+        btnClr.setOnClickListener {
+            items.clear()
+            ridisegna()
+        }
+        corpo.addView(btnClr)
+        OcBuilder(this)
+            .setTitle(giorno.nome + " · " + Dieta.PASTI_ETICHETTA[pasto])
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                dietEsito(Dieta.salvaComposizione(s, g, pasto, items.toList()), "Pasto salvato, totali del giorno aggiornati")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dietDialogScegli(tutti: List<Dieta.Alimento>, aggiungi: (Dieta.Item) -> Unit) {
+        val dp = resources.displayMetrics.density
+        val cats = Dieta.categorie(tutti)
+        val root = LinearLayout(ctxDialogo)
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding((20 * dp).toInt(), (4 * dp).toInt(), (20 * dp).toInt(), 0)
+        val etCerca = campoTesto(root, "Cerca alimento", "", InputType.TYPE_CLASS_TEXT, 40)
+        var cat = "Tutte"
+        var filtra: () -> Unit = {}
+        campoMenu(root, "Categoria", cats, cat) {
+            cat = cats[it]
+            filtra()
+        }
+        val etG = campoTesto(root, "Grammi", "100", TIPO_DECIMALE, 6)
+        val lista = android.widget.ListView(ctxDialogo)
+        var visibili: List<Dieta.Alimento> = emptyList()
+        val adapter = object : ArrayAdapter<String>(ctxDialogo, android.R.layout.simple_list_item_1, ArrayList<String>()) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val v = super.getView(position, convertView, parent)
+                (v as? TextView)?.textSize = 13f
+                return v
+            }
+        }
+        lista.adapter = adapter
+        root.addView(lista, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (260 * dp).toInt()))
+        filtra = {
+            val q = etCerca.text.toString().trim().lowercase()
+            visibili = tutti.filter { (cat == "Tutte" || it.cat == cat) && (q.isEmpty() || q in it.nome.lowercase()) }.take(150)
+            adapter.clear()
+            adapter.addAll(visibili.map {
+                it.nome + "\n" + dietNum(it.v[0]) + " kcal · P " + dietNum(it.v[1]) + " · G " + dietNum(it.v[2]) +
+                    " · C " + dietNum(it.v[3]) + "  (per 100 g)"
+            })
+            adapter.notifyDataSetChanged()
+        }
+        etCerca.doAfterTextChanged { filtra() }
+        filtra()
+        lista.setOnItemClickListener { _, _, pos, _ ->
+            val g = num(etG.text.toString())
+            val a = visibili.getOrNull(pos)
+            if (g == null || g <= 0 || g > 5000) {
+                aviso("Grammi non validi")
+            } else if (a != null) {
+                aggiungi(Dieta.voce(a, g))
+                aviso("Aggiunto: " + a.nome + " (" + dietNum(g) + " g)")
+            }
+        }
+        OcBuilder(this)
+            .setTitle("Aggiungi alimento")
+            .setView(root)
+            .setNegativeButton("Fatto", null)
+            .show()
+    }
+
+    private fun dietConfronto(cont: LinearLayout) {
+        val p = Dieta.piano()
+        val sett = p.sett.filter { it.giorni.isNotEmpty() }
+        if (sett.isEmpty()) {
+            vuoto(cont, "Nessun dato da confrontare.")
+            return
+        }
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val kc = sett.map { it.medie()[0] }
+        sezione(cont, "MEDIE GIORNALIERE PER SETTIMANA")
+        for (s in sett) {
+            val m = s.medie()
+            val col = if (sett.size > 1 && m[0] == kc.min()) verde else if (sett.size > 1 && m[0] == kc.max()) arancio else null
+            riga(
+                cont, s.titolo, "P " + m[1] + " g · G " + m[2] + " g · C " + m[3] + " g · Z " + m[4] + " g · F " + m[5] + " g",
+                Dieta.fmtInt(m[0]) + " kcal", col, null
+            )
+            dietBarraMacro(cont, m[1], m[2], m[3])
+        }
+        val tot = List(6) { k -> Math.rint(sett.sumOf { it.medie()[k].toDouble() } / sett.size).toInt() }
+        riga(
+            cont, "Media complessiva", "P " + tot[1] + " g · G " + tot[2] + " g · C " + tot[3] + " g · Z " + tot[4] + " g · F " + tot[5] + " g",
+            Dieta.fmtInt(tot[0]) + " kcal", verde, null
+        )
+        val leg = TextView(this)
+        leg.text = "Barre macro: blu = proteine · rosso = grassi · arancio = carboidrati. Verde = settimana più leggera, arancio = più calorica."
+        leg.textSize = 11f
+        leg.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
+        leg.setPadding(8, 10, 8, 4)
+        cont.addView(leg)
+    }
+
+    private fun dietGrafico(
+        cont: LinearLayout, modo: GraficoView.Modo, lab: List<String>, a: List<Double?>, b: List<Double?>,
+        colA: Int, colB: Int, prefisso: String, suffisso: String, dec: Int, zero: Boolean, dettaglio: (Int) -> String,
+    ) {
+        val dp = resources.displayMetrics.density
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val g = GraficoView(this)
+        g.prefissoAsse = prefisso
+        g.suffissoAsse = suffisso
+        g.decimaliAsse = dec
+        g.includiZero = zero
+        g.imposta(
+            modo, lab, a, b, colA, colB, grigio,
+            ContextCompat.getColor(this, R.color.oc_border), grigio,
+            ContextCompat.getColor(this, R.color.oc_surface),
+        )
+        val det = TextView(this)
+        det.textSize = 13f
+        det.setPadding(8, (6 * dp).toInt(), 8, (6 * dp).toInt())
+        det.text = "Tocca il grafico per vedere i dettagli."
+        det.setTextColor(grigio)
+        g.alSelezionare = { i ->
+            det.text = dettaglio(i)
+            det.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        }
+        cont.addView(g, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (180 * dp).toInt()))
+        cont.addView(det)
+    }
+
+    // ---------------------------------------------------------------- peso
+
+    private fun dietPeso(cont: LinearLayout) {
+        val d = Dieta.peso()
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val ultimo = d.pesate.lastOrNull()
+        val alt = Dieta.numero(d.altezza)
+        val ob = Dieta.numero(d.obiettivo)
+        sezione(cont, "RIEPILOGO")
+        if (ultimo == null) {
+            vuoto(cont, "Nessuna pesata registrata. Usa Azioni → Nuova pesata.")
+        } else {
+            riga(cont, "Peso attuale", ultimo.data, dietNum(ultimo.peso) + " kg", null, null)
+            val b = if (alt != null) Dieta.bmi(ultimo.peso, alt) else null
+            riga(
+                cont, "BMI", if (b != null) Dieta.bmiCategoriaLunga(b) else "Imposta l'altezza per calcolarlo",
+                b?.let { dietNum(it) } ?: "—", null, { dietDialogPesoParam() }
+            )
+        }
+        riga(
+            cont, "Obiettivo",
+            if (ob != null && ultimo != null) {
+                val dist = Dieta.round1(ultimo.peso - ob)
+                if (dist > 0) "Ancora " + dietNum(dist) + " kg da perdere" else "Obiettivo raggiunto!"
+            } else "Tocca per impostare",
+            if (ob != null) dietNum(ob) + " kg" else "—", null, { dietDialogPesoParam() }
+        )
+        riga(cont, "Altezza", "", if (alt != null) dietNum(alt) + " cm" else "—", null, { dietDialogPesoParam() })
+        if (d.pesate.isNotEmpty()) {
+            val pesi = d.pesate.map { it.peso }
+            val delta = Dieta.round1(pesi.last() - pesi.first())
+            riga(
+                cont, "Statistiche",
+                "Min " + dietNum(pesi.min()) + " · Max " + dietNum(pesi.max()) + " · Media " + dietNum(Dieta.round1(pesi.sum() / pesi.size)) + " kg",
+                (if (delta > 0) "+" else "") + dietNum(delta) + " kg", if (delta > 0) arancio else verde, null
+            )
+            if (d.pesate.size >= 2) {
+                sezione(cont, "ANDAMENTO")
+                val ult = d.pesate.takeLast(60)
+                val lab = ult.map { it.d.format(DateTimeFormatter.ofPattern("dd/MM")) }
+                val a = ult.map { it.peso as Double? }
+                val b = if (ob != null) ult.map { ob as Double? } else emptyList()
+                dietGrafico(
+                    cont, GraficoView.Modo.LINEA, lab, a, b, ContextCompat.getColor(this, R.color.oc_blue), arancio,
+                    "", " kg", 1, false
+                ) { i ->
+                    val x = ult.getOrNull(i)
+                    if (x == null) "" else x.data + " · " + dietNum(x.peso) + " kg" + (ob?.let { "  (obiettivo " + dietNum(it) + " kg)" } ?: "")
+                }
+            }
+            sezione(cont, "PESATE (tocca per modificare)")
+            for (i in d.pesate.indices.reversed()) {
+                val x = d.pesate[i]
+                var sotto = ""
+                var col: Int? = null
+                var v = ""
+                if (i > 0) {
+                    val diff = Dieta.round1(x.peso - d.pesate[i - 1].peso)
+                    v = (if (diff > 0) "+" else "") + dietNum(diff)
+                    col = if (diff > 0) arancio else verde
+                    sotto = "Variazione " + v + " kg"
+                }
+                if (alt != null) Dieta.bmi(x.peso, alt)?.let { sotto += (if (sotto.isEmpty()) "" else " · ") + "BMI " + dietNum(it) }
+                riga(cont, x.data, sotto, dietNum(x.peso) + " kg", col) { dietMenuPesata(x) }
+            }
+        }
+    }
+
+    private fun dietMenuPesata(x: Dieta.Pesata) {
+        OcBuilder(this)
+            .setTitle(x.data + " · " + dietNum(x.peso) + " kg")
+            .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                if (k == 0) dietDialogPesata(x) else dietEsito(Dieta.eliminaPesata(x.d), "Pesata eliminata")
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dietDialogPesata(x: Dieta.Pesata?) {
+        val (view, corpo) = corpoDialogo()
+        var data = x?.d ?: LocalDate.now()
+        bottoneData(corpo, "Data", data, false) { data = it ?: data }
+        val ultimo = Dieta.peso().pesate.lastOrNull()
+        val et = campoTesto(corpo, "Peso (kg)", x?.let { dietNum(it.peso) } ?: ultimo?.let { dietNum(it.peso) } ?: "", TIPO_DECIMALE, 6)
+        OcBuilder(this)
+            .setTitle(if (x == null) "Nuova pesata" else "Modifica pesata")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val p = num(et.text.toString())
+                if (p == null || p <= 0 || p > 700) {
+                    aviso("Peso non valido")
+                    return@setPositiveButton
+                }
+                var err = Dieta.aggiungiPesata(data, p)
+                if (err == null && x != null && x.d != data) err = Dieta.eliminaPesata(x.d)
+                dietEsito(err, "Pesata salvata")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dietDialogPesoParam() {
+        val d = Dieta.peso()
+        val (view, corpo) = corpoDialogo()
+        val etA = campoTesto(corpo, "Altezza (cm)", d.altezza, TIPO_DECIMALE, 6)
+        val etO = campoTesto(corpo, "Peso obiettivo (kg)", d.obiettivo, TIPO_DECIMALE, 6)
+        OcBuilder(this)
+            .setTitle("Altezza e obiettivo")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                dietEsito(Dieta.salvaAltezzaObiettivo(etA.text.toString(), etO.text.toString()), "Dati salvati")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- fabbisogno
+
+    private fun dietFabb(cont: LinearLayout) {
+        val f = Dieta.fabb()
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val blu = ContextCompat.getColor(this, R.color.oc_blue)
+        sezione(cont, "DATI PERSONALI (tocca per modificare)")
+        riga(
+            cont, f.sesso, "Peso " + f.peso + " kg · Altezza " + f.altezza + " cm · Età " + f.eta + " anni", "✏️", null,
+            { dietDialogFabb() }
+        )
+        val fb = Dieta.fabbisognoSalvato()
+        if (fb == null) {
+            vuoto(cont, "Inserisci sesso, peso, altezza ed età per calcolare il fabbisogno.")
+            return
+        }
+        sezione(cont, "METABOLISMO BASALE")
+        riga(cont, "BMR (formula di Mifflin-St Jeor)", "", Dieta.fmtInt(fb.bmr) + " kcal", verde, null)
+        sezione(cont, "FABBISOGNO PER LIVELLO DI ATTIVITÀ")
+        for (l in fb.livelli) riga(cont, l.nome, "", Dieta.fmtInt(l.kcal) + " kcal", null, null)
+        sezione(cont, "OBIETTIVI CONSIGLIATI")
+        val cols = listOf(rosso, blu, verde)
+        for ((i, l) in fb.obiettivi.withIndex()) riga(cont, l.nome, "", Dieta.fmtInt(l.kcal) + " kcal", cols[i], null)
+        val media = Dieta.piano().mediaKcal()
+        if (media != null) {
+            val diff = media - fb.livelli[2].kcal
+            sezione(cont, "CONFRONTO CON IL PIANO")
+            riga(
+                cont, "Media piano dieta", "Differenza rispetto al mantenimento (moderato): " + (if (diff >= 0) "+" else "") + diff + " kcal",
+                Dieta.fmtInt(media) + " kcal", null, null
+            )
+        }
+    }
+
+    private fun dietDialogFabb() {
+        val f = Dieta.fabb()
+        val pd = Dieta.peso()
+        val (view, corpo) = corpoDialogo()
+        var sesso = f.sesso
+        val sessi = listOf("Donna", "Uomo")
+        campoMenu(corpo, "Sesso", sessi, if (sesso in sessi) sesso else "Donna") { sesso = sessi[it] }
+        fun pre(v: String, alt: String) = if ((Dieta.numero(v) ?: 0.0) > 0) v else alt
+        val etP = campoTesto(corpo, "Peso (kg)", pre(f.peso, pd.pesate.lastOrNull()?.let { dietNum(it.peso) } ?: ""), TIPO_DECIMALE, 6)
+        val etA = campoTesto(corpo, "Altezza (cm)", pre(f.altezza, pd.altezza), TIPO_DECIMALE, 6)
+        val etE = campoTesto(corpo, "Età (anni)", pre(f.eta, ""), InputType.TYPE_CLASS_NUMBER, 3)
+        OcBuilder(this)
+            .setTitle("Dati per il fabbisogno")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                dietEsito(Dieta.salvaFabb(sesso, etP.text.toString(), etA.text.toString(), etE.text.toString()), "Dati salvati")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- passi
+
+    private fun dietPassi(cont: LinearLayout) {
+        val d = Dieta.passi()
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val anni = (d.voci.map { it.d.year } + LocalDate.now().year).toSet().sortedDescending()
+        val mesi = listOf("Tutti", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre")
+        val filtri = LinearLayout(this)
+        filtri.orientation = LinearLayout.HORIZONTAL
+        filtri.addView(pulsanteSel("Anno: " + (if (dietPassiAnno == 0) "Tutti" else dietPassiAnno.toString()) + " ▾", false) {
+            val voci = listOf("Tutti") + anni.map { it.toString() }
+            OcBuilder(this)
+                .setItems(voci.toTypedArray()) { _, k ->
+                    dietPassiAnno = if (k == 0) 0 else anni[k - 1]
+                    renderLista()
+                }
+                .setNegativeButton("Annulla", null)
+                .show()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        filtri.addView(pulsanteSel("Mese: " + mesi[dietPassiMese] + " ▾", false) {
+            OcBuilder(this)
+                .setItems(mesi.toTypedArray()) { _, k ->
+                    dietPassiMese = k
+                    renderLista()
+                }
+                .setNegativeButton("Annulla", null)
+                .show()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        cont.addView(filtri)
+
+        val filtrate = d.voci.filter {
+            (dietPassiAnno == 0 || it.d.year == dietPassiAnno) && (dietPassiMese == 0 || it.d.monthValue == dietPassiMese)
+        }
+        val st = Dieta.statPassi(d.voci, filtrate)
+        sezione(cont, "STATISTICHE")
+        val o = st.oggi
+        riga(
+            cont, "Oggi",
+            if (o != null) o.pct.toString() + "% dell'obiettivo (" + Dieta.fmtInt(o.ob) + ")" else "Nessun dato per oggi",
+            if (o != null) Dieta.fmtInt(o.passi) else "—", if (o == null) null else if (o.raggiunto) verde else rosso,
+            { dietDialogPassi(null) }
+        )
+        riga(cont, "Media 7 giorni", "", st.media7?.let { Dieta.fmtInt(it) } ?: "—", null, null)
+        riga(cont, "Media 30 giorni", "", st.media30?.let { Dieta.fmtInt(it) } ?: "—", null, null)
+        riga(cont, "Record", "", st.record?.let { Dieta.fmtInt(it) } ?: "—", null, null)
+        riga(cont, "Totale periodo filtrato", filtrate.size.toString() + " giorni", Dieta.fmtInt(st.totale), null, null)
+        riga(cont, "Giorni con obiettivo raggiunto", "su " + st.giorni + " registrati", st.giorniOk.toString(), verde, null)
+        if (filtrate.isEmpty()) {
+            vuoto(cont, "Nessun dato per il periodo selezionato. Usa Azioni → Registra passi.")
+            return
+        }
+        sezione(cont, "ANDAMENTO (passi / obiettivo)")
+        val ult = filtrate.takeLast(30)
+        dietGrafico(
+            cont, GraficoView.Modo.BARRE_DOPPIE, ult.map { it.d.format(DateTimeFormatter.ofPattern("dd/MM")) },
+            ult.map { it.passi.toDouble() as Double? }, ult.map { it.ob.toDouble() as Double? }, verde, arancio, "", "", 0, true
+        ) { i ->
+            val x = ult.getOrNull(i)
+            if (x == null) "" else x.data + " · " + Dieta.fmtInt(x.passi) + " passi (obiettivo " + Dieta.fmtInt(x.ob) + ", " + x.pct + "%)"
+        }
+        sezione(cont, "REGISTRO (tocca per modificare)")
+        for (x in filtrate.reversed()) {
+            val sotto = x.pct.toString() + "% · " + (if (x.raggiunto) "Raggiunto" else "Mancato") + (if (x.note.isNotBlank()) " · " + x.note else "")
+            riga(cont, x.data, sotto, Dieta.fmtInt(x.passi), if (x.raggiunto) verde else rosso) { dietMenuPassi(x) }
+        }
+    }
+
+    private fun dietMenuPassi(x: Dieta.VocePassi) {
+        OcBuilder(this)
+            .setTitle(x.data + " · " + Dieta.fmtInt(x.passi) + " passi")
+            .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                if (k == 0) dietDialogPassi(x) else dietEsito(Dieta.eliminaPassi(x.d), "Registrazione eliminata")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dietDialogPassi(x: Dieta.VocePassi?) {
+        val dati = Dieta.passi()
+        val oggi = if (x == null) dati.voci.firstOrNull { it.d == LocalDate.now() } else null
+        val base = x ?: oggi
+        val (view, corpo) = corpoDialogo()
+        var data = base?.d ?: LocalDate.now()
+        bottoneData(corpo, "Data", data, false) { data = it ?: data }
+        val etP = campoTesto(corpo, "Passi", base?.passi?.toString() ?: "", InputType.TYPE_CLASS_NUMBER, 6)
+        val etO = campoTesto(corpo, "Obiettivo giornaliero", (base?.ob ?: dati.obDefault).toString(), InputType.TYPE_CLASS_NUMBER, 6)
+        val etN = campoTesto(corpo, "Note", base?.note ?: "", InputType.TYPE_CLASS_TEXT, 40)
+        OcBuilder(this)
+            .setTitle(if (x == null) "Registra passi" else "Modifica passi")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val p = etP.text.toString().trim().toIntOrNull()
+                if (p == null) {
+                    aviso("Inserisci il numero di passi")
+                    return@setPositiveButton
+                }
+                val ob = etO.text.toString().trim().toIntOrNull() ?: Dieta.PASSI_OB_DEFAULT
+                var err = Dieta.salvaPassi(data, p, ob, etN.text.toString())
+                if (err == null && x != null && x.d != data) err = Dieta.eliminaPassi(x.d)
+                dietEsito(err, "Passi salvati")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- alimenti personalizzati
+
+    private fun dietCustom(cont: LinearLayout) {
+        val l = Dieta.custom().sortedBy { it.nome.lowercase() }
+        sezione(cont, "ALIMENTI PERSONALIZZATI (valori per 100 g)")
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessun alimento personalizzato. Usa Azioni → Nuovo alimento.")
+            return
+        }
+        for (a in l) {
+            riga(
+                cont, a.nome, a.cat + " · P " + dietNum(a.v[1]) + " · G " + dietNum(a.v[2]) + " · C " + dietNum(a.v[3]) +
+                    " · Z " + dietNum(a.v[4]) + " · F " + dietNum(a.v[5]),
+                dietNum(a.v[0]) + " kcal", null
+            ) {
+                OcBuilder(this)
+                    .setTitle(a.nome)
+                    .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                        if (k == 0) dietDialogCustom(a) else OcBuilder(this)
+                            .setTitle("Eliminare " + a.nome + "?")
+                            .setNegativeButton("Annulla", null)
+                            .setPositiveButton("Elimina") { _, _ -> dietEsito(Dieta.eliminaCustom(setOf(a.nome)), "Alimento eliminato") }
+                            .show()
+                    }
+                    .setNegativeButton("Chiudi", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun dietDialogCustom(a: Dieta.Alimento?) {
+        val (view, corpo) = corpoDialogo()
+        val cap = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        val cats = Dieta.categorie(Dieta.alimenti()).drop(1) + "Altro"
+        val catsU = cats.distinct()
+        var cat = a?.cat?.takeIf { it in catsU } ?: "Altro"
+        val etN = campoTesto(corpo, "Nome", a?.nome ?: "", cap, 60)
+        campoMenu(corpo, "Categoria", catsU, cat) { cat = catsU[it] }
+        val etC = campoTesto(corpo, "Nuova categoria (facoltativa)", if (a != null && a.cat !in catsU) a.cat else "", cap, 30)
+        fun v(i: Int) = a?.v?.get(i)?.let { dietNum(it) } ?: ""
+        val etK = campoTesto(corpo, "Kcal per 100 g", v(0), TIPO_DECIMALE, 7)
+        val etP = campoTesto(corpo, "Proteine (g)", v(1), TIPO_DECIMALE, 6)
+        val etG = campoTesto(corpo, "Grassi (g)", v(2), TIPO_DECIMALE, 6)
+        val etCb = campoTesto(corpo, "Carboidrati (g)", v(3), TIPO_DECIMALE, 6)
+        val etZ = campoTesto(corpo, "di cui zuccheri (g)", v(4), TIPO_DECIMALE, 6)
+        val etF = campoTesto(corpo, "Fibre (g)", v(5), TIPO_DECIMALE, 6)
+        OcBuilder(this)
+            .setTitle(if (a == null) "Nuovo alimento" else "Modifica alimento")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val valori = listOf(etK, etP, etG, etCb, etZ, etF).map { num(it.text.toString()) ?: 0.0 }
+                val nome = etN.text.toString().trim()
+                val categoria = etC.text.toString().trim().ifEmpty { cat }
+                var err = Dieta.salvaCustom(nome, categoria, valori)
+                if (err == null && a != null && a.nome != nome) err = Dieta.eliminaCustom(setOf(a.nome))
+                dietEsito(err, "Alimento salvato")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- azioni, AI, PDF
+
+    private fun menuDieta() {
+        val voci = ArrayList<String>()
+        val az = ArrayList<() -> Unit>()
+        fun add(t: String, f: () -> Unit) {
+            voci.add(t)
+            az.add(f)
+        }
+        when (dietVista) {
+            2 -> add("⚖️  Nuova pesata") { dietDialogPesata(null) }
+            3 -> add("✏️  Modifica dati personali") { dietDialogFabb() }
+            4 -> add("👟  Registra passi") { dietDialogPassi(null) }
+        }
+        add("➕  Nuovo alimento personalizzato") { dietDialogCustom(null) }
+        if (dietVista == 0 || dietVista == 1) add("🤖  Consulta AI sulla settimana") { dietConsultaAi() }
+        add("📤  Esporta PDF") { dietEsportaPdf() }
+        add("🔄  Aggiorna database alimenti") { dietAggiornaAlimenti(false) }
+        if (dietVista == 0 || dietVista == 1) add("↩️  Ripristina piano predefinito") {
+            OcBuilder(this)
+                .setTitle("Ripristinare il piano?")
+                .setMessage("Il piano settimanale e tutte le composizioni dei pasti torneranno ai valori predefiniti.")
+                .setNegativeButton("Annulla", null)
+                .setPositiveButton("Ripristina") { _, _ -> dietEsito(Dieta.ripristinaPiano(), "Piano ripristinato") }
+                .show()
+        }
+        if (dietVista == 2) add("🧹  Azzera storico peso") {
+            OcBuilder(this)
+                .setTitle("Azzerare lo storico del peso?")
+                .setNegativeButton("Annulla", null)
+                .setPositiveButton("Azzera") { _, _ -> dietEsito(Dieta.azzeraPeso(), "Storico azzerato") }
+                .show()
+        }
+        if (dietVista == 4) add("🧹  Azzera storico passi") {
+            OcBuilder(this)
+                .setTitle("Azzerare lo storico dei passi?")
+                .setNegativeButton("Annulla", null)
+                .setPositiveButton("Azzera") { _, _ -> dietEsito(Dieta.azzeraPassi(), "Storico azzerato") }
+                .show()
+        }
+        OcBuilder(this)
+            .setTitle("Azioni")
+            .setItems(voci.toTypedArray()) { _, k -> az[k]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dietEsportaPdf() {
+        val f = try {
+            DietaPdf.crea(this)
+        } catch (e: Exception) {
+            aviso("Impossibile creare il PDF: " + (e.message ?: "errore"))
+            return
+        }
+        DietaPdf.condividi(this, f)
+    }
+
+    private fun dietConsultaAi() {
+        if (Gemini.chiave(this).isEmpty()) {
+            dialogChiaveGemini { dietConsultaAi() }
+            return
+        }
+        val s = Dieta.piano().sett.getOrNull(dietSett)
+        if (s == null) {
+            aviso("Nessuna settimana da analizzare")
+            return
+        }
+        val prompt = Dieta.promptAi(s)
+        aviso("Analisi in corso…")
+        val app = applicationContext
+        Thread {
+            var testo: String? = null
+            var err: String? = null
+            try {
+                testo = Gemini.chiediTesto(app, prompt)
+            } catch (e: Exception) {
+                err = Gemini.messaggio(e)
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (testo != null) dietDialogTesto("🤖 " + s.titolo, testo) else aviso(err ?: "Errore sconosciuto")
+            }
+        }.start()
+    }
+
+    private fun dietDialogTesto(titolo: String, testo: String) {
+        val (view, corpo) = corpoDialogo()
+        val tv = TextView(ctxDialogo)
+        tv.text = testo
+        tv.setTextIsSelectable(true)
+        tv.setPadding(4, 4, 4, 4)
+        corpo.addView(tv)
+        OcBuilder(this)
+            .setTitle(titolo)
+            .setView(view)
+            .setPositiveButton("Chiudi", null)
+            .setNeutralButton("Condividi") { _, _ ->
+                val i = Intent(Intent.ACTION_SEND)
+                i.type = "text/plain"
+                i.putExtra(Intent.EXTRA_TEXT, testo)
+                startActivity(Intent.createChooser(i, "Condividi analisi"))
+            }
+            .show()
     }
 
     private fun dialogPianoPensione() {
