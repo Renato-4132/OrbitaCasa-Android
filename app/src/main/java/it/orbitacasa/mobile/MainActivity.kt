@@ -495,6 +495,18 @@ class MainActivity : AppCompatActivity() {
                 t.visibility = View.INVISIBLE
             }
         }
+        vista<TextView>(R.id.tvSyncHome).let { t ->
+            val ult = if (Sync.configurato(this)) Sync.ultima(this) else 0L
+            if (ult > 0) {
+                val d = java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(ult), java.time.ZoneId.systemDefault())
+                val quando = if (d.toLocalDate() == java.time.LocalDate.now()) "oggi " + d.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+                    else d.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM HH:mm"))
+                t.text = "Ultima sync: $quando"
+                t.visibility = View.VISIBLE
+            } else {
+                t.visibility = View.GONE
+            }
+        }
         vista<TextView>(R.id.tvProfiloHome).let { t ->
             val prof = if (Sync.configurato(this)) Sync.profilo(this) else ""
             if (prof.isBlank()) {
