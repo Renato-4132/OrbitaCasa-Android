@@ -649,11 +649,6 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🚗", "AutoPark") { schedaAperta = null; mostra(Pagina.AUTOPARK) },
                 Tessera("🏢", "ImmoBil") { schedaAperta = null; mostra(Pagina.IMMOBIL) },
                 Tessera("🐾", "Pet Care") { schedaAperta = null; mostra(Pagina.PET) },
-            )
-        )
-        gruppo(
-            cont, "Benessere", "🥗",
-            listOf(
                 Tessera("🥗", "Dieta") { mostra(Pagina.DIETA) },
             )
         )
