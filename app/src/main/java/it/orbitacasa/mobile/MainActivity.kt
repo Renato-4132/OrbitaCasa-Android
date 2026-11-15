@@ -308,6 +308,11 @@ class MainActivity : AppCompatActivity() {
             mese = mese.plusMonths(1)
             renderMovimenti()
         }
+        // Tocco sul nome del mese: si torna al mese corrente (al posto del vecchio tasto "Oggi")
+        vista<View>(R.id.boxMese).setOnClickListener {
+            mese = YearMonth.now()
+            renderMovimenti()
+        }
         vista<TextInputEditText>(R.id.etSearch).doAfterTextChanged { renderMovimenti() }
         vista<View>(R.id.btnSblocca).setOnClickListener { chiediAutenticazione() }
 

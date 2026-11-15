@@ -60,9 +60,12 @@
             android:textSize="13sp" />
 
         <LinearLayout
+            android:id="@+id/boxMese"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center"
             android:orientation="horizontal">
 
@@ -75,8 +78,8 @@
 
             <ImageView
                 android:id="@+id/imgMeteoMov"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:layout_marginStart="6dp"
                 android:contentDescription="Meteo del saldo" />
         </LinearLayout>
