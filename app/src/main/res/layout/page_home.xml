@@ -83,14 +83,27 @@
             android:orientation="vertical"
             android:padding="12dp">
 
-            <TextView
-                android:id="@+id/rMese"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="@color/oc_gold"
-                android:textStyle="bold" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/rMese"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="@color/oc_gold"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/imgMeteoHome"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="6dp"
+                    android:contentDescription="Meteo del saldo" />
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"

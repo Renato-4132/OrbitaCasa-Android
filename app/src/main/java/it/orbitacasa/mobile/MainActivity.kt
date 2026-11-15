@@ -419,6 +419,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Sole che ruota (12 scatti, 80 ms) e temporale che pulsa (8 scatti, 120 ms), come sul Desktop
+    private fun meteoAnimato(iv: android.widget.ImageView, positivo: Boolean) {
+        (iv.tag as? android.animation.Animator)?.cancel()
+        iv.rotation = 0f
+        iv.alpha = 1f
+        val an: android.animation.ValueAnimator
+        if (positivo) {
+            iv.setImageResource(R.drawable.ic_meteo_sole)
+            an = android.animation.ValueAnimator.ofFloat(0f, 360f).apply {
+                duration = 960
+                interpolator = android.animation.TimeInterpolator { (it * 12).toInt() / 12f }
+                addUpdateListener { iv.rotation = it.animatedValue as Float }
+            }
+        } else {
+            iv.setImageResource(R.drawable.ic_meteo_temporale)
+            an = android.animation.ValueAnimator.ofFloat(0f, 8f).apply {
+                duration = 960
+                interpolator = android.view.animation.LinearInterpolator()
+                addUpdateListener {
+                    val i = (it.animatedValue as Float).toInt().coerceAtMost(7)
+                    iv.alpha = 0.5f + 0.5f * kotlin.math.sin(Math.PI * i / 7).toFloat()
+                }
+            }
+        }
+        an.repeatCount = android.animation.ValueAnimator.INFINITE
+        an.repeatMode = android.animation.ValueAnimator.RESTART
+        iv.tag = an
+        iv.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) {}
+            override fun onViewDetachedFromWindow(v: View) { an.cancel() }
+        })
+        an.start()
+    }
+
     private fun fmtAccesso(t: Long): String =
         java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(t), java.time.ZoneId.systemDefault())
             .format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
@@ -486,6 +520,7 @@ class MainActivity : AppCompatActivity() {
         val uscite = delMese.filter { it.tipo == "Uscita" }.sumOf { it.importo }
         val saldo = entrate - uscite
         vista<TextView>(R.id.rMese).text = maiuscola(ym.format(FMT_MESE))
+        meteoAnimato(vista(R.id.imgMeteoHome), saldo >= 0)
         vista<TextView>(R.id.tvAccessoPrec).let { t ->
             val prec = getSharedPreferences("orbita", MODE_PRIVATE).getLong("accesso_prec", 0L)
             if (Repo.lockOn && prec > 0) {
@@ -790,9 +825,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderMovimenti() {
-        vista<TextView>(R.id.tvMese).text = maiuscola(mese.format(FMT_MESE))
         val q = vista<TextInputEditText>(R.id.etSearch).text.toString().trim().lowercase()
         val delMese = Repo.voci().filter { YearMonth.from(it.data) == mese }
+        val saldoMese = delMese.filter { it.tipo == "Entrata" }.sumOf { it.importo } -
+            delMese.filter { it.tipo == "Uscita" }.sumOf { it.importo }
+        vista<TextView>(R.id.tvMese).text = maiuscola(mese.format(FMT_MESE))
+        meteoAnimato(vista(R.id.imgMeteoMov), saldoMese >= 0)
         val visibili = delMese.filter {
             q.isEmpty() ||
                 (it.descrizione + " " + it.categoria + " " + it.metodo + " " + it.hashtag.joinToString(" "))
