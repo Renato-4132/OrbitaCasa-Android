@@ -11,11 +11,6 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/**
- * Sync periodico in background. Si usa una catena di lavori singoli con ritardo (e non il lavoro
- * periodico di Android) perché quello non scende sotto i 15 minuti. Android decide comunque
- * l'orario esatto: con il telefono fermo (Doze) i controlli possono slittare.
- */
 object SyncBg {
     private const val TAG = "sync_bg"
 
@@ -26,7 +21,6 @@ object SyncBg {
             .addTag(TAG)
             .build()
 
-    /** Applica l'impostazione corrente: annulla la catena e, se i minuti sono > 0, la riparte. */
     fun pianifica(ctx: Context) {
         try {
             val app = ctx.applicationContext
@@ -38,7 +32,6 @@ object SyncBg {
         }
     }
 
-    /** Da richiamare all'apertura dell'app: se la catena si è interrotta (es. arresto forzato) la riparte. */
     fun assicura(ctx: Context) {
         val app = ctx.applicationContext
         Thread {

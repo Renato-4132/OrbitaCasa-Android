@@ -89,7 +89,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Sync a schermo acceso: gira solo mentre l'app è visibile (si ferma in onStop). */
     private fun avviaTimerSync() {
         handlerSync.removeCallbacks(timerSync)
         val m = Sync.minFg(this)
@@ -305,10 +304,6 @@ class MainActivity : AppCompatActivity() {
             mese = mese.plusMonths(1)
             renderMovimenti()
         }
-        vista<View>(R.id.btnOggi).setOnClickListener {
-            mese = YearMonth.now()
-            renderMovimenti()
-        }
         vista<TextInputEditText>(R.id.etSearch).doAfterTextChanged { renderMovimenti() }
         vista<View>(R.id.btnSblocca).setOnClickListener { chiediAutenticazione() }
 
@@ -419,7 +414,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Sole che ruota (12 scatti, 80 ms) e temporale che pulsa (8 scatti, 120 ms), come sul Desktop
     private fun meteoAnimato(iv: android.widget.ImageView, positivo: Boolean) {
         (iv.tag as? android.animation.Animator)?.cancel()
         iv.rotation = 0f
@@ -451,6 +445,30 @@ class MainActivity : AppCompatActivity() {
             override fun onViewDetachedFromWindow(v: View) { an.cancel() }
         })
         an.start()
+    }
+
+    private fun nuovoMeteo(positivo: Boolean, lato: Int): android.widget.ImageView {
+        val iv = android.widget.ImageView(this)
+        iv.contentDescription = "Meteo del saldo"
+        iv.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        iv.layoutParams = LinearLayout.LayoutParams(lato, lato).also {
+            it.marginStart = (6 * resources.displayMetrics.density).toInt()
+        }
+        meteoAnimato(iv, positivo)
+        return iv
+    }
+
+    private fun frecciaPiccola(b: MaterialButton) {
+        val dp = resources.displayMetrics.density
+        b.insetTop = 0
+        b.insetBottom = 0
+        b.minWidth = 0
+        b.minimumWidth = 0
+        b.minHeight = 0
+        b.minimumHeight = 0
+        b.setPadding((10 * dp).toInt(), 0, (10 * dp).toInt(), 0)
+        b.textSize = 13f
+        b.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (36 * dp).toInt())
     }
 
     private fun fmtAccesso(t: Long): String =
@@ -3275,6 +3293,11 @@ class MainActivity : AppCompatActivity() {
             riga2.addView(lbl, LinearLayout.LayoutParams((48 * dp).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT))
             riga2.addView(next, LinearLayout.LayoutParams(larg, (40 * dp).toInt()))
         }
+        // Meteo del periodo mostrato: anno selezionato oppure saldo complessivo ("Sempre")
+        val vociPeriodo = if (grafSempre) voci else voci.filter { it.data.year == grafAnno }
+        val saldoPeriodo = vociPeriodo.filter { it.tipo == "Entrata" }.sumOf { it.importo } -
+            vociPeriodo.filter { it.tipo == "Uscita" }.sumOf { it.importo }
+        if (voci.isNotEmpty()) riga2.addView(nuovoMeteo(saldoPeriodo >= 0, (28 * dp).toInt()))
         cont.addView(riga2)
 
         if (voci.isEmpty()) {
@@ -3510,8 +3533,6 @@ class MainActivity : AppCompatActivity() {
         }
         anTesto(cont, "Tocca una riga per vedere le singole operazioni in Cerca (con gli stessi filtri di anno e mese).", colore = medio, size = 12f)
     }
-
-    // ===== Importa estratto / Controllo estratto (come le finestre del desktop) =====
 
     private fun menuImportaEstratto() {
         OcBuilder(this)
@@ -7348,18 +7369,28 @@ class MainActivity : AppCompatActivity() {
             giornoCal = null
             renderCalendario()
         }
+        frecciaPiccola(prev)
+        frecciaPiccola(next)
         val titolo = TextView(this)
         titolo.text = maiuscola(meseCal.format(FMT_MESE))
         titolo.gravity = android.view.Gravity.CENTER
         titolo.setTypeface(null, Typeface.BOLD)
         titolo.textSize = 16f
-        titolo.setOnClickListener {
+        val vociMeseCal = Repo.voci().filter { YearMonth.from(it.data) == meseCal }
+        val saldoMeseCal = vociMeseCal.filter { it.tipo == "Entrata" }.sumOf { it.importo } -
+            vociMeseCal.filter { it.tipo == "Uscita" }.sumOf { it.importo }
+        val centro = LinearLayout(this)
+        centro.orientation = LinearLayout.HORIZONTAL
+        centro.gravity = android.view.Gravity.CENTER
+        centro.addView(titolo)
+        centro.addView(nuovoMeteo(saldoMeseCal >= 0, (28 * dp).toInt()))
+        centro.setOnClickListener {
             meseCal = YearMonth.now()
             giornoCal = oggi
             renderCalendario()
         }
         nav.addView(prev)
-        nav.addView(titolo, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        nav.addView(centro, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         nav.addView(next)
         cont.addView(nav)
 
@@ -8301,7 +8332,7 @@ class MainActivity : AppCompatActivity() {
         if (!auto) aviso("Sincronizzazione in corso...")
         Sync.sincronizza(this) { e ->
             if (isFinishing || isDestroyed) return@sincronizza
-            // All'avvio la rete può non essere ancora pronta: un solo nuovo tentativo dopo qualche secondo.
+
             if (auto && riprova && !e.ok && e.blocco.isEmpty()) {
                 vista<View>(R.id.lockOverlay).postDelayed({
                     if (!isFinishing && !isDestroyed && Sync.daAutoSync(this, true)) eseguiSync(true, false)
