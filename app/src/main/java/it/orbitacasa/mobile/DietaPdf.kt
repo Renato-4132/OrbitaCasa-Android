@@ -12,7 +12,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/** PDF del modulo Dieta (A4 orizzontale): piano settimanale, peso, fabbisogno e storico passi. */
 object DietaPdf {
     private const val W = 842
     private const val H = 595
@@ -62,7 +61,6 @@ object DietaPdf {
             pag = null
         }
 
-        /** Va a pagina nuova se non c'e' spazio per `h` punti. Restituisce true se l'ha fatto. */
         fun serve(h: Float): Boolean {
             if (y + h <= H - MB - 6f) return false
             nuova()

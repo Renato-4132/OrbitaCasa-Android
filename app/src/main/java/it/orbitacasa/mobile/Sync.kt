@@ -110,10 +110,8 @@ object Sync {
     fun auto(c: Context): Boolean = prefs(c).getBoolean("auto", false)
     fun ultima(c: Context): Long = prefs(c).getLong("ultima", 0L)
 
-    /** Minuti tra un sync e l'altro in background (0 = spento, 5..60 a passi di 5). */
     fun minBg(c: Context): Int = prefs(c).getInt("bg_min", 0).coerceIn(0, 60)
 
-    /** Minuti tra un sync e l'altro a schermo acceso con l'app aperta (0 = spento, 1..5). */
     fun minFg(c: Context): Int = prefs(c).getInt("fg_min", 0).coerceIn(0, 5)
 
     fun salvaBg(c: Context, min: Int) {
@@ -124,7 +122,6 @@ object Sync {
         prefs(c).edit().putInt("fg_min", min.coerceIn(0, 5)).apply()
     }
 
-    /** Sync periodico (timer o background): ignora la soglia dei 10 minuti, rispetta blocchi e sync in corso. */
     fun daPeriodico(c: Context): Boolean {
         if (!configurato(c) || Repo.demoAttiva || inCorso) return false
         val ora = System.currentTimeMillis()

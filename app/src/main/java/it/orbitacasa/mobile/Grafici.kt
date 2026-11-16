@@ -103,11 +103,9 @@ class GraficoView(ctx: Context) : View(ctx) {
 
     var alSelezionare: ((Int) -> Unit)? = null
 
-    /** Formato dell'asse Y (default: euro). */
     var prefissoAsse = "€ "
     var suffissoAsse = ""
     var decimaliAsse = 0
-    /** Se false la scala segue i dati invece di includere sempre lo zero (es. peso). */
     var includiZero = true
 
     private val dp = resources.displayMetrics.density

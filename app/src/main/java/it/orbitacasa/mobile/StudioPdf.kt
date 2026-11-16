@@ -13,7 +13,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/** PDF di MyBusiness: fattura / preventivo / nota di credito e inventario di magazzino. */
 object StudioPdf {
     private const val W = 595
     private const val H = 842
@@ -135,8 +134,6 @@ object StudioPdf {
     private fun dmy(iso: String): String = Studio.dmy(iso)
 
     private fun num(x: Double): String = Studio.fmtNum(x)
-
-    // ---------------------------------------------------------------- documento
 
     fun documento(act: Activity, docu: JSONObject): File {
         val emi = Studio.emittente()
@@ -331,8 +328,6 @@ object StudioPdf {
         val nome = "documento_" + Studio.s(docu, "numero").replace('/', '_')
         return scrivi(act, doc, nome)
     }
-
-    // ---------------------------------------------------------------- magazzino
 
     fun magazzino(act: Activity): File {
         val emi = Studio.emittente()

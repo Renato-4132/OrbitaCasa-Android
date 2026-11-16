@@ -4,7 +4,6 @@ import org.json.JSONObject
 import java.time.LocalDate
 import kotlin.math.abs
 
-/** Importazione da PDF (estratto conto del fondo) del Fondo Pensione, tramite Gemini. */
 object PensioneImport {
     class Prop(
         val chiave: String, val data: LocalDate, val tipo: String, val importo: Double, val motivo: String,

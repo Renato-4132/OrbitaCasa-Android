@@ -11,12 +11,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 
-/**
- * Modulo MyBusiness (studio): clienti, agenda, prestazioni, fatture/preventivi, cassa, magazzino, emittente.
- * Legge e scrive gli stessi file JSON del desktop (studio_*.json). I record restano JSONObject cosi'
- * eventuali campi sconosciuti del desktop vengono preservati. Date in formato ISO (aaaa-mm-gg).
- * Nessuna generazione dell'XML FatturaPA.
- */
 object Studio {
     const val F_CLI = "studio_clienti.json"
     const val F_APP = "studio_appuntamenti.json"
@@ -52,8 +46,6 @@ object Studio {
 
     fun errori(): List<String> = errMap.values.toList()
 
-    // ---------------------------------------------------------------- utilita'
-
     fun nuovoId(): String = UUID.randomUUID().toString().substring(0, 8)
 
     fun numero(s: String): Double? =
@@ -69,7 +61,6 @@ object Studio {
 
     fun dmy(iso: String): String = dataIso(iso)?.format(DMY) ?: iso
 
-    /** "gg/mm/aaaa" -> "aaaa-mm-gg"; null se non valida. */
     fun daDmy(s: String): String? = try {
         LocalDate.parse(s.trim(), DMY).toString()
     } catch (_: Exception) {
@@ -97,8 +88,6 @@ object Studio {
     }
 
     fun nomeCliente(c: JSONObject): String = (s(c, "nome") + " " + s(c, "cognome")).trim()
-
-    // ---------------------------------------------------------------- I/O JSON
 
     private class Letto(val valore: Any?, val corrotto: Boolean)
 
@@ -160,7 +149,6 @@ object Studio {
         return -1
     }
 
-    /** Inserisce o sostituisce (per id) un record. Se manca l'id ne assegna uno. */
     fun salva(nome: String, rec: JSONObject): String? {
         if (s(rec, "id").isBlank()) rec.put("id", nuovoId())
         return modificaLista(nome) { a ->
@@ -196,8 +184,6 @@ object Studio {
 
     fun forfettario(): Boolean = s(emittente(), "regime_fiscale") == "Forfettario"
 
-    // ---------------------------------------------------------------- clienti
-
     fun clientiOrdinati(): List<JSONObject> = lista(F_CLI).sortedBy { s(it, "cognome").lowercase() + "|" + s(it, "nome").lowercase() }
 
     fun nomiClienti(): List<String> =
@@ -213,8 +199,6 @@ object Studio {
         lista(F_FAT).filter { s(it, "cliente_nome").trim() == nome }.sortedByDescending { s(it, "data") }
 
     fun nomiPrestazioni(): List<String> = lista(F_PRE).map { s(it, "nome") }.filter { it.isNotBlank() }.toSortedSet().toList()
-
-    // ---------------------------------------------------------------- documenti
 
     class Riga(val desc: String, val qty: Double, val prezzo: Double, val iva: Double)
 
@@ -237,7 +221,6 @@ object Studio {
 
     fun totali(doc: JSONObject): Totali = totali(righe(doc))
 
-    /** Imponibile (senza IVA), come usato dal desktop per fatturato e KPI. */
     fun imponibile(doc: JSONObject): Double = righe(doc).sumOf { it.qty * it.prezzo }
 
     fun riepilogoIva(righe: List<Riga>): List<Pair<Double, Double>> {
@@ -260,7 +243,6 @@ object Studio {
 
     class Soglia(val totaleAnno: Double, val soglia: Double, val perc: Double, val anno: String)
 
-    /** Solo per forfettari su Fatture: fatturato dell'anno con questo documento rispetto alla soglia. */
     fun controlloSoglia(rec: JSONObject): Soglia? {
         val emi = emittente()
         if (s(emi, "regime_fiscale") != "Forfettario" || tipoDoc(rec) != "Fattura") return null
@@ -276,10 +258,6 @@ object Studio {
         return Soglia(tot, soglia, tot / soglia, anno)
     }
 
-    /**
-     * Salva un documento. Per un documento NUOVO di tipo Fattura scala dal magazzino le quantita'
-     * delle righe il cui nome coincide con un articolo (come nel desktop; qui non per i preventivi).
-     */
     fun salvaDocumento(rec: JSONObject, nuovo: Boolean): String? {
         val err = salva(F_FAT, rec)
         if (err != null) return err
@@ -303,7 +281,6 @@ object Studio {
         return null
     }
 
-    /** Segna la fattura come Pagata e registra l'entrata in cassa. */
     fun incassa(idDoc: String, dataIso: String, metodo: String): String? {
         val doc = lista(F_FAT).firstOrNull { s(it, "id") == idDoc } ?: return "Documento non trovato"
         if (tipoDoc(doc) != "Fattura") return "Puoi incassare solo le Fatture"
@@ -323,8 +300,6 @@ object Studio {
         return salva(F_FAT, doc)
     }
 
-    // ---------------------------------------------------------------- catalogo (autocompletamento righe)
-
     class VoceCat(val nome: String, val prezzo: Double, val iva: Int, val origine: String)
 
     fun catalogo(): List<VoceCat> {
@@ -333,8 +308,6 @@ object Studio {
         for (p in lista(F_PRE)) out.add(VoceCat(s(p, "nome"), d(p, "prezzo"), d(p, "iva", 22.0).toInt(), "Prestazione"))
         return out.filter { it.nome.isNotBlank() }.sortedBy { it.nome.lowercase() }
     }
-
-    // ---------------------------------------------------------------- cassa
 
     class SaldoCassa(val entrate: Double, val uscite: Double) {
         val saldo: Double get() = entrate - uscite
@@ -347,11 +320,7 @@ object Studio {
         return SaldoCassa(e, u)
     }
 
-    // ---------------------------------------------------------------- magazzino
-
     fun sottoSoglia(m: JSONObject): Boolean = d(m, "quantita") <= d(m, "soglia")
-
-    // ---------------------------------------------------------------- agenda
 
     fun appuntamentiGiorno(giorno: String, filtro: String = "Tutti"): List<JSONObject> =
         lista(F_APP).filter { s(it, "data") == giorno && (filtro == "Tutti" || s(it, "stato") == filtro) }
@@ -363,7 +332,6 @@ object Studio {
             .sortedWith(compareBy({ s(it, "data") }, { s(it, "ora") }))
     }
 
-    /** Normalizza l'ora: vuota -> "", altrimenti HH:MM; null se non valida. */
     fun normOra(t: String): String? {
         val x = t.trim()
         if (x.isEmpty()) return ""
@@ -381,7 +349,6 @@ object Studio {
         lista(F_APP).filter { s(it, "cliente_nome") == CLI_SCAD && s(it, "data") >= iso(oggi) }
             .sortedBy { s(it, "data") }.take(n)
 
-    /** Aggiunge le scadenze fiscali dell'anno (come il desktop). Ritorna il numero aggiunto o un errore. */
     fun generaScadenze(anno: Int): Pair<Int, String?> {
         val regime = s(emittente(), "regime_fiscale").ifBlank { "Ordinario" }
         val sc = if (regime == "Forfettario") listOf(
@@ -418,8 +385,6 @@ object Studio {
         }
         return aggiunte to err
     }
-
-    // ---------------------------------------------------------------- dashboard
 
     class Dash(
         val fatMese: Double, val fatAnno: Double, val daIncassare: Double, val nAperte: Int,
@@ -465,7 +430,6 @@ object Studio {
         val aliqInps: Double?, val inps: Double?, val totale: Double,
     )
 
-    /** Stima tasse del regime forfettario (come la dashboard desktop). */
     fun stimaTasse(fatAnno: Double, emi: JSONObject = emittente()): Tasse? {
         if (s(emi, "regime_fiscale") != "Forfettario") return null
         val coeff = (numero(s(emi, "coefficiente_redditivita").ifBlank { "78" }) ?: 78.0) / 100.0

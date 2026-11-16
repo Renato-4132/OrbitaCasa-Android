@@ -12,10 +12,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/**
- * Modulo Dieta: piano settimanale, composizione pasti, peso, fabbisogno, passi, alimenti personalizzati.
- * Legge e scrive gli stessi file JSON del desktop (profilo "Generico"), cosi' la sincronizzazione li allinea.
- */
 object Dieta {
     const val F_PIANO = "dieta_piano.json"
     const val F_PESO = "peso_storico.json"
@@ -54,10 +50,7 @@ object Dieta {
         baseCache = null
     }
 
-    /** Messaggi di errore dei file letti per ultimi (file corrotti). */
     fun errori(): List<String> = errMap.values.toList()
-
-    // ---------------------------------------------------------------- utilita'
 
     fun data(s: String): LocalDate? = try {
         if (s.isBlank()) null else LocalDate.parse(s.trim(), LEGGI)
@@ -100,8 +93,6 @@ object Dieta {
         b < 40.0 -> "Obesità II — Rischio elevato, intervento consigliato"
         else -> "Obesità III — Rischio molto elevato, consulta subito il medico"
     }
-
-    // ---------------------------------------------------------------- I/O JSON
 
     private class Letto(val valore: Any?, val corrotto: Boolean)
 
@@ -156,8 +147,6 @@ object Dieta {
         return err
     }
 
-    // ---------------------------------------------------------------- piano
-
     class Giorno(val nome: String, val pasti: List<String>, val tot: List<Int>)
 
     class Sett(val titolo: String, val giorni: List<Giorno>) {
@@ -166,13 +155,11 @@ object Dieta {
             if (giorni.isEmpty()) List(6) { 0 } else totali().map { Math.rint(it.toDouble() / giorni.size).toInt() }
     }
 
-    /** Un alimento in un pasto: grammi e valori (kcal, prot, grassi, carb, zuccheri, fibre) gia' scalati. */
     class Item(val nome: String, val g: Double, val v: List<Double>)
 
     class Piano(val sett: List<Sett>, private val comp: Map<String, List<Item>>) {
         fun composizione(s: Int, g: Int, pasto: Int): List<Item> = comp["${s}_${g}_${PASTI[pasto]}"] ?: emptyList()
 
-        /** Media kcal/giorno del piano (media delle medie settimanali), come nel PDF desktop. */
         fun mediaKcal(): Int? {
             val m = sett.filter { it.giorni.isNotEmpty() }.map { it.medie()[0] }
             return if (m.isEmpty()) null else Math.rint(m.sum().toDouble() / m.size).toInt()
@@ -245,7 +232,6 @@ object Dieta {
         for (t in 0 until 6) r.put(5 + t, rint(tot[t]))
     }
 
-    /** Come "Salva e chiudi" del desktop: salva la composizione, riscrive il testo del pasto e ricalcola i totali del giorno. */
     fun salvaComposizione(s: Int, g: Int, pasto: Int, items: List<Item>): String? =
         modifica(F_PIANO, { adattaPiano(it) }) { o ->
             val r = rigaRaw(o, s, g) ?: return@modifica "Giorno non trovato."
@@ -315,8 +301,6 @@ object Dieta {
             "PIANO - ${s.titolo}:\n$righe\n\n" +
             "REGOLE: no Markdown (*, #), titoli in MAIUSCOLO, italiano conciso."
     }
-
-    // ---------------------------------------------------------------- peso
 
     class Pesata(val data: String, val d: LocalDate, val peso: Double)
     class PesoDati(val pesate: List<Pesata>, val altezza: String, val obiettivo: String)
@@ -396,8 +380,6 @@ object Dieta {
         }
     }
 
-    // ---------------------------------------------------------------- fabbisogno
-
     class Fabb(val sesso: String, val peso: String, val altezza: String, val eta: String)
 
     fun fabb(): Fabb {
@@ -440,13 +422,10 @@ object Dieta {
         return Fabbisogno(rint(bmr).toInt(), livelli, obiettivi)
     }
 
-    /** Fabbisogno calcolato con i dati salvati (null se mancano). */
     fun fabbisognoSalvato(): Fabbisogno? {
         val f = fabb()
         return calcolaFabb(f.sesso, numero(f.peso) ?: return null, numero(f.altezza) ?: return null, f.eta.trim().toIntOrNull() ?: return null)
     }
-
-    // ---------------------------------------------------------------- passi
 
     class VocePassi(val data: String, val d: LocalDate, val passi: Int, val ob: Int, val note: String) {
         val pct: Int get() = if (ob > 0) Math.rint(passi * 100.0 / ob).toInt() else 0
@@ -535,9 +514,6 @@ object Dieta {
         )
     }
 
-    // ---------------------------------------------------------------- alimenti
-
-    /** Valori per 100 g: kcal, proteine, grassi, carboidrati, zuccheri, fibre. */
     class Alimento(val nome: String, val cat: String, val v: List<Double>)
 
     private fun alimentoDa(a: JSONArray): Alimento? {
@@ -556,7 +532,6 @@ object Dieta {
 
     private fun unesc(s: String) = s.replace("\\'", "'").replace("\\\"", "\"").replace("\\\\", "\\")
 
-    /** Accetta sia un array JSON sia il formato Python del desktop (ALIMENTI_DB = [ (...), ... ]). */
     fun parseAlimenti(testo: String): List<Alimento> {
         val t = testo.trim()
         if (t.startsWith("[")) {
@@ -590,13 +565,11 @@ object Dieta {
         return l
     }
 
-    /** True se il database scaricato manca o ha piu' di `giorni` giorni. */
     fun aggiornamentoDovuto(giorni: Int = 7): Boolean {
         val cache = File(dir.parentFile, CACHE_ALIMENTI)
         return !cache.isFile || System.currentTimeMillis() - cache.lastModified() > giorni * 86_400_000L
     }
 
-    /** Scarica il database alimenti aggiornato (bloccante: usare in un thread). Restituisce il numero di alimenti. */
     fun scaricaAlimenti(): Int {
         val c = URL(URL_ALIMENTI).openConnection() as HttpURLConnection
         c.connectTimeout = 10_000
@@ -625,7 +598,6 @@ object Dieta {
         return out
     }
 
-    /** Database completo: base + personalizzati (i personalizzati sostituiscono quelli omonimi), ordinato per nome. */
     fun alimenti(): List<Alimento> {
         val cust = custom()
         val nomi = cust.map { it.nome }.toSet()
@@ -665,7 +637,6 @@ object Dieta {
             null
         }
 
-    /** Item per un alimento e un peso in grammi (valori per 100 g scalati e arrotondati a 1 decimale). */
     fun voce(a: Alimento, grammi: Double): Item {
         val f = grammi / 100.0
         return Item(a.nome, grammi, a.v.map { round1(it * f) })

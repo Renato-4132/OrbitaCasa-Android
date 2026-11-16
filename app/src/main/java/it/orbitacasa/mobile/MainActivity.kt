@@ -89,7 +89,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Sync a schermo acceso: gira solo mentre l'app è visibile (si ferma in onStop). */
     private fun avviaTimerSync() {
         handlerSync.removeCallbacks(timerSync)
         val m = Sync.minFg(this)
@@ -326,7 +325,6 @@ class MainActivity : AppCompatActivity() {
             mese = mese.plusMonths(1)
             renderMovimenti()
         }
-        // Tocco sul nome del mese: si torna al mese corrente (al posto del vecchio tasto "Oggi")
         vista<View>(R.id.boxMese).setOnClickListener {
             mese = YearMonth.now()
             renderMovimenti()
@@ -4112,10 +4110,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        anRiga(root) { r ->
-            campoMenu(r, "Estratto di", metodiLista, metodoSel) { metodoSel = metodiLista[it]; ricalcola() }
-            tilConto = campoMenu(r, "Conto", contiLista, contoSel) { contoSel = contiLista[it]; ricalcola() }
-        }
+        campoMenu(root, "Estratto di", metodiLista, metodoSel) { metodoSel = metodiLista[it]; ricalcola() }
+        tilConto = campoMenu(root, "Conto", contiLista, contoSel) { contoSel = contiLista[it]; ricalcola() }
         anRiga(root) { r ->
             campoMenu(r, "Tolleranza giorni", giorniLista, giorni.toString()) { giorni = it; ricalcola() }
             campoMenu(r, "Mostra", filtri, filtro) { filtro = filtri[it]; ricalcola() }
@@ -5709,8 +5705,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ================================================================ DIETA
-
     private val DIET_SEZ = listOf("Piano settimanale", "Confronto settimane", "Peso", "Fabbisogno calorico", "Passi", "Alimenti personalizzati")
 
     private fun dietNum(x: Double): String = if (x == Math.rint(x)) x.toLong().toString() else Dieta.fmt1(x)
@@ -6107,8 +6101,6 @@ class MainActivity : AppCompatActivity() {
         cont.addView(det)
     }
 
-    // ---------------------------------------------------------------- peso
-
     private fun dietPeso(cont: LinearLayout) {
         val d = Dieta.peso()
         val verde = ContextCompat.getColor(this, R.color.oc_green)
@@ -6224,8 +6216,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------------------------------------------------------------- fabbisogno
-
     private fun dietFabb(cont: LinearLayout) {
         val f = Dieta.fabb()
         val verde = ContextCompat.getColor(this, R.color.oc_green)
@@ -6279,8 +6269,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Annulla", null)
             .show()
     }
-
-    // ---------------------------------------------------------------- passi
 
     private fun dietPassi(cont: LinearLayout) {
         val d = Dieta.passi()
@@ -6387,8 +6375,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------------------------------------------------------------- alimenti personalizzati
-
     private fun dietCustom(cont: LinearLayout) {
         val l = Dieta.custom().sortedBy { it.nome.lowercase() }
         sezione(cont, "ALIMENTI PERSONALIZZATI (valori per 100 g)")
@@ -6447,8 +6433,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Annulla", null)
             .show()
     }
-
-    // ---------------------------------------------------------------- azioni, AI, PDF
 
     private fun menuDieta() {
         val voci = ArrayList<String>()
@@ -6552,8 +6536,6 @@ class MainActivity : AppCompatActivity() {
             }
             .show()
     }
-
-    // ================================================================ MYBUSINESS
 
     private val STU_SEZ = listOf("Dashboard", "Clienti", "Agenda", "Prestazioni", "Fatture", "Cassa", "Magazzino", "Emittente")
     private val STU_NUOVO = listOf(
@@ -6668,8 +6650,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------------------------------------------------------------- dashboard
-
     private fun stuDashboard(cont: LinearLayout) {
         val oggi = LocalDate.now()
         val k = Studio.dashboard(oggi)
@@ -6743,8 +6723,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    // ---------------------------------------------------------------- clienti
 
     private fun stuClienti(cont: LinearLayout) {
         val l = Studio.clientiOrdinati()
@@ -6846,8 +6824,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Annulla", null)
             .show()
     }
-
-    // ---------------------------------------------------------------- agenda
 
     private fun stuAgenda(cont: LinearLayout) {
         val oggi = LocalDate.now()
@@ -7041,8 +7017,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------------------------------------------------------------- prestazioni
-
     private fun stuPrestazioni(cont: LinearLayout) {
         val l = Studio.lista(Studio.F_PRE).sortedBy { Studio.s(it, "nome").lowercase() }
         if (l.isEmpty()) {
@@ -7102,8 +7076,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Annulla", null)
             .show()
     }
-
-    // ---------------------------------------------------------------- fatture / preventivi
 
     private fun stuFatture(cont: LinearLayout) {
         val verde = ContextCompat.getColor(this, R.color.oc_green)
@@ -7393,9 +7365,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Annulla", null)
             .show()
     }
-
-    // ---------------------------------------------------------------- cassa
-
+    
     private fun stuCassa(cont: LinearLayout) {
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
@@ -7472,8 +7442,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------------------------------------------------------------- magazzino
-
     private fun stuMagazzino(cont: LinearLayout) {
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
         val l = Studio.lista(Studio.F_MAG).sortedBy { Studio.s(it, "nome").lowercase() }
@@ -7548,8 +7516,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Annulla", null)
             .show()
     }
-
-    // ---------------------------------------------------------------- emittente
 
     private val STU_EMI = listOf(
         "ragione_sociale" to "Ragione sociale / Nome", "indirizzo" to "Indirizzo (via e civico)", "cap" to "CAP",
