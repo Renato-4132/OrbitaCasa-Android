@@ -122,6 +122,10 @@ class MainActivity : AppCompatActivity() {
     private var giornoCal: LocalDate? = LocalDate.now()
     private var pianCal = false
     private var schedaAperta: String? = null
+    private var schedaFiltroId = ""
+    private var schedaPeriodo = 0
+    private var schedaCategoria = "Tutte"
+    private var schedaLimite = 30
     private var grafVista = 0
     private var grafSempre = false
     private var grafAnno = LocalDate.now().year
@@ -1337,7 +1341,32 @@ class MainActivity : AppCompatActivity() {
         b2Testo?.let { b2.setTextColor(it) }
         b2.visibility = if (azione2 == null) View.GONE else View.VISIBLE
         if (azione2 != null) b2.text = azione2
+        bottoniAffiancati(false)
         vista<LinearLayout>(R.id.listaGen).removeAllViews()
+    }
+
+    private fun bottoniAffiancati(si: Boolean) {
+        val dp = resources.displayMetrics.density
+        val barra = vista<LinearLayout>(R.id.barraAzioni)
+        val b2 = vista<MaterialButton>(R.id.btnAddGen2)
+        val b1 = vista<View>(R.id.btnAddGen)
+        barra.orientation = if (si) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+        (b2.layoutParams as LinearLayout.LayoutParams).let {
+            it.width = if (si) 0 else ViewGroup.LayoutParams.MATCH_PARENT
+            it.height = if (si) (48 * dp).toInt() else ViewGroup.LayoutParams.WRAP_CONTENT
+            it.weight = if (si) 1f else 0f
+            it.topMargin = if (si) (8 * dp).toInt() else (6 * dp).toInt()
+            it.marginEnd = if (si) (8 * dp).toInt() else 0
+            b2.layoutParams = it
+        }
+        (b1.layoutParams as LinearLayout.LayoutParams).let {
+            it.width = if (si) 0 else ViewGroup.LayoutParams.MATCH_PARENT
+            it.height = if (si) (48 * dp).toInt() else ViewGroup.LayoutParams.WRAP_CONTENT
+            it.weight = if (si) 1f else 0f
+            it.topMargin = (8 * dp).toInt()
+            b1.layoutParams = it
+        }
+        b2.maxLines = if (si) 1 else Int.MAX_VALUE
     }
 
     private fun testoTotali(entrate: Double, uscite: Double, saldo: Double): String {
@@ -8994,6 +9023,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderDettaglio(v: JSONObject) {
         val s = sc
         intestaLista(s.cfg.emoji + " " + v.optString("nome"), "➕  Nuova " + if (s.cfg.tipoMov) "voce" else "spesa", "⚙️  Altro")
+        bottoniAffiancati(true)
         val cont = vista<LinearLayout>(R.id.listaGen)
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
         val verde = ContextCompat.getColor(this, R.color.oc_green)
@@ -9023,14 +9053,72 @@ class MainActivity : AppCompatActivity() {
             vuoto(cont, "Nessuna voce registrata.")
             return
         }
-        val daEsp = movs.count { !it.esportato }
-        val saldo = movs.sumOf { if (it.entrata) -it.imp else it.imp }
+        val idScheda = v.optString("id")
+        if (schedaFiltroId != idScheda) {
+            schedaFiltroId = idScheda
+            schedaPeriodo = 0
+            schedaCategoria = "Tutte"
+            schedaLimite = 30
+        }
+        val periodi = listOf("Ultimi 30 giorni", "Questo mese", "Ultimi 3 mesi", "Ultimi 12 mesi", "Quest'anno", "Anno scorso", "Tutto")
+        val oggi = LocalDate.now()
+        fun inPeriodo(d: LocalDate?): Boolean = when (schedaPeriodo) {
+            0 -> d != null && !d.isBefore(oggi.minusDays(30))
+            1 -> d != null && d.year == oggi.year && d.monthValue == oggi.monthValue
+            2 -> d != null && !d.isBefore(oggi.minusMonths(3))
+            3 -> d != null && !d.isBefore(oggi.minusMonths(12))
+            4 -> d != null && d.year == oggi.year
+            5 -> d != null && d.year == oggi.year - 1
+            else -> true
+        }
+        val categorie = listOf("Tutte") + movs.map { it.cat }.filter { it.isNotBlank() }.distinct().sorted()
+        if (schedaCategoria !in categorie) schedaCategoria = "Tutte"
+        val barra = LinearLayout(this)
+        barra.orientation = LinearLayout.HORIZONTAL
+        barra.addView(
+            pulsanteSel("📅 " + periodi[schedaPeriodo] + " ▾", false) {
+                OcBuilder(this)
+                    .setTitle("Periodo")
+                    .setItems(periodi.toTypedArray()) { _, k ->
+                        schedaPeriodo = k
+                        schedaLimite = 30
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        barra.addView(
+            pulsanteSel("🏷️ " + schedaCategoria + " ▾", false) {
+                OcBuilder(this)
+                    .setTitle("Categoria")
+                    .setItems(categorie.toTypedArray()) { _, k ->
+                        schedaCategoria = categorie[k]
+                        schedaLimite = 30
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        cont.addView(barra)
+        val visibili = movs.filter { inPeriodo(it.data) && (schedaCategoria == "Tutte" || it.cat == schedaCategoria) }
+        val daEsp = visibili.count { !it.esportato }
+        val saldo = visibili.sumOf { if (it.entrata) -it.imp else it.imp }
         riga(
-            cont, if (s.cfg.tipoMov) "Saldo (uscite − entrate)" else "Totale spese",
-            if (daEsp > 0) "$daEsp da esportare nei movimenti" else "Tutte esportate",
+            cont,
+            (if (s.cfg.tipoMov) "Saldo (uscite − entrate)" else "Totale spese") + " · " + periodi[schedaPeriodo].lowercase() +
+                (if (schedaCategoria != "Tutte") " · $schedaCategoria" else ""),
+            visibili.size.toString() + " di " + movs.size + (if (daEsp > 0) " · $daEsp da esportare nei movimenti" else if (visibili.isNotEmpty()) " · tutte esportate" else ""),
             euro(saldo), rosso, null
         )
-        for (m in movs) {
+        if (visibili.isEmpty()) {
+            vuoto(cont, "Nessuna voce con questi filtri.")
+            return
+        }
+        for (m in visibili.take(schedaLimite)) {
             val sotto = (listOfNotNull(
                 m.data?.let { s.dataIt(it) },
                 m.desc.takeIf { it.isNotBlank() },
@@ -9038,6 +9126,15 @@ class MainActivity : AppCompatActivity() {
                 m.extra[e.k]?.takeIf { it > 0 }?.let { s.fmtN(it) + " " + e.unita }
             }).joinToString(" · ")
             riga(cont, (if (m.esportato) "✅ " else "") + m.cat, sotto, euro(m.imp), if (m.entrata) verde else rosso) { dialogMovScheda(v, m) }
+        }
+        if (visibili.size > schedaLimite) {
+            cont.addView(
+                pulsanteSel("Mostra altre 30 (restano " + (visibili.size - schedaLimite) + ")", false) {
+                    schedaLimite += 30
+                    renderLista()
+                },
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            )
         }
     }
 
