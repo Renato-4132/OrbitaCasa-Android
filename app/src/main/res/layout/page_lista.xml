@@ -64,6 +64,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
+            android:autoSizeMaxTextSize="15sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeTextType="uniform"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:visibility="gone" />
 
         <LinearLayout
@@ -83,6 +90,10 @@
                 android:id="@+id/tvAddGen"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:autoSizeMaxTextSize="15sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeTextType="uniform"
+                android:maxLines="1"
                 android:textColor="@color/oc_on_gold"
                 android:textSize="15sp"
                 android:textStyle="bold" />

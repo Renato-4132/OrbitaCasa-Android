@@ -1341,7 +1341,7 @@ class MainActivity : AppCompatActivity() {
         b2Testo?.let { b2.setTextColor(it) }
         b2.visibility = if (azione2 == null) View.GONE else View.VISIBLE
         if (azione2 != null) b2.text = azione2
-        bottoniAffiancati(false)
+        bottoniAffiancati(true)
         vista<LinearLayout>(R.id.listaGen).removeAllViews()
     }
 
@@ -1356,7 +1356,7 @@ class MainActivity : AppCompatActivity() {
             it.height = if (si) (48 * dp).toInt() else ViewGroup.LayoutParams.WRAP_CONTENT
             it.weight = if (si) 1f else 0f
             it.topMargin = if (si) (8 * dp).toInt() else (6 * dp).toInt()
-            it.marginEnd = if (si) (8 * dp).toInt() else 0
+            it.marginEnd = if (si && b1.visibility == View.VISIBLE) (8 * dp).toInt() else 0
             b2.layoutParams = it
         }
         (b1.layoutParams as LinearLayout.LayoutParams).let {
@@ -1366,7 +1366,6 @@ class MainActivity : AppCompatActivity() {
             it.topMargin = (8 * dp).toInt()
             b1.layoutParams = it
         }
-        b2.maxLines = if (si) 1 else Int.MAX_VALUE
     }
 
     private fun testoTotali(entrate: Double, uscite: Double, saldo: Double): String {
@@ -9023,7 +9022,6 @@ class MainActivity : AppCompatActivity() {
     private fun renderDettaglio(v: JSONObject) {
         val s = sc
         intestaLista(s.cfg.emoji + " " + v.optString("nome"), "➕  Nuova " + if (s.cfg.tipoMov) "voce" else "spesa", "⚙️  Altro")
-        bottoniAffiancati(true)
         val cont = vista<LinearLayout>(R.id.listaGen)
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
         val verde = ContextCompat.getColor(this, R.color.oc_green)
