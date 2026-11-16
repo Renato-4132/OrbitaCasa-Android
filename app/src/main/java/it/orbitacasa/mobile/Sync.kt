@@ -525,6 +525,7 @@ object Sync {
             )
             r.codice == 403 -> throw SyncErr(r.json?.optString("errore").orEmpty().ifBlank { "Operazione non consentita dal PC" })
             r.codice == 429 -> throw SyncErr("Troppi tentativi errati: il PC ti ha bloccato per 10 minuti", "token")
+            r.codice == 404 && r.json == null -> throw SyncErr("Accesso da app disattivato in OrbitaCasa Desktop (Configurazione > Rete)")
             r.codice !in 200..299 -> {
                 val msg = r.json?.optString("errore").orEmpty().ifBlank { "errore HTTP ${r.codice}" }
                 throw SyncErr("$cosa: $msg")
