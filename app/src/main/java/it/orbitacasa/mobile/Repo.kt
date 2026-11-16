@@ -180,6 +180,7 @@ object Repo {
         Fondo.init(dir)
         Casa.init(dir)
         Pensione.init(dir)
+        Studio.init(dir)
         Dieta.init(dir) { ctx.assets.open("alimenti.json").bufferedReader(Charsets.UTF_8).use { it.readText() } }
         Doc.init(dir)
         Utenze.init(dir)

@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -105,6 +105,13 @@ class MainActivity : AppCompatActivity() {
     private var dietPassiMese = 0
     private var dietPassiAnno = LocalDate.now().year
     private var dietAlimentiControllati = false
+    private var stuVista = 0
+    private var stuMese: YearMonth = YearMonth.now()
+    private var stuGiorno: LocalDate = LocalDate.now()
+    private var stuModoApp = 0
+    private var stuFiltroApp = "Tutti"
+    private var stuFiltroDoc = "Tutti"
+    private var stuFiltroCas = "Tutti"
     private var scadutiAperti = false
     private var catCerca = ""
     private var catOrdine = "Nome"
@@ -241,6 +248,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.CASACARE -> dialogCasaCare(null)
                 Pagina.PENSIONE -> penAggiungi()
                 Pagina.DIETA -> menuDieta()
+                Pagina.STUDIO -> stuNuovo()
                 Pagina.PIANIFICA -> dialogNuovoPiano()
                 Pagina.DOCUMENTI, Pagina.DOCPERS -> nuovoDocumento()
                 Pagina.UTENZE -> dialogNuovaLettura()
@@ -282,6 +290,8 @@ class MainActivity : AppCompatActivity() {
                 menuPdfPensione()
             } else if (pagina == Pagina.DIETA) {
                 menuDieta()
+            } else if (pagina == Pagina.STUDIO) {
+                menuStudio()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -538,7 +548,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -636,6 +646,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("💶", "Finanziamenti") { mostra(Pagina.FINANZIAMENTI) },
                 Tessera("💰", "Fondo Risparmio") { mostra(Pagina.FONDO) },
                 Tessera("🏖️", "Fondo Pensione") { mostra(Pagina.PENSIONE) },
+                Tessera("💼", "MyBusiness") { mostra(Pagina.STUDIO) },
             )
         )
         gruppo(
@@ -691,6 +702,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.FONDO, "💰", "Fondo"),
         Dest(Pagina.PENSIONE, "🏖️", "Pensione"),
         Dest(Pagina.DIETA, "🥗", "Dieta"),
+        Dest(Pagina.STUDIO, "💼", "MyBusiness"),
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
         Dest(Pagina.DOCPERS, "🪪", "Personali"),
         Dest(Pagina.UTENZE, "💡", "Utenze"),
@@ -1290,6 +1302,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.CASACARE -> renderCasaCare()
             Pagina.PENSIONE -> renderPensione()
             Pagina.DIETA -> renderDieta()
+            Pagina.STUDIO -> renderStudio()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -6537,6 +6550,1058 @@ class MainActivity : AppCompatActivity() {
                 i.putExtra(Intent.EXTRA_TEXT, testo)
                 startActivity(Intent.createChooser(i, "Condividi analisi"))
             }
+            .show()
+    }
+
+    // ================================================================ MYBUSINESS
+
+    private val STU_SEZ = listOf("Dashboard", "Clienti", "Agenda", "Prestazioni", "Fatture", "Cassa", "Magazzino", "Emittente")
+    private val STU_NUOVO = listOf(
+        "", "➕  Nuovo cliente", "➕  Appuntamento", "➕  Nuova prestazione", "➕  Nuovo documento", "➕  Nuovo movimento",
+        "➕  Nuovo articolo", "",
+    )
+
+    private fun stuLp() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+    private fun stuEsito(err: String?, ok: String) {
+        if (err != null) aviso(err) else {
+            refresh()
+            aviso(ok)
+        }
+    }
+
+    private fun stuTesto(til: TextInputLayout): String = til.editText?.text?.toString()?.trim() ?: ""
+
+    private fun stuConferma(titolo: String, msg: String, ok: String, azione: () -> Unit) {
+        OcBuilder(this)
+            .setTitle(titolo)
+            .setMessage(msg)
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton(ok) { _, _ -> azione() }
+            .show()
+    }
+
+    private fun stuCampi(
+        corpo: LinearLayout, def: List<Triple<String, String, Int>>, iniz: (String) -> String,
+    ): Map<String, TextInputEditText> {
+        val m = LinkedHashMap<String, TextInputEditText>()
+        for ((k, h, t) in def) m[k] = campoTesto(corpo, h, iniz(k), t)
+        return m
+    }
+
+    private fun stuT(m: Map<String, TextInputEditText>, k: String): String = m[k]?.text?.toString()?.trim() ?: ""
+
+    private fun stuCopia(o: JSONObject?): JSONObject = if (o == null) JSONObject().put("id", Studio.nuovoId()) else JSONObject(o.toString())
+
+    private fun renderStudio() {
+        intestaLista("💼 MyBusiness", STU_NUOVO[stuVista], "🔀  Azioni")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        cont.addView(
+            pulsanteSel("Sezione:  " + STU_SEZ[stuVista] + "   ▾", true) {
+                OcBuilder(this)
+                    .setTitle("Sezione")
+                    .setItems(STU_SEZ.toTypedArray()) { _, k ->
+                        stuVista = k
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            stuLp()
+        )
+        val corpo = LinearLayout(this)
+        corpo.orientation = LinearLayout.VERTICAL
+        when (stuVista) {
+            0 -> stuDashboard(corpo)
+            1 -> stuClienti(corpo)
+            2 -> stuAgenda(corpo)
+            3 -> stuPrestazioni(corpo)
+            4 -> stuFatture(corpo)
+            5 -> stuCassa(corpo)
+            6 -> stuMagazzino(corpo)
+            else -> stuEmittente(corpo)
+        }
+        for (e in Studio.errori()) vuoto(cont, "⚠️ $e")
+        cont.addView(corpo)
+    }
+
+    private fun stuNuovo() {
+        when (stuVista) {
+            1 -> dialogCliente(null)
+            2 -> dialogAppuntamento(null)
+            3 -> dialogPrestazione(null)
+            4 -> dialogDocumentoStudio(null)
+            5 -> dialogMovCassa(null)
+            6 -> dialogArticolo(null)
+        }
+    }
+
+    private fun menuStudio() {
+        val voci = ArrayList<String>()
+        val az = ArrayList<() -> Unit>()
+        fun add(t: String, f: () -> Unit) {
+            voci.add(t)
+            az.add(f)
+        }
+        if (stuVista in 1..6) add(STU_NUOVO[stuVista]) { stuNuovo() }
+        if (stuVista == 2) {
+            add("📅  Vai a oggi") {
+                stuMese = YearMonth.now()
+                stuGiorno = LocalDate.now()
+                renderLista()
+            }
+            add("🗓️  Genera scadenze fiscali " + LocalDate.now().year) {
+                val (n, err) = Studio.generaScadenze(LocalDate.now().year)
+                if (err != null) aviso(err) else {
+                    refresh()
+                    aviso(if (n > 0) "Aggiunte $n scadenze fiscali" else "Scadenze fiscali già presenti in agenda")
+                }
+            }
+        }
+        if (stuVista == 6) add("📤  Esporta PDF magazzino") { stuPdfMagazzino() }
+        if (stuVista == 7) add("✏️  Modifica dati emittente") { dialogEmittente() }
+        add("🔄  Aggiorna") { refresh() }
+        OcBuilder(this)
+            .setTitle("Azioni")
+            .setItems(voci.toTypedArray()) { _, k -> az[k]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- dashboard
+
+    private fun stuDashboard(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val k = Studio.dashboard(oggi)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val emi = Studio.emittente()
+        sezione(cont, "INDICATORI")
+        riga(cont, "Fatturato del mese", Studio.MESI[oggi.monthValue] + " " + oggi.year, Studio.eur(k.fatMese), verde, null)
+        riga(cont, "Fatturato dell'anno", "Imponibile, fatture emesse e pagate", Studio.eur(k.fatAnno), verde, null)
+        riga(cont, "Da incassare", k.nAperte.toString() + " fatture aperte", Studio.eur(k.daIncassare), arancio) {
+            stuFiltroDoc = "Emessa"
+            stuVista = 4
+            renderLista()
+        }
+        riga(cont, "Saldo cassa", "", Studio.eur(k.saldo), if (k.saldo >= 0) verde else rosso) {
+            stuVista = 5
+            renderLista()
+        }
+        riga(cont, "Appuntamenti oggi", k.appSett.toString() + " nei prossimi 7 giorni", k.appOggi.toString(), null) {
+            stuMese = YearMonth.now()
+            stuGiorno = oggi
+            stuVista = 2
+            renderLista()
+        }
+        riga(cont, "Magazzino sotto soglia", "Voci con quantità ≤ soglia minima", k.nSottoSoglia.toString(), if (k.nSottoSoglia > 0) rosso else verde) {
+            stuVista = 6
+            renderLista()
+        }
+        if (Studio.forfettario()) {
+            sezione(cont, "REGIME FORFETTARIO")
+            barra(cont, "Soglia fatturato annuo", k.fatAnno, Studio.sogliaForfettario(emi), "(soglia forfettario)")
+            val t = Studio.stimaTasse(k.fatAnno, emi)
+            if (t != null) {
+                sezione(cont, "STIMA TASSE E CONTRIBUTI DA ACCANTONARE (ANNO CORRENTE)")
+                riga(cont, "Reddito imponibile", Studio.fmtQ(Math.rint(t.coeff * 1000) / 10.0) + "% del fatturato", Studio.eur(t.reddito), null, null)
+                riga(cont, "Imposta sostitutiva stimata", Studio.fmtQ(t.aliqSost * 100) + "%", Studio.eur(t.imposta), null, null)
+                if (t.inps != null && t.aliqInps != null) {
+                    riga(cont, "Contributi INPS stimati", String.format(Locale.ITALY, "%.2f", t.aliqInps * 100) + "%", Studio.eur(t.inps), null, null)
+                } else {
+                    riga(cont, "Contributi previdenziali", "Altra cassa", "da calcolare a parte", null, null)
+                }
+                riga(cont, "Totale stimato da accantonare", "", Studio.eur(t.totale), arancio, null)
+                vuoto(cont, "Stima indicativa, non sostituisce il calcolo del tuo commercialista.")
+            }
+        }
+        sezione(cont, "FATTURATO ULTIMI 6 MESI")
+        val mesi = Studio.ultimiMesi(oggi, 6)
+        dietGrafico(
+            cont, GraficoView.Modo.BARRE_SEGNO, mesi.map { it.etichetta },
+            mesi.map { it.valore as Double? }, mesi.map { null as Double? }, verde, rosso, "€ ", "", 0, true
+        ) { i ->
+            val m = mesi.getOrNull(i)
+            if (m == null) "" else Studio.MESI[m.mese] + " " + m.anno + " · " + Studio.eur(m.valore)
+        }
+        sezione(cont, "PROSSIMI APPUNTAMENTI")
+        val prossimi = Studio.lista(Studio.F_APP)
+            .filter { Studio.s(it, "stato") != "Annullato" && Studio.s(it, "data") >= Studio.iso(oggi) }
+            .sortedWith(compareBy({ Studio.s(it, "data") }, { Studio.s(it, "ora") }))
+            .take(8)
+        if (prossimi.isEmpty()) vuoto(cont, "Nessun appuntamento in programma.")
+        for (a in prossimi) {
+            riga(
+                cont, Studio.dmy(Studio.s(a, "data")) + " " + Studio.s(a, "ora"),
+                Studio.s(a, "cliente_nome") + " · " + Studio.s(a, "prestazione"), "", null
+            ) {
+                stuGiorno = Studio.dataIso(Studio.s(a, "data")) ?: oggi
+                stuMese = YearMonth.from(stuGiorno)
+                stuVista = 2
+                renderLista()
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- clienti
+
+    private fun stuClienti(cont: LinearLayout) {
+        val l = Studio.clientiOrdinati()
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessun cliente. Usa ➕ Nuovo cliente.")
+            return
+        }
+        for (c in l) {
+            val nome = Studio.nomeCliente(c)
+            val az = Studio.s(c, "azienda")
+            val titolo = if (nome.isBlank()) az else if (az.isNotBlank()) "$nome · $az" else nome
+            val sotto = listOf("telefono", "email", "cf_piva", "note").map { Studio.s(c, it) }.filter { it.isNotBlank() }.joinToString(" · ")
+            riga(cont, titolo, sotto, "", null) { stuMenuCliente(c) }
+        }
+    }
+
+    private fun stuMenuCliente(c: JSONObject) {
+        val nome = Studio.nomeCliente(c).ifBlank { Studio.s(c, "azienda") }
+        OcBuilder(this)
+            .setTitle(nome)
+            .setItems(arrayOf("✏️  Modifica", "📚  Storico", "🗑️  Elimina")) { _, k ->
+                when (k) {
+                    0 -> dialogCliente(c)
+                    1 -> dialogStorico(c)
+                    else -> stuConferma("Eliminare il cliente?", nome, "Elimina") {
+                        stuEsito(Studio.elimina(Studio.F_CLI, Studio.s(c, "id")), "Cliente eliminato")
+                    }
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogStorico(c: JSONObject) {
+        val nome = Studio.nomeCliente(c).ifBlank { Studio.s(c, "azienda") }
+        val (view, corpo) = corpoDialogo()
+        fun titolo(t: String) {
+            val tv = TextView(ctxDialogo)
+            tv.text = t
+            tv.setTypeface(null, Typeface.BOLD)
+            tv.setPadding(4, 16, 4, 6)
+            corpo.addView(tv)
+        }
+        titolo("APPUNTAMENTI")
+        val app = Studio.appuntamentiCliente(nome)
+        if (app.isEmpty()) {
+            val tv = TextView(ctxDialogo)
+            tv.text = "Nessuno"
+            tv.setPadding(4, 4, 4, 4)
+            corpo.addView(tv)
+        }
+        for (a in app) {
+            rigaDlg(
+                corpo, Studio.dmy(Studio.s(a, "data")) + " " + Studio.s(a, "ora"),
+                listOf(Studio.s(a, "prestazione"), Studio.s(a, "note")).filter { it.isNotBlank() }.joinToString(" · "),
+                Studio.s(a, "stato"), null, null
+            )
+        }
+        titolo("FATTURE / PREVENTIVI")
+        val docs = Studio.documentiCliente(nome)
+        if (docs.isEmpty()) {
+            val tv = TextView(ctxDialogo)
+            tv.text = "Nessuno"
+            tv.setPadding(4, 4, 4, 4)
+            corpo.addView(tv)
+        }
+        for (f in docs) {
+            rigaDlg(
+                corpo, Studio.tipoDoc(f) + " " + Studio.s(f, "numero"),
+                Studio.dmy(Studio.s(f, "data")) + " · " + Studio.s(f, "stato"), Studio.eur(Studio.totali(f).totale), null, null
+            )
+        }
+        OcBuilder(this).setTitle("Storico · $nome").setView(view).setPositiveButton("Chiudi", null).show()
+    }
+
+    private fun dialogCliente(c: JSONObject?) {
+        val (view, corpo) = corpoDialogo()
+        val t = InputType.TYPE_CLASS_TEXT
+        val def = listOf(
+            Triple("nome", "Nome *", t), Triple("cognome", "Cognome", t), Triple("azienda", "Azienda", t),
+            Triple("telefono", "Telefono", InputType.TYPE_CLASS_PHONE),
+            Triple("email", "Email", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS),
+            Triple("cf_piva", "CF / P.IVA", t), Triple("indirizzo", "Indirizzo", t),
+            Triple("cod_destinatario", "Codice destinatario SDI", t), Triple("pec", "PEC", t), Triple("note", "Note", t),
+        )
+        val m = stuCampi(corpo, def) { k -> if (c == null) "" else Studio.s(c, k) }
+        OcBuilder(this)
+            .setTitle(if (c == null) "Nuovo cliente" else "Modifica cliente")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                if (stuT(m, "nome").isEmpty()) {
+                    aviso("Il nome è obbligatorio")
+                    return@setPositiveButton
+                }
+                val rec = stuCopia(c)
+                for ((k, _, _) in def) rec.put(k, if (k == "cod_destinatario") stuT(m, k).uppercase() else stuT(m, k))
+                stuEsito(Studio.salva(Studio.F_CLI, rec), "Cliente salvato")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- agenda
+
+    private fun stuAgenda(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        sezione(cont, "PROSSIME SCADENZE FISCALI")
+        val sc = Studio.scadenzeProssime(oggi)
+        if (sc.isEmpty()) vuoto(cont, "Nessuna scadenza generata. Usa Azioni → Genera scadenze fiscali.")
+        for (a in sc) {
+            val dt = Studio.dataIso(Studio.s(a, "data"))
+            val gg = if (dt == null) 999L else java.time.temporal.ChronoUnit.DAYS.between(oggi, dt)
+            val col = if (gg <= 7) rosso else if (gg <= 30) arancio else null
+            val txt = if (gg == 0L) "oggi" else if (gg > 0) "tra $gg giorni" else "scaduta"
+            riga(cont, Studio.s(a, "prestazione"), Studio.dmy(Studio.s(a, "data")), txt, col, null)
+        }
+        sezione(cont, "CALENDARIO")
+        val nav = LinearLayout(this)
+        nav.orientation = LinearLayout.HORIZONTAL
+        nav.addView(pulsanteSel("◀", false) { stuMese = stuMese.minusMonths(1); renderLista() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        nav.addView(
+            pulsanteSel(Studio.MESI[stuMese.monthValue] + " " + stuMese.year, true) {
+                stuMese = YearMonth.now()
+                stuGiorno = LocalDate.now()
+                renderLista()
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2.5f)
+        )
+        nav.addView(pulsanteSel("▶", false) { stuMese = stuMese.plusMonths(1); renderLista() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        cont.addView(nav)
+        val opz = LinearLayout(this)
+        opz.orientation = LinearLayout.HORIZONTAL
+        opz.addView(
+            pulsanteSel("Stato: $stuFiltroApp ▾", false) {
+                val v = listOf("Tutti") + Studio.STATI_APP
+                OcBuilder(this).setTitle("Mostra").setItems(v.toTypedArray()) { _, k -> stuFiltroApp = v[k]; renderLista() }
+                    .setNegativeButton("Annulla", null).show()
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        opz.addView(
+            pulsanteSel("Vista: " + (if (stuModoApp == 0) "Giorno" else "Mese") + " ▾", false) {
+                OcBuilder(this).setTitle("Vista").setItems(arrayOf("Giorno", "Mese")) { _, k -> stuModoApp = k; renderLista() }
+                    .setNegativeButton("Annulla", null).show()
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        cont.addView(opz)
+        val delMese = Studio.appuntamentiMese(stuMese.year, stuMese.monthValue, stuFiltroApp)
+        stuGriglia(cont, delMese.groupingBy { Studio.s(it, "data") }.eachCount())
+        val lista: List<JSONObject>
+        if (stuModoApp == 0) {
+            sezione(cont, "APPUNTAMENTI DEL " + Studio.dmy(Studio.iso(stuGiorno)))
+            lista = Studio.appuntamentiGiorno(Studio.iso(stuGiorno), stuFiltroApp)
+        } else {
+            sezione(cont, "APPUNTAMENTI DI " + Studio.MESI[stuMese.monthValue].uppercase())
+            lista = delMese
+        }
+        if (lista.isEmpty()) vuoto(cont, "Nessun appuntamento.")
+        for (a in lista) {
+            val stato = Studio.s(a, "stato")
+            val sotto = listOfNotNull(
+                if (stuModoApp == 1) Studio.dmy(Studio.s(a, "data")) else null,
+                Studio.s(a, "prestazione").takeIf { it.isNotBlank() },
+                Studio.s(a, "note").takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
+            riga(
+                cont, Studio.s(a, "ora").ifBlank { "—" } + " · " + Studio.s(a, "cliente_nome"), sotto, stato,
+                when (stato) { "Completato" -> verde; "Annullato" -> rosso; else -> null }
+            ) { stuMenuApp(a) }
+        }
+    }
+
+    private fun stuGriglia(cont: LinearLayout, conteggi: Map<String, Int>) {
+        val dp = resources.displayMetrics.density
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val testo = ContextCompat.getColor(this, R.color.oc_text)
+        val oro = ContextCompat.getColor(this, R.color.oc_gold)
+        val primo = stuMese.atDay(1)
+        val off = primo.dayOfWeek.value - 1
+        val giorni = stuMese.lengthOfMonth()
+        val righe = (off + giorni + 6) / 7
+        val intest = LinearLayout(this)
+        intest.orientation = LinearLayout.HORIZONTAL
+        intest.setPadding(0, (8 * dp).toInt(), 0, 0)
+        for (n in listOf("Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom")) {
+            val tv = TextView(this)
+            tv.text = n
+            tv.textSize = 11f
+            tv.gravity = android.view.Gravity.CENTER
+            tv.setTextColor(grigio)
+            intest.addView(tv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        cont.addView(intest)
+        val oggi = LocalDate.now()
+        for (r in 0 until righe) {
+            val rr = LinearLayout(this)
+            rr.orientation = LinearLayout.HORIZONTAL
+            for (c in 0 until 7) {
+                val g = r * 7 + c - off + 1
+                val tv = TextView(this)
+                tv.gravity = android.view.Gravity.CENTER
+                tv.setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
+                if (g in 1..giorni) {
+                    val data = stuMese.atDay(g)
+                    val n = conteggi[Studio.iso(data)] ?: 0
+                    tv.text = g.toString() + "\n" + (if (n > 0) "●$n" else " ")
+                    tv.textSize = 13f
+                    if (data == stuGiorno) {
+                        tv.setBackgroundColor(oro)
+                        tv.setTextColor(android.graphics.Color.BLACK)
+                    } else {
+                        tv.setTextColor(if (c >= 5) rosso else testo)
+                        if (data == oggi) {
+                            tv.setTypeface(null, Typeface.BOLD)
+                            tv.setBackgroundResource(R.drawable.bg_tile)
+                        }
+                    }
+                    tv.setOnClickListener {
+                        stuGiorno = data
+                        renderLista()
+                    }
+                } else {
+                    tv.text = " \n "
+                }
+                rr.addView(tv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            cont.addView(rr)
+        }
+    }
+
+    private fun stuMenuApp(a: JSONObject) {
+        OcBuilder(this)
+            .setTitle(Studio.s(a, "cliente_nome").ifBlank { "Appuntamento" })
+            .setItems(arrayOf("✏️  Modifica", "✅  Segna completato", "🚫  Segna annullato", "🗑️  Elimina")) { _, k ->
+                fun stato(s: String) {
+                    val rec = JSONObject(a.toString())
+                    rec.put("stato", s)
+                    stuEsito(Studio.salva(Studio.F_APP, rec), "Appuntamento aggiornato")
+                }
+                when (k) {
+                    0 -> dialogAppuntamento(a)
+                    1 -> stato("Completato")
+                    2 -> stato("Annullato")
+                    else -> stuConferma("Eliminare l'appuntamento?", "", "Elimina") {
+                        stuEsito(Studio.elimina(Studio.F_APP, Studio.s(a, "id")), "Appuntamento eliminato")
+                    }
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogAppuntamento(a: JSONObject?) {
+        val (view, corpo) = corpoDialogo()
+        var data: LocalDate? = (if (a == null) null else Studio.dataIso(Studio.s(a, "data"))) ?: stuGiorno
+        bottoneData(corpo, "Data", data, false) { data = it }
+        val etOra = campoTesto(corpo, "Ora (HH:MM)", if (a == null) "" else Studio.s(a, "ora"), InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME, 5)
+        val curCli = if (a == null) "" else Studio.s(a, "cliente_nome")
+        val vCli = (listOf("") + Studio.nomiClienti() + listOf(curCli)).distinct()
+        val tilCli = campoMenu(corpo, "Cliente", vCli, curCli)
+        val curPre = if (a == null) "" else Studio.s(a, "prestazione")
+        val vPre = (listOf("") + Studio.nomiPrestazioni() + listOf(curPre)).distinct()
+        val tilPre = campoMenu(corpo, "Prestazione", vPre, curPre)
+        val tilSt = campoMenu(corpo, "Stato", Studio.STATI_APP, if (a == null) "Confermato" else Studio.s(a, "stato").ifBlank { "Confermato" })
+        val etNote = campoTesto(corpo, "Note", if (a == null) "" else Studio.s(a, "note"), InputType.TYPE_CLASS_TEXT)
+        OcBuilder(this)
+            .setTitle(if (a == null) "Nuovo appuntamento" else "Modifica appuntamento")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val dt = data
+                if (dt == null) {
+                    aviso("Data obbligatoria")
+                    return@setPositiveButton
+                }
+                val ora = Studio.normOra(etOra.text.toString())
+                if (ora == null) {
+                    aviso("Ora non valida (HH:MM)")
+                    return@setPositiveButton
+                }
+                val rec = stuCopia(a)
+                rec.put("data", Studio.iso(dt)).put("ora", ora).put("cliente_nome", stuTesto(tilCli))
+                    .put("prestazione", stuTesto(tilPre)).put("stato", stuTesto(tilSt).ifBlank { "Confermato" })
+                    .put("note", etNote.text.toString().trim())
+                stuGiorno = dt
+                stuMese = YearMonth.from(dt)
+                stuEsito(Studio.salva(Studio.F_APP, rec), "Appuntamento salvato")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- prestazioni
+
+    private fun stuPrestazioni(cont: LinearLayout) {
+        val l = Studio.lista(Studio.F_PRE).sortedBy { Studio.s(it, "nome").lowercase() }
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessuna prestazione. Usa ➕ Nuova prestazione.")
+            return
+        }
+        for (p in l) {
+            val dur = Studio.d(p, "durata").toInt()
+            val sotto = listOfNotNull(
+                Studio.s(p, "categoria").takeIf { it.isNotBlank() },
+                if (dur > 0) "$dur min" else null,
+                "IVA " + Studio.fmtQ(Studio.d(p, "iva", 22.0)) + "%",
+                Studio.s(p, "note").takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
+            riga(cont, Studio.s(p, "nome"), sotto, Studio.eur(Studio.d(p, "prezzo")), null) {
+                OcBuilder(this)
+                    .setTitle(Studio.s(p, "nome"))
+                    .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                        if (k == 0) dialogPrestazione(p) else stuConferma("Eliminare la prestazione?", Studio.s(p, "nome"), "Elimina") {
+                            stuEsito(Studio.elimina(Studio.F_PRE, Studio.s(p, "id")), "Prestazione eliminata")
+                        }
+                    }
+                    .setNegativeButton("Chiudi", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun dialogPrestazione(p: JSONObject?) {
+        val (view, corpo) = corpoDialogo()
+        val etNome = campoTesto(corpo, "Nome *", if (p == null) "" else Studio.s(p, "nome"), InputType.TYPE_CLASS_TEXT)
+        val etCat = campoTesto(corpo, "Categoria", if (p == null) "" else Studio.s(p, "categoria"), InputType.TYPE_CLASS_TEXT)
+        val etPrezzo = campoTesto(corpo, "Prezzo €", if (p == null) "" else Studio.fmtQ(Studio.d(p, "prezzo")), TIPO_DECIMALE, 12)
+        val etDur = campoTesto(corpo, "Durata (minuti)", if (p == null) "" else Studio.d(p, "durata").toInt().takeIf { it > 0 }?.toString() ?: "", InputType.TYPE_CLASS_NUMBER, 4)
+        val tilIva = campoMenu(corpo, "IVA %", Studio.ALIQUOTE.map { it.toString() }, if (p == null) "22" else Studio.fmtQ(Studio.d(p, "iva", 22.0)))
+        val etNote = campoTesto(corpo, "Note", if (p == null) "" else Studio.s(p, "note"), InputType.TYPE_CLASS_TEXT)
+        OcBuilder(this)
+            .setTitle(if (p == null) "Nuova prestazione" else "Modifica prestazione")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val nome = etNome.text.toString().trim()
+                val prezzo = Studio.numero(etPrezzo.text.toString().ifBlank { "0" })
+                if (nome.isEmpty()) {
+                    aviso("Il nome è obbligatorio")
+                    return@setPositiveButton
+                }
+                if (prezzo == null || prezzo < 0) {
+                    aviso("Prezzo non valido")
+                    return@setPositiveButton
+                }
+                val rec = stuCopia(p)
+                rec.put("nome", nome).put("categoria", etCat.text.toString().trim()).put("prezzo", prezzo)
+                    .put("durata", etDur.text.toString().trim().toIntOrNull() ?: 0)
+                    .put("iva", stuTesto(tilIva).toIntOrNull() ?: 22).put("note", etNote.text.toString().trim())
+                stuEsito(Studio.salva(Studio.F_PRE, rec), "Prestazione salvata")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- fatture / preventivi
+
+    private fun stuFatture(cont: LinearLayout) {
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        cont.addView(
+            pulsanteSel("Stato:  $stuFiltroDoc   ▾", false) {
+                val v = listOf("Tutti") + Studio.STATI_DOC
+                OcBuilder(this).setTitle("Mostra").setItems(v.toTypedArray()) { _, k -> stuFiltroDoc = v[k]; renderLista() }
+                    .setNegativeButton("Annulla", null).show()
+            },
+            stuLp()
+        )
+        val l = Studio.lista(Studio.F_FAT)
+            .filter { stuFiltroDoc == "Tutti" || Studio.s(it, "stato").ifBlank { "Bozza" } == stuFiltroDoc }
+            .sortedByDescending { Studio.s(it, "data") }
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessun documento. Usa ➕ Nuovo documento.")
+            return
+        }
+        for (f in l) {
+            val t = Studio.totali(f)
+            val stato = Studio.s(f, "stato").ifBlank { "Bozza" }
+            val sotto = listOfNotNull(
+                Studio.dmy(Studio.s(f, "data")), stato,
+                Studio.s(f, "scadenza").takeIf { it.isNotBlank() }?.let { "scad. " + Studio.dmy(it) },
+                "imp. " + Studio.eur(t.imponibile) + " + IVA " + Studio.eur(t.iva),
+            ).joinToString(" · ")
+            riga(
+                cont, Studio.tipoDoc(f) + " " + Studio.s(f, "numero") + " · " + Studio.s(f, "cliente_nome"), sotto, Studio.eur(t.totale),
+                when (stato) { "Pagata" -> verde; "Scaduta", "Annullata" -> rosso; else -> null }
+            ) { stuMenuDoc(f) }
+        }
+    }
+
+    private fun stuMenuDoc(f: JSONObject) {
+        val voci = ArrayList<String>()
+        val az = ArrayList<() -> Unit>()
+        fun add(t: String, a: () -> Unit) {
+            voci.add(t)
+            az.add(a)
+        }
+        add("✏️  Modifica") { dialogDocumentoStudio(f) }
+        add("📄  PDF / Condividi") { stuPdfDocumento(f) }
+        if (Studio.tipoDoc(f) == "Fattura" && Studio.s(f, "stato") != "Pagata") add("💶  Incassa in Cassa") { dialogIncassa(f) }
+        add("🏷️  Cambia stato") {
+            OcBuilder(this)
+                .setTitle("Stato")
+                .setItems(Studio.STATI_DOC.toTypedArray()) { _, k ->
+                    val rec = JSONObject(f.toString())
+                    rec.put("stato", Studio.STATI_DOC[k])
+                    stuEsito(Studio.salva(Studio.F_FAT, rec), "Stato aggiornato")
+                }
+                .setNegativeButton("Annulla", null)
+                .show()
+        }
+        add("🗑️  Elimina") {
+            stuConferma("Eliminare il documento?", Studio.tipoDoc(f) + " " + Studio.s(f, "numero"), "Elimina") {
+                stuEsito(Studio.elimina(Studio.F_FAT, Studio.s(f, "id")), "Documento eliminato")
+            }
+        }
+        OcBuilder(this)
+            .setTitle(Studio.tipoDoc(f) + " " + Studio.s(f, "numero"))
+            .setItems(voci.toTypedArray()) { _, k -> az[k]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun stuPdfDocumento(f: JSONObject) {
+        val file = try {
+            StudioPdf.documento(this, f)
+        } catch (e: Exception) {
+            aviso("Impossibile creare il PDF: " + (e.message ?: "errore"))
+            return
+        }
+        StudioPdf.condividi(this, file, Studio.tipoDoc(f) + " " + Studio.s(f, "numero"))
+    }
+
+    private fun stuPdfMagazzino() {
+        if (Studio.lista(Studio.F_MAG).isEmpty()) {
+            aviso("Magazzino vuoto")
+            return
+        }
+        val file = try {
+            StudioPdf.magazzino(this)
+        } catch (e: Exception) {
+            aviso("Impossibile creare il PDF: " + (e.message ?: "errore"))
+            return
+        }
+        StudioPdf.condividi(this, file, "Magazzino")
+    }
+
+    private fun dialogIncassa(f: JSONObject) {
+        val (view, corpo) = corpoDialogo()
+        val tot = Studio.totali(f).totale
+        val tv = TextView(ctxDialogo)
+        tv.text = "Fattura N° " + Studio.s(f, "numero") + " — " + Studio.s(f, "cliente_nome") + "\nImporto: " + Studio.eur(tot)
+        tv.setPadding(4, 4, 4, 8)
+        corpo.addView(tv)
+        var data: LocalDate? = LocalDate.now()
+        bottoneData(corpo, "Data incasso", data, false) { data = it }
+        val tilMet = campoMenu(corpo, "Metodo", listOf("") + Studio.METODI_CASSA, "")
+        OcBuilder(this)
+            .setTitle("Incassa in Cassa")
+            .setView(view)
+            .setPositiveButton("Conferma") { _, _ ->
+                val dt = data ?: LocalDate.now()
+                stuEsito(Studio.incassa(Studio.s(f, "id"), Studio.iso(dt), stuTesto(tilMet)), "Fattura incassata e movimento aggiunto in Cassa")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun stuScegliCatalogo(onPick: (Studio.VoceCat) -> Unit) {
+        val c = Studio.catalogo()
+        if (c.isEmpty()) {
+            aviso("Nessun prodotto o prestazione in catalogo")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Catalogo")
+            .setItems(c.map { it.nome + " — " + Studio.eur(it.prezzo) + " (" + it.origine + ")" }.toTypedArray()) { _, k -> onPick(c[k]) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dialogRigaStudio(r: JSONObject?, forf: Boolean, onOk: (JSONObject) -> Unit) {
+        val (view, corpo) = corpoDialogo()
+        val etDesc = campoTesto(corpo, "Descrizione *", if (r == null) "" else Studio.s(r, "desc"), InputType.TYPE_CLASS_TEXT)
+        val etQty = campoTesto(corpo, "Quantità", if (r == null) "1" else Studio.fmtQ(Studio.d(r, "qty", 1.0)), TIPO_DECIMALE, 10)
+        val etPrezzo = campoTesto(corpo, "Prezzo unitario €", if (r == null) "" else Studio.fmtQ(Studio.d(r, "prezzo")), TIPO_DECIMALE_NEG, 12)
+        var tilIva: TextInputLayout? = null
+        if (!forf) tilIva = campoMenu(corpo, "IVA %", Studio.ALIQUOTE.map { it.toString() }, if (r == null) "22" else Studio.fmtQ(Studio.d(r, "iva", 22.0)))
+        OcBuilder(this)
+            .setTitle(if (r == null) "Nuova riga" else "Modifica riga")
+            .setView(view)
+            .setPositiveButton("OK") { _, _ ->
+                val desc = etDesc.text.toString().trim()
+                val q = Studio.numero(etQty.text.toString().ifBlank { "1" })
+                val p = Studio.numero(etPrezzo.text.toString().ifBlank { "0" })
+                if (desc.isEmpty()) {
+                    aviso("La descrizione è obbligatoria")
+                    return@setPositiveButton
+                }
+                if (q == null || p == null) {
+                    aviso("Quantità o prezzo non validi")
+                    return@setPositiveButton
+                }
+                val iva = if (forf) 0 else (tilIva?.let { stuTesto(it) }?.toIntOrNull() ?: 22)
+                val rec = if (r == null) JSONObject() else JSONObject(r.toString())
+                rec.put("desc", desc).put("qty", q).put("prezzo", p).put("iva", iva)
+                onOk(rec)
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dialogDocumentoStudio(d: JSONObject?) {
+        val nuovo = d == null
+        val forf = Studio.forfettario()
+        val (view, corpo) = corpoDialogo()
+        fun g(k: String) = if (d == null) "" else Studio.s(d, k)
+        var tipo = if (d == null) "Fattura" else Studio.tipoDoc(d)
+        var etNum: TextInputEditText? = null
+        campoMenu(corpo, "Tipo documento", Studio.TIPI_DOC, tipo) {
+            tipo = Studio.TIPI_DOC[it]
+            if (nuovo) etNum?.setText(Studio.prossimoNumero(tipo))
+        }
+        etNum = campoTesto(corpo, "Numero", if (d == null) Studio.prossimoNumero(tipo) else g("numero"), InputType.TYPE_CLASS_TEXT, 20)
+        var data: LocalDate? = (if (d == null) null else Studio.dataIso(g("data"))) ?: LocalDate.now()
+        bottoneData(corpo, "Data", data, false) { data = it }
+        var scad: LocalDate? = if (d == null) null else Studio.dataIso(g("scadenza"))
+        bottoneData(corpo, "Scadenza (tieni premuto per azzerare)", scad, true) { scad = it }
+        val curCli = g("cliente_nome")
+        val tilCli = campoMenu(corpo, "Cliente", (listOf("") + Studio.nomiClienti() + listOf(curCli)).distinct(), curCli)
+        val tilSt = campoMenu(corpo, "Stato", Studio.STATI_DOC, g("stato").ifBlank { "Bozza" })
+        val tilPag = campoMenu(corpo, "Modalità di pagamento", Studio.PAGAMENTI, g("modalita_pagamento").ifBlank { "Bonifico" })
+        val tilColl = campoMenu(corpo, "Fattura collegata (per Nota Credito)", (listOf("") + Studio.numeriFatture() + listOf(g("fattura_collegata_numero"))).distinct(), g("fattura_collegata_numero"))
+        val etNote = campoTesto(corpo, "Note", g("note"), InputType.TYPE_CLASS_TEXT)
+
+        val righe = ArrayList<JSONObject>()
+        if (d != null) {
+            val a = d.optJSONArray("righe")
+            if (a != null) for (i in 0 until a.length()) a.optJSONObject(i)?.let { righe.add(JSONObject(it.toString())) }
+        }
+        val dp = resources.displayMetrics.density
+        val tit = TextView(ctxDialogo)
+        tit.text = "RIGHE DEL DOCUMENTO"
+        tit.setTypeface(null, Typeface.BOLD)
+        tit.setPadding(4, (16 * dp).toInt(), 4, (6 * dp).toInt())
+        corpo.addView(tit)
+        val box = LinearLayout(ctxDialogo)
+        box.orientation = LinearLayout.VERTICAL
+        corpo.addView(box)
+        val tvTot = TextView(ctxDialogo)
+        tvTot.setTypeface(null, Typeface.BOLD)
+        tvTot.setPadding(4, (8 * dp).toInt(), 4, (8 * dp).toInt())
+        corpo.addView(tvTot)
+        lateinit var ridisegna: () -> Unit
+        ridisegna = {
+            box.removeAllViews()
+            if (righe.isEmpty()) {
+                val t = TextView(ctxDialogo)
+                t.text = "Nessuna riga. Aggiungine una."
+                t.setPadding(4, 8, 4, 8)
+                box.addView(t)
+            }
+            for ((i, r) in righe.withIndex()) {
+                val t = TextView(ctxDialogo)
+                val q = Studio.d(r, "qty", 1.0)
+                val p = Studio.d(r, "prezzo")
+                val iv = Studio.d(r, "iva", 22.0)
+                t.text = Studio.s(r, "desc") + "\n" + Studio.fmtQ(q) + " × " + Studio.fmtNum(p) + " · IVA " + Studio.fmtQ(iv) + "% = " + Studio.eur(q * p * (1 + iv / 100.0))
+                t.setPadding(4, (8 * dp).toInt(), 4, (8 * dp).toInt())
+                t.setOnClickListener {
+                    OcBuilder(this)
+                        .setTitle(Studio.s(r, "desc"))
+                        .setItems(arrayOf("✏️  Modifica", "🗑️  Rimuovi")) { _, k ->
+                            if (k == 0) dialogRigaStudio(r, forf) { nr -> righe[i] = nr; ridisegna() } else {
+                                righe.removeAt(i)
+                                ridisegna()
+                            }
+                        }
+                        .setNegativeButton("Chiudi", null)
+                        .show()
+                }
+                box.addView(t)
+            }
+            val tt = Studio.totali(righe.map { Studio.Riga(Studio.s(it, "desc"), Studio.d(it, "qty", 1.0), Studio.d(it, "prezzo"), Studio.d(it, "iva", 22.0)) })
+            tvTot.text = "Imponibile " + Studio.eur(tt.imponibile) + "\nIVA " + Studio.eur(tt.iva) + "\nTotale " + Studio.eur(tt.totale)
+        }
+        ridisegna()
+        val piede = LinearLayout(ctxDialogo)
+        piede.orientation = LinearLayout.HORIZONTAL
+        aggiungiPiede(
+            piede,
+            "➕  Riga" to { dialogRigaStudio(null, forf) { nr -> righe.add(nr); ridisegna() } },
+            "📦  Catalogo" to {
+                stuScegliCatalogo { v ->
+                    righe.add(JSONObject().put("desc", v.nome).put("qty", 1.0).put("prezzo", v.prezzo).put("iva", if (forf) 0 else v.iva))
+                    ridisegna()
+                }
+            },
+        )
+        corpo.addView(piede)
+        if (forf) {
+            val n = TextView(ctxDialogo)
+            n.text = "Regime forfettario: IVA a 0% su tutte le righe."
+            n.textSize = 12f
+            n.setPadding(4, (8 * dp).toInt(), 4, 0)
+            corpo.addView(n)
+        }
+
+        OcBuilder(this)
+            .setTitle(if (nuovo) "Nuovo documento" else "Modifica documento")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val dt = data
+                if (dt == null) {
+                    aviso("Data obbligatoria")
+                    return@setPositiveButton
+                }
+                val ok = righe.filter { Studio.s(it, "desc").isNotBlank() }
+                val arr = org.json.JSONArray()
+                for (r in ok) arr.put(r)
+                val rec = stuCopia(d)
+                rec.put("tipo_doc", tipo)
+                    .put("numero", (etNum?.text?.toString()?.trim() ?: "").ifBlank { Studio.prossimoNumero(tipo) })
+                    .put("data", Studio.iso(dt)).put("scadenza", scad?.let { Studio.iso(it) } ?: "")
+                    .put("cliente_nome", stuTesto(tilCli)).put("righe", arr)
+                    .put("stato", stuTesto(tilSt).ifBlank { "Bozza" }).put("note", etNote.text.toString().trim())
+                    .put("modalita_pagamento", stuTesto(tilPag).ifBlank { "Bonifico" })
+                    .put("fattura_collegata_numero", stuTesto(tilColl))
+                fun salva() = stuEsito(Studio.salvaDocumento(rec, nuovo), "Documento salvato")
+                val sg = Studio.controlloSoglia(rec)
+                if (sg != null && sg.perc >= 1.0) {
+                    stuConferma(
+                        "Soglia forfettario superata",
+                        "Con questo documento il fatturato " + sg.anno + " arriverebbe a " + Studio.eur(sg.totaleAnno) +
+                            ", oltre la soglia di " + Studio.eur(sg.soglia) + ".\n\nSalvare comunque?",
+                        "Salva"
+                    ) { salva() }
+                } else {
+                    if (sg != null && sg.perc >= 0.9) aviso("Attenzione: sei al " + String.format(Locale.ITALY, "%.0f", sg.perc * 100) + "% della soglia forfettario " + sg.anno)
+                    salva()
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- cassa
+
+    private fun stuCassa(cont: LinearLayout) {
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val movs = Studio.lista(Studio.F_CAS)
+        val sc = Studio.saldoCassa(movs)
+        riga(cont, "Saldo cassa", "Entrate " + Studio.eur(sc.entrate) + " · Uscite " + Studio.eur(sc.uscite), Studio.eur(sc.saldo), if (sc.saldo >= 0) verde else rosso, null)
+        cont.addView(
+            pulsanteSel("Mostra:  $stuFiltroCas   ▾", false) {
+                val v = listOf("Tutti", "Entrata", "Uscita")
+                OcBuilder(this).setTitle("Mostra").setItems(v.toTypedArray()) { _, k -> stuFiltroCas = v[k]; renderLista() }
+                    .setNegativeButton("Annulla", null).show()
+            },
+            stuLp()
+        )
+        val l = movs.filter { stuFiltroCas == "Tutti" || Studio.s(it, "tipo").ifBlank { "Entrata" } == stuFiltroCas }
+            .sortedByDescending { Studio.s(it, "data") }
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessun movimento. Usa ➕ Nuovo movimento.")
+            return
+        }
+        for (m in l) {
+            val entrata = Studio.s(m, "tipo") != "Uscita"
+            val sotto = listOfNotNull(
+                Studio.dmy(Studio.s(m, "data")), Studio.s(m, "metodo").takeIf { it.isNotBlank() },
+                Studio.s(m, "note").takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
+            riga(
+                cont, Studio.s(m, "categoria").ifBlank { if (entrata) "Entrata" else "Uscita" }, sotto,
+                (if (entrata) "+ " else "− ") + Studio.eur(Studio.d(m, "importo")), if (entrata) verde else rosso
+            ) {
+                OcBuilder(this)
+                    .setTitle(Studio.s(m, "categoria").ifBlank { "Movimento" })
+                    .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                        if (k == 0) dialogMovCassa(m) else stuConferma("Eliminare il movimento?", "", "Elimina") {
+                            stuEsito(Studio.elimina(Studio.F_CAS, Studio.s(m, "id")), "Movimento eliminato")
+                        }
+                    }
+                    .setNegativeButton("Chiudi", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun dialogMovCassa(m: JSONObject?) {
+        val (view, corpo) = corpoDialogo()
+        val tilTipo = campoMenu(corpo, "Tipo", listOf("Entrata", "Uscita"), if (m == null) "Entrata" else Studio.s(m, "tipo").ifBlank { "Entrata" })
+        var data: LocalDate? = (if (m == null) null else Studio.dataIso(Studio.s(m, "data"))) ?: LocalDate.now()
+        bottoneData(corpo, "Data", data, false) { data = it }
+        val etImp = campoTesto(corpo, "Importo €", if (m == null) "" else Studio.fmtQ(Studio.d(m, "importo")), TIPO_DECIMALE, 12)
+        val etCat = campoTesto(corpo, "Categoria", if (m == null) "" else Studio.s(m, "categoria"), InputType.TYPE_CLASS_TEXT)
+        val tilMet = campoMenu(corpo, "Metodo di pagamento", (listOf("") + Studio.METODI_CASSA + listOf(if (m == null) "" else Studio.s(m, "metodo"))).distinct(), if (m == null) "" else Studio.s(m, "metodo"))
+        val etNote = campoTesto(corpo, "Note", if (m == null) "" else Studio.s(m, "note"), InputType.TYPE_CLASS_TEXT)
+        OcBuilder(this)
+            .setTitle(if (m == null) "Nuovo movimento" else "Modifica movimento")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val dt = data
+                val imp = importoOk(etImp.text.toString())
+                if (dt == null) {
+                    aviso("Data obbligatoria")
+                    return@setPositiveButton
+                }
+                if (imp == null) {
+                    aviso("Importo non valido")
+                    return@setPositiveButton
+                }
+                val rec = stuCopia(m)
+                rec.put("data", Studio.iso(dt)).put("tipo", stuTesto(tilTipo).ifBlank { "Entrata" }).put("importo", imp)
+                    .put("categoria", etCat.text.toString().trim()).put("metodo", stuTesto(tilMet))
+                    .put("note", etNote.text.toString().trim())
+                stuEsito(Studio.salva(Studio.F_CAS, rec), "Movimento salvato")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- magazzino
+
+    private fun stuMagazzino(cont: LinearLayout) {
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val l = Studio.lista(Studio.F_MAG).sortedBy { Studio.s(it, "nome").lowercase() }
+        if (l.isEmpty()) {
+            vuoto(cont, "Magazzino vuoto. Usa ➕ Nuovo articolo.")
+            return
+        }
+        val valTot = l.sumOf { Studio.d(it, "quantita") * Studio.d(it, "prezzo_unit") }
+        riga(cont, "Valore magazzino", l.size.toString() + " voci · " + l.count { Studio.sottoSoglia(it) } + " sotto soglia", Studio.eur(valTot), null, null)
+        sezione(cont, "ARTICOLI (in rosso: quantità ≤ soglia minima)")
+        for (m in l) {
+            val q = Studio.d(m, "quantita")
+            val val0 = q * Studio.d(m, "prezzo_unit")
+            val sotto = listOfNotNull(
+                Studio.s(m, "categoria").takeIf { it.isNotBlank() },
+                "soglia " + Studio.fmtQ(Studio.d(m, "soglia")),
+                if (val0 != 0.0) "valore " + Studio.eur(val0) else null,
+                Studio.s(m, "note").takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
+            riga(
+                cont, Studio.s(m, "nome"), sotto, Studio.fmtQ(q) + " " + Studio.s(m, "unita").ifBlank { "pz" },
+                if (Studio.sottoSoglia(m)) rosso else null
+            ) {
+                OcBuilder(this)
+                    .setTitle(Studio.s(m, "nome"))
+                    .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                        if (k == 0) dialogArticolo(m) else stuConferma("Eliminare la voce?", Studio.s(m, "nome"), "Elimina") {
+                            stuEsito(Studio.elimina(Studio.F_MAG, Studio.s(m, "id")), "Voce eliminata")
+                        }
+                    }
+                    .setNegativeButton("Chiudi", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun dialogArticolo(m: JSONObject?) {
+        val (view, corpo) = corpoDialogo()
+        val etNome = campoTesto(corpo, "Nome *", if (m == null) "" else Studio.s(m, "nome"), InputType.TYPE_CLASS_TEXT)
+        val etCat = campoTesto(corpo, "Categoria", if (m == null) "" else Studio.s(m, "categoria"), InputType.TYPE_CLASS_TEXT)
+        val etQ = campoTesto(corpo, "Quantità", if (m == null) "" else Studio.fmtQ(Studio.d(m, "quantita")), TIPO_DECIMALE_NEG, 12)
+        val tilUm = campoMenu(corpo, "Unità", Studio.UNITA, if (m == null) "pz" else Studio.s(m, "unita").ifBlank { "pz" })
+        val etSog = campoTesto(corpo, "Soglia minima", if (m == null) "" else Studio.fmtQ(Studio.d(m, "soglia")), TIPO_DECIMALE, 12)
+        val etPu = campoTesto(corpo, "Prezzo unitario €", if (m == null) "" else Studio.fmtQ(Studio.d(m, "prezzo_unit")), TIPO_DECIMALE, 12)
+        val etNote = campoTesto(corpo, "Note", if (m == null) "" else Studio.s(m, "note"), InputType.TYPE_CLASS_TEXT)
+        OcBuilder(this)
+            .setTitle(if (m == null) "Nuovo articolo" else "Modifica articolo")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val nome = etNome.text.toString().trim()
+                val q = Studio.numero(etQ.text.toString())
+                val sog = Studio.numero(etSog.text.toString().ifBlank { "0" })
+                val pu = Studio.numero(etPu.text.toString().ifBlank { "0" })
+                if (nome.isEmpty()) {
+                    aviso("Il nome è obbligatorio")
+                    return@setPositiveButton
+                }
+                if (q == null) {
+                    aviso("Quantità non valida")
+                    return@setPositiveButton
+                }
+                if (sog == null || pu == null) {
+                    aviso("Soglia o prezzo non validi")
+                    return@setPositiveButton
+                }
+                val rec = stuCopia(m)
+                rec.put("nome", nome).put("categoria", etCat.text.toString().trim()).put("quantita", q)
+                    .put("unita", stuTesto(tilUm).ifBlank { "pz" }).put("soglia", sog).put("prezzo_unit", pu)
+                    .put("note", etNote.text.toString().trim())
+                stuEsito(Studio.salva(Studio.F_MAG, rec), "Articolo salvato")
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- emittente
+
+    private val STU_EMI = listOf(
+        "ragione_sociale" to "Ragione sociale / Nome", "indirizzo" to "Indirizzo (via e civico)", "cap" to "CAP",
+        "comune" to "Comune", "provincia" to "Provincia (sigla)", "cf_piva" to "P.IVA / C.F.", "telefono" to "Telefono",
+        "email" to "Email", "iban" to "IBAN", "regime_fiscale" to "Regime fiscale", "ateco" to "Codice ATECO",
+        "coefficiente_redditivita" to "Coefficiente di redditività %", "aliquota_sostitutiva" to "Aliquota imposta sostitutiva",
+        "aliquota_inps" to "Aliquota INPS",
+    )
+
+    private fun stuEmittente(cont: LinearLayout) {
+        val e = Studio.emittente()
+        sezione(cont, "DATI EMITTENTE (stampati su ogni fattura / preventivo)")
+        riga(cont, "✏️  Modifica dati emittente", "", "", null) { dialogEmittente() }
+        for ((k, etichetta) in STU_EMI) {
+            val v = Studio.s(e, k)
+            riga(cont, etichetta, v.ifBlank { "—" }, "", null) { dialogEmittente() }
+        }
+    }
+
+    private fun dialogEmittente() {
+        val e = Studio.emittente()
+        val (view, corpo) = corpoDialogo()
+        val testi = LinkedHashMap<String, TextInputEditText>()
+        val menu = LinkedHashMap<String, TextInputLayout>()
+        for ((k, h) in STU_EMI) {
+            val cur = Studio.s(e, k)
+            when (k) {
+                "regime_fiscale" -> menu[k] = campoMenu(corpo, h, Studio.REGIMI, cur.ifBlank { "Ordinario" })
+                "aliquota_sostitutiva" -> menu[k] = campoMenu(corpo, h, (Studio.ALIQ_SOST + listOf(cur)).filter { it.isNotBlank() }.distinct(), cur.ifBlank { Studio.ALIQ_SOST[1] })
+                "aliquota_inps" -> menu[k] = campoMenu(corpo, h, (Studio.ALIQ_INPS + listOf(cur)).filter { it.isNotBlank() }.distinct(), cur.ifBlank { Studio.ALIQ_INPS[0] })
+                else -> testi[k] = campoTesto(
+                    corpo, h, cur,
+                    when (k) {
+                        "telefono" -> InputType.TYPE_CLASS_PHONE
+                        "email" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                        "coefficiente_redditivita" -> TIPO_DECIMALE
+                        else -> InputType.TYPE_CLASS_TEXT
+                    },
+                    when (k) { "cap" -> 5; "provincia" -> 2; "iban" -> 34; "cf_piva" -> 16; else -> 0 }
+                )
+            }
+        }
+        OcBuilder(this)
+            .setTitle("Dati emittente")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val dati = LinkedHashMap<String, String>()
+                for ((k, et) in testi) dati[k] = et.text.toString().trim()
+                for ((k, til) in menu) dati[k] = stuTesto(til)
+                stuEsito(Studio.salvaEmittente(dati), "Dati emittente salvati")
+            }
+            .setNegativeButton("Annulla", null)
             .show()
     }
 
