@@ -119,7 +119,7 @@ footer a{color:#818cf8}
 <h1>Orbita<span>Casa</span> Mobile</h1>
 <p class="lead">OrbitaCasa in tasca. Funziona da sola, con i dati sul telefono, e si allinea al PC quando vuoi.</p>
 <div class="btns">
-<a class="btn" href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">Scarica l'APK</a>
+<a class="btn" id="btnApk" href="https://github.com/Renato-4132/OrbitaCasa-Android/releases/latest">Scarica l'APK</a>
 <a class="btn alt" href="#schermate">Guarda le schermate</a>
 <a class="btn alt" href="#installa">Come si installa</a>
 </div>
@@ -163,9 +163,14 @@ footer a{color:#818cf8}
 <div class="pillars">
 <div class="pillar"><h3>Zero cloud</h3><p>I dati restano sul telefono. Il backup automatico di Android è disattivato.</p></div>
 <div class="pillar"><h3>Offline</h3><p>Nessun server, nessun account. Internet serve solo se attivi la sync, Gemini o cerchi aggiornamenti.</p></div>
-<div class="pillar"><h3>Sync con il PC</h3><p>Allinei movimenti, archivi e documenti con OrbitaCasa desktop, nella rete di casa. Oppure usi lo zip.</p></div>
+<div class="pillar"><h3>Sync con il PC</h3><p>Allinei movimenti, archivi e documenti con OrbitaCasa desktop, da casa o da fuori. Oppure usi lo zip.</p></div>
 <div class="pillar"><h3>Blocco app</h3><p>Impronta, volto o sblocco del dispositivo.</p></div>
 </div>
+</div></section>
+
+<section id="perche-gratis"><div class="wrap">
+<h2>Perché è gratis e senza pubblicità</h2>
+<p class="sub">OrbitaCasa è sviluppata e mantenuta in autonomia. Non ha bisogno di vendere spazi pubblicitari né abbonamenti per stare in piedi, quindi non ne ha. Il codice è pubblico su <a href="https://github.com/Renato-4132/OrbitaCasa-Android">GitHub</a>: puoi controllare tu cosa fa.</p>
 </div></section>
 
 <section id="installa"><div class="wrap">
@@ -182,7 +187,7 @@ footer a{color:#818cf8}
 
 <section><div class="wrap">
 <h2>Sincronizza con il PC</h2>
-<p class="sub">Da Home → Strumenti → Sync PC colleghi il telefono a OrbitaCasa acceso sul PC, nella rete di casa. Niente server di terzi.</p>
+<p class="sub">Da Home → Strumenti → Sync PC colleghi il telefono a OrbitaCasa acceso sul PC, da casa o da fuori. Niente server di terzi.</p>
 <div class="notif">
 <ul>
 <li><b>Si allineano</b> movimenti (anche le eliminazioni), impostazioni e categorie, archivi e documenti contabili e personali.</li>
@@ -253,7 +258,7 @@ footer a{color:#818cf8}
 <h2>Domande frequenti</h2>
 <details><summary>Android mi avvisa che l'app non è sicura. È normale?</summary><p>L'app non passa dal Play Store e Play Protect può segnalarla. Il codice è pubblico su GitHub e puoi controllarlo. Se tieni attiva la lettura delle notifiche, il sistema può essere ancora più cauto.</p></details>
 <details><summary>Devo avere OrbitaCasa sul PC?</summary><p>No. L'app funziona da sola. Il desktop serve solo se vuoi portare i dati sul telefono o riportarli indietro, con la sync o con lo zip.</p></details>
-<details><summary>Sync o zip: quale scelgo?</summary><p>La sync allinea tutto da sola quando sei nella rete di casa. Lo zip va bene per un backup o se il PC non è raggiungibile. Puoi usarli insieme.</p></details>
+<details><summary>Sync o zip: quale scelgo?</summary><p>La sync allinea tutto da sola, anche fuori casa, finché il PC è acceso e raggiungibile. Lo zip va bene per un backup o se il PC non è raggiungibile. Puoi usarli insieme.</p></details>
 <details><summary>Cosa non funziona in modalità demo?</summary><p>Solo la sincronizzazione con il PC, manuale e automatica. Il resto dell'app lavora sui dati di esempio e puoi uscirne quando vuoi.</p></details>
 <details><summary>Che differenza c'è con OrbitaWeb?</summary><p>OrbitaCasa Mobile funziona da sola, con i dati sul telefono. OrbitaWeb si collega a un OrbitaCasa acceso sul tuo PC o server. Puoi usarle insieme.</p></details>
 <details><summary>Il QR porta sempre all'ultima versione?</summary><p>Sì, porta alla pagina «ultima release» su GitHub, che si aggiorna a ogni nuova versione.</p></details>
@@ -277,12 +282,13 @@ footer a{color:#818cf8}
 <script>
 (function(){
 var API='https://api.github.com/repos/Renato-4132/OrbitaCasa-Android/releases?per_page=100';
-var ver=document.getElementById('ver'),cnt=document.getElementById('dlCnt'),num=document.getElementById('dlNum');
+var ver=document.getElementById('ver'),cnt=document.getElementById('dlCnt'),num=document.getElementById('dlNum'),btn=document.getElementById('btnApk');
 function show(d){
 if(d.tag)ver.textContent='Versione '+String(d.tag).replace(/^v/i,'')+' · Android 8.0+';
+if(d.url&&btn){btn.href=d.url;btn.setAttribute('download','');}
 if(typeof d.dl==='number'){num.textContent=d.dl.toLocaleString('it-IT');cnt.hidden=false;}
 }
-try{var c=sessionStorage.getItem('ocrel');if(c){show(JSON.parse(c));return;}}catch(e){}
+try{var c=sessionStorage.getItem('ocrel2');if(c){show(JSON.parse(c));return;}}catch(e){}
 fetch(API,{headers:{'Accept':'application/vnd.github+json'}})
 .then(function(r){return r.ok?r.json():Promise.reject();})
 .then(function(l){
@@ -290,8 +296,9 @@ var rel=l.filter(function(x){return !x.draft&&!x.prerelease;});
 if(!rel.length)return;
 var tot=0;
 l.forEach(function(x){(x.assets||[]).forEach(function(a){if(/\.apk$/i.test(a.name))tot+=a.download_count||0;});});
-var d={tag:rel[0].tag_name,dl:tot};
-try{sessionStorage.setItem('ocrel',JSON.stringify(d));}catch(e){}
+var apk=(rel[0].assets||[]).filter(function(a){return /\.apk$/i.test(a.name);})[0];
+var d={tag:rel[0].tag_name,dl:tot,url:apk?apk.browser_download_url:''};
+try{sessionStorage.setItem('ocrel2',JSON.stringify(d));}catch(e){}
 show(d);
 })
 .catch(function(){});
