@@ -289,23 +289,21 @@ footer a{color:#818cf8}
 (function(){
 var API='https://api.github.com/repos/Renato-4132/OrbitaCasa-Android/releases?per_page=100';
 var ver=document.getElementById('ver'),cnt=document.getElementById('dlCnt'),num=document.getElementById('dlNum'),btn=document.getElementById('btnApk');
+var BASE_DL=5;
 function show(d){
 if(d.tag)ver.textContent='Versione '+String(d.tag).replace(/^v/i,'')+' · Android 8.0+';
 if(d.url&&btn){btn.href=d.url;btn.setAttribute('download','');}
 if(typeof d.dl==='number'){num.textContent=d.dl.toLocaleString('it-IT');cnt.hidden=false;}
 }
-try{var c=sessionStorage.getItem('ocrel2');if(c){show(JSON.parse(c));return;}}catch(e){}
 fetch(API,{headers:{'Accept':'application/vnd.github+json'}})
 .then(function(r){return r.ok?r.json():Promise.reject();})
 .then(function(l){
 var rel=l.filter(function(x){return !x.draft&&!x.prerelease;});
 if(!rel.length)return;
-var tot=0;
+var tot=BASE_DL;
 l.forEach(function(x){(x.assets||[]).forEach(function(a){if(/\.apk$/i.test(a.name))tot+=a.download_count||0;});});
 var apk=(rel[0].assets||[]).filter(function(a){return /\.apk$/i.test(a.name);})[0];
-var d={tag:rel[0].tag_name,dl:tot,url:apk?apk.browser_download_url:''};
-try{sessionStorage.setItem('ocrel2',JSON.stringify(d));}catch(e){}
-show(d);
+show({tag:rel[0].tag_name,dl:tot,url:apk?apk.browser_download_url:''});
 })
 .catch(function(){});
 })();
