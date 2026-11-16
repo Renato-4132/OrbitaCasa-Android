@@ -9,7 +9,6 @@
 ![Standalone](https://img.shields.io/badge/App-Standalone-4f46e5?style=flat-square)
 ![Cloud](https://img.shields.io/badge/Cloud-Zero_di_default-22c55e?style=flat-square)
 ![Visite](https://visitor-badge.laobi.icu/badge?page_id=Renato-4132.OrbitaCasa-Android&left_text=VISITE%20TOTALI&color=4f46e5)
-![Download](https://img.shields.io/github/downloads/Renato-4132/OrbitaCasa-Android/total?label=DOWNLOAD&color=4f46e5&style=flat-square)
 ---
 
 **🚀 L'ESSENZA DELL'APP**
