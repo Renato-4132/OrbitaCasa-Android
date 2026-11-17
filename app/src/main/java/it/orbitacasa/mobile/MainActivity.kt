@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -252,6 +252,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.PENSIONE -> penAggiungi()
                 Pagina.DIETA -> menuDieta()
                 Pagina.STUDIO -> stuNuovo()
+                Pagina.MARKET -> mkNuovo()
                 Pagina.PIANIFICA -> dialogNuovoPiano()
                 Pagina.DOCUMENTI, Pagina.DOCPERS -> nuovoDocumento()
                 Pagina.UTENZE -> dialogNuovaLettura()
@@ -298,6 +299,8 @@ class MainActivity : AppCompatActivity() {
             } else if (pagina == Pagina.INFLAZIONE) {
                 infImp = null
                 renderLista()
+            } else if (pagina == Pagina.MARKET) {
+                menuMarket()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -553,7 +556,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -628,6 +631,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🔔", "Promemoria" + Prom.conteggio().totale.let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.PROMEMORIA) },
                 Tessera("📩", "Notifiche" + Notif.nAttesa().let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.NOTIFICHE) },
                 Tessera("🔎", "Cerca Operazioni") { mostra(Pagina.RICERCA) },
+                Tessera("🛒", "Supermercati") { mostra(Pagina.MARKET) },
             )
         )
         gruppo(
@@ -713,6 +717,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
         Dest(Pagina.DOCPERS, "🪪", "Personali"),
         Dest(Pagina.UTENZE, "💡", "Utenze"),
+        Dest(Pagina.MARKET, "🛒", "Spesa"),
         Dest(Pagina.FAIRSHARE, "🤝", "FairShare"),
         Dest(Pagina.CHECKOUT, "🔁", "Checkout"),
         Dest(Pagina.RICERCA, "🔎", "Cerca"),
@@ -1311,6 +1316,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.DIETA -> renderDieta()
             Pagina.STUDIO -> renderStudio()
             Pagina.INFLAZIONE -> renderInflazione()
+            Pagina.MARKET -> renderMarket()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -6577,12 +6583,439 @@ class MainActivity : AppCompatActivity() {
         "➕  Nuovo articolo", "",
     )
 
+    private var mkVista = 0
+    private var mkSuper: String? = null
+    private var mkFiltro: String? = null
+    private var mkTesto = ""
+    private var mkTestoCat = ""
+    private val MK_SEZ = listOf("🔎 Confronto prezzi", "🧺 Lista spesa", "📒 Catalogo")
+
+    private fun renderMarket() {
+        intestaLista("🛒 Supermercati", if (mkVista == 2) "➕  Nuovo articolo" else "", "🔀  Azioni")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val n = Market.pulisciScadute(LocalDate.now())
+        if (n > 0) aviso("Disattivate $n promozioni scadute")
+        val db = Market.carica()
+        cont.addView(
+            pulsanteSel("Sezione:  " + MK_SEZ[mkVista] + "   ▾", true) {
+                OcBuilder(this)
+                    .setTitle("Sezione")
+                    .setItems(MK_SEZ.toTypedArray()) { _, k ->
+                        mkVista = k
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            stuLp()
+        )
+        Market.errore()?.let { vuoto(cont, "⚠️ $it") }
+        when (mkVista) {
+            0 -> mkConfronto(cont, db)
+            1 -> mkLista(cont)
+            else -> mkCatalogo(cont, db)
+        }
+    }
+
+    private fun mkCampoRicerca(cont: LinearLayout, testo: String, onCambia: (String) -> Unit): LinearLayout {
+        val box = LinearLayout(this)
+        box.orientation = LinearLayout.VERTICAL
+        val et = campoTesto(box, "Cerca articolo, categoria o descrizione", testo, InputType.TYPE_CLASS_TEXT, 40)
+        cont.addView(box)
+        val ris = LinearLayout(this)
+        ris.orientation = LinearLayout.VERTICAL
+        cont.addView(ris)
+        et.doAfterTextChanged { onCambia(it?.toString() ?: "") }
+        return ris
+    }
+
+    private fun mkConfronto(cont: LinearLayout, db: Map<String, List<org.json.JSONObject>>) {
+        val nomi = Market.nomi(db)
+        if (mkFiltro != null && mkFiltro !in nomi) mkFiltro = null
+        cont.addView(
+            pulsanteSel("Supermercato:  " + (mkFiltro ?: "Tutti") + "   ▾", false) {
+                val v = listOf("Tutti i supermercati") + nomi
+                OcBuilder(this)
+                    .setTitle("Supermercato")
+                    .setItems(v.toTypedArray()) { _, k ->
+                        mkFiltro = if (k == 0) null else v[k]
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            stuLp()
+        )
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        lateinit var ris: LinearLayout
+        fun aggiorna() {
+            ris.removeAllViews()
+            val l = Market.confronto(db, mkTesto, mkFiltro, LocalDate.now())
+            if (l.isEmpty()) {
+                vuoto(ris, "Nessun articolo trovato. Aggiungi gli articoli dalla sezione Catalogo.")
+                return
+            }
+            vuoto(ris, l.size.toString() + " offerte  ·  ⭐ = prezzo più basso  ·  🔥 = promo")
+            for (o in l.take(200)) {
+                val titolo = (if (o.top) "⭐ " else "") + (if (o.inPromo) "🔥 " else "") + o.nome +
+                    (if (o.quantita.isNotBlank()) " (" + o.quantita + ")" else "")
+                val sotto = listOfNotNull(
+                    o.supermercato,
+                    o.categoria.takeIf { it.isNotBlank() },
+                    when (o.stato) {
+                        Market.Stato.ATTIVA -> "Promo fino al " + o.fine + (o.prezzoBase?.let { " · intero " + Market.eur(it) } ?: "")
+                        Market.Stato.FUTURA -> "Promo dal " + o.inizio
+                        Market.Stato.SCADUTA -> "Promo scaduta"
+                        else -> null
+                    },
+                ).joinToString(" · ")
+                riga(ris, titolo, sotto, Market.eur(o.prezzo), if (o.inPromo) rosso else if (o.top) verde else null) {
+                    OcBuilder(this)
+                        .setTitle(o.nome)
+                        .setItems(arrayOf("➕  Aggiungi alla lista spesa")) { _, _ -> mkAggiungi(o) }
+                        .setNegativeButton("Chiudi", null)
+                        .show()
+                }
+            }
+            if (l.size > 200) vuoto(ris, "Mostrate le prime 200: affina la ricerca.")
+        }
+        ris = mkCampoRicerca(cont, mkTesto) {
+            mkTesto = it
+            aggiorna()
+        }
+        aggiorna()
+    }
+
+    private fun mkAggiungi(o: Market.Offerta) {
+        val m = Market.migliore(Market.carica(), o.nome, LocalDate.now())
+        fun fatto(x: Market.Offerta) {
+            val q = Market.aggiungiALista(x)
+            aviso("✓ " + x.nome + " (" + x.supermercato + ") · quantità $q")
+        }
+        if (m != null && m.prezzo < o.prezzo && m.supermercato != o.supermercato) {
+            OcBuilder(this)
+                .setTitle("Conviene altrove!")
+                .setMessage(
+                    "«" + o.nome + "» costa " + Market.eur(o.prezzo) + " da " + o.supermercato + ".\n\n" +
+                        "Lo trovi a " + Market.eur(m.prezzo) + " da " + m.supermercato + ".\n\nVuoi aggiungerlo al prezzo migliore?"
+                )
+                .setPositiveButton("Prezzo migliore") { _, _ -> fatto(m) }
+                .setNegativeButton("Questo") { _, _ -> fatto(o) }
+                .setNeutralButton("Annulla", null)
+                .show()
+        } else {
+            fatto(o)
+        }
+    }
+
+    private fun mkLista(cont: LinearLayout) {
+        val l = Market.leggiLista()
+        if (l.isEmpty()) {
+            vuoto(cont, "Lista vuota. Dal Confronto tocca un articolo e scegli «Aggiungi alla lista spesa».")
+            return
+        }
+        val gruppi = l.groupBy { it.supermercato }.toSortedMap()
+        riga(
+            cont, "Totale stimato",
+            l.sumOf { it.qta }.toString() + " pezzi · " + gruppi.size + " supermercati",
+            Market.eur(Market.totaleLista(l)), null, null
+        )
+        for ((sm, righe) in gruppi) {
+            sezione(cont, "🛒 " + sm.uppercase() + "  ·  parziale " + Market.eur(righe.sumOf { it.totale }))
+            for (r in righe.sortedBy { it.nome.lowercase() }) {
+                riga(
+                    cont, r.nome + (if (r.qtaCatalogo.isNotBlank()) " (" + r.qtaCatalogo + ")" else ""),
+                    Market.eur(r.prezzoUn) + " × " + r.qta, Market.eur(r.totale), null
+                ) { mkRigaLista(r) }
+            }
+        }
+    }
+
+    private fun mkRigaLista(r: Market.Riga) {
+        OcBuilder(this)
+            .setTitle(r.nome)
+            .setItems(arrayOf("➕  Una in più", "➖  Una in meno", "✏️  Imposta quantità", "🗑️  Rimuovi dalla lista")) { _, k ->
+                when (k) {
+                    0 -> Market.impostaQta(r.nome, r.supermercato, r.qta + 1)
+                    1 -> Market.impostaQta(r.nome, r.supermercato, r.qta - 1)
+                    2 -> null
+                    else -> Market.impostaQta(r.nome, r.supermercato, 0)
+                }.let { e ->
+                    if (e != null) aviso(e)
+                }
+                if (k == 2) mkQuantita(r) else renderLista()
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun mkQuantita(r: Market.Riga) {
+        val (view, corpo) = corpoDialogo()
+        val et = campoTesto(corpo, "Quantità da comprare", r.qta.toString(), InputType.TYPE_CLASS_NUMBER, 4)
+        OcBuilder(this)
+            .setTitle(r.nome)
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val q = et.text.toString().trim().toIntOrNull()
+                if (q == null || q < 0) {
+                    aviso("Quantità non valida")
+                    return@setPositiveButton
+                }
+                Market.impostaQta(r.nome, r.supermercato, q)?.let { aviso(it) }
+                renderLista()
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun mkCatalogo(cont: LinearLayout, db: Map<String, List<org.json.JSONObject>>) {
+        val nomi = Market.nomi(db)
+        if (mkSuper == null || mkSuper !in nomi) mkSuper = nomi.firstOrNull()
+        val sm = mkSuper ?: return
+        cont.addView(
+            pulsanteSel("Supermercato:  $sm   ▾", false) {
+                OcBuilder(this)
+                    .setTitle("Supermercato")
+                    .setItems(nomi.toTypedArray()) { _, k ->
+                        mkSuper = nomi[k]
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            stuLp()
+        )
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val tutti = db[sm] ?: emptyList()
+        lateinit var ris: LinearLayout
+        fun aggiorna() {
+            ris.removeAllViews()
+            val t = mkTestoCat.trim().lowercase()
+            val oggi = LocalDate.now()
+            val l = tutti.withIndex().filter { (_, a) ->
+                t.isEmpty() || t in Market.s(a, "nome").lowercase() || t in Market.s(a, "categoria").lowercase() ||
+                    t in Market.s(a, "descrizione").lowercase()
+            }
+            vuoto(ris, tutti.size.toString() + " articoli in " + sm + if (t.isNotEmpty()) "  ·  " + l.size + " trovati" else "")
+            if (tutti.isEmpty()) vuoto(ris, "Catalogo vuoto. Usa ➕ Nuovo articolo.")
+            for ((idx, a) in l.take(300)) {
+                val st = Market.statoPromo(a, oggi)
+                val pr = Market.prezzo(a, "prezzo")
+                val pp = Market.prezzo(a, "prezzo_promo")
+                val nome = Market.s(a, "nome")
+                val sotto = listOfNotNull(
+                    Market.s(a, "categoria").takeIf { it.isNotBlank() },
+                    Market.s(a, "descrizione").takeIf { it.isNotBlank() },
+                    Market.s(a, "data_inserimento_prezzo").takeIf { it.isNotBlank() }?.let { "prezzo del $it" },
+                    when (st) {
+                        Market.Stato.ATTIVA -> "🔥 promo fino al " + Market.s(a, "data_scadenza")
+                        Market.Stato.FUTURA -> "promo dal " + Market.s(a, "data_inizio_promo")
+                        Market.Stato.SCADUTA -> "promo scaduta"
+                        else -> null
+                    },
+                ).joinToString(" · ")
+                val valore = if (st == Market.Stato.ATTIVA && pp != null) Market.eur(pp) else if (pr != null) Market.eur(pr) else "—"
+                riga(
+                    ris, nome + (if (Market.s(a, "quantita").isNotBlank()) " (" + Market.s(a, "quantita") + ")" else ""),
+                    sotto, valore, if (st == Market.Stato.ATTIVA) verde else null
+                ) {
+                    OcBuilder(this)
+                        .setTitle(nome)
+                        .setItems(arrayOf("✏️  Modifica", "↔️  Sposta in un altro supermercato", "🗑️  Elimina")) { _, k ->
+                            when (k) {
+                                0 -> dialogMkArticolo(sm, idx, a)
+                                1 -> mkSposta(sm, idx, nome, nomi)
+                                else -> stuConferma("Eliminare l'articolo?", nome, "Elimina") {
+                                    val e = Market.elimina(sm, idx, nome)
+                                    if (e != null) aviso(e) else {
+                                        aviso("Articolo eliminato")
+                                        renderLista()
+                                    }
+                                }
+                            }
+                        }
+                        .setNegativeButton("Chiudi", null)
+                        .show()
+                }
+            }
+            if (l.size > 300) vuoto(ris, "Mostrati i primi 300: affina la ricerca.")
+        }
+        ris = mkCampoRicerca(cont, mkTestoCat) {
+            mkTestoCat = it
+            aggiorna()
+        }
+        aggiorna()
+    }
+
+    private fun mkSposta(sm: String, idx: Int, nome: String, nomi: List<String>) {
+        val dest = nomi.filter { it != sm }
+        if (dest.isEmpty()) {
+            aviso("Non ci sono altri supermercati: creane uno dalle Azioni")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Sposta «$nome» in…")
+            .setItems(dest.toTypedArray()) { _, k ->
+                val e = Market.sposta(sm, idx, nome, dest[k])
+                if (e != null) aviso(e) else {
+                    aviso("Spostato in " + dest[k])
+                    renderLista()
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun mkNuovo() {
+        if (mkVista != 2) return
+        val sm = mkSuper
+        if (sm == null) {
+            aviso("Crea prima un supermercato dalle Azioni")
+            return
+        }
+        dialogMkArticolo(sm, -1, null)
+    }
+
+    private fun dialogMkArticolo(sm: String, idx: Int, a: org.json.JSONObject?) {
+        val (view, corpo) = corpoDialogo()
+        fun v(k: String) = if (a == null) "" else Market.s(a, k)
+        val etNome = campoTesto(corpo, "Nome articolo", v("nome"), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 27)
+        val etDesc = campoTesto(corpo, "Descrizione", v("descrizione"), InputType.TYPE_CLASS_TEXT, 35)
+        val cat0 = v("categoria").ifBlank { Market.CATEGORIE.first() }
+        val cats = if (cat0 in Market.CATEGORIE) Market.CATEGORIE else Market.CATEGORIE + cat0
+        val tilCat = campoMenu(corpo, "Categoria", cats, cat0)
+        val etPrezzo = campoTesto(corpo, "Prezzo (€)", v("prezzo"), TIPO_DECIMALE, 7)
+        val etQta = campoTesto(corpo, "Quantità / formato (es. 500g)", v("quantita"), InputType.TYPE_CLASS_TEXT, 18)
+        var dIns: LocalDate? = Market.data(v("data_inserimento_prezzo")) ?: LocalDate.now()
+        bottoneData(corpo, "Data prezzo", dIns, false) { dIns = it }
+        val tilPromo = campoMenu(corpo, "Promozione", listOf("No", "Sì"), if (a != null && Market.promoOn(a)) "Sì" else "No")
+        val etPP = campoTesto(corpo, "Prezzo promo (€)", v("prezzo_promo"), TIPO_DECIMALE, 7)
+        var dIni: LocalDate? = Market.data(v("data_inizio_promo"))
+        bottoneData(corpo, "Inizio promo (pressione lunga = nessuna)", dIni, true) { dIni = it }
+        var dFin: LocalDate? = Market.data(v("data_scadenza"))
+        bottoneData(corpo, "Scadenza promo (pressione lunga = nessuna)", dFin, true) { dFin = it }
+        OcBuilder(this)
+            .setTitle(if (a == null) "Nuovo articolo · $sm" else "Modifica articolo")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ ->
+                val f = Market.Form(
+                    etNome.text.toString(), etDesc.text.toString(), stuTesto(tilCat), etPrezzo.text.toString(),
+                    etQta.text.toString(), stuTesto(tilPromo) == "Sì", etPP.text.toString(),
+                    dIni?.format(Market.DMY) ?: "", dFin?.format(Market.DMY) ?: "", dIns?.format(Market.DMY) ?: "",
+                )
+                val errori = Market.valida(f)
+                if (errori.isNotEmpty()) {
+                    aviso(errori.joinToString("\n"))
+                    return@setPositiveButton
+                }
+                val nuovo = Market.nuovoArticolo(f, sm, LocalDate.now(), a)
+                val e = if (a == null) Market.aggiungi(sm, nuovo) else Market.modifica(sm, idx, Market.s(a, "nome"), nuovo)
+                if (e != null) aviso(e) else {
+                    aviso("Articolo salvato")
+                    renderLista()
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun mkCondividi(titolo: String, testo: String) {
+        val i = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, testo)
+            .putExtra(Intent.EXTRA_SUBJECT, titolo)
+        startActivity(Intent.createChooser(i, "Condividi"))
+    }
+
+    private fun mkTestoInput(titolo: String, iniziale: String, ok: String, onOk: (String) -> Unit) {
+        val (view, corpo) = corpoDialogo()
+        val et = campoTesto(corpo, "Nome supermercato", iniziale, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS, 30)
+        OcBuilder(this)
+            .setTitle(titolo)
+            .setView(view)
+            .setPositiveButton(ok) { _, _ -> onOk(et.text.toString()) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun menuMarket() {
+        val voci = ArrayList<String>()
+        val az = ArrayList<() -> Unit>()
+        fun add(t: String, f: () -> Unit) {
+            voci.add(t)
+            az.add(f)
+        }
+        val sm = mkSuper
+        when (mkVista) {
+            1 -> {
+                val l = Market.leggiLista()
+                if (l.isNotEmpty()) {
+                    add("📤  Condividi la lista") { mkCondividi("Lista spesa", Market.testoLista(l, LocalDate.now())) }
+                    add("🗑️  Svuota la lista") {
+                        stuConferma("Svuotare la lista?", "Verranno rimossi tutti gli articoli dalla lista spesa.", "Svuota") {
+                            Market.salvaLista(emptyList())
+                            renderLista()
+                        }
+                    }
+                }
+            }
+            2 -> {
+                add("🏪  Nuovo supermercato") {
+                    mkTestoInput("Nuovo supermercato", "", "Crea") { n ->
+                        val e = Market.nuovoSuper(n)
+                        if (e != null) aviso(e) else {
+                            mkSuper = n.trim()
+                            renderLista()
+                        }
+                    }
+                }
+                if (sm != null) {
+                    add("✏️  Rinomina «$sm»") {
+                        mkTestoInput("Rinomina supermercato", sm, "Salva") { n ->
+                            val e = Market.rinomina(sm, n)
+                            if (e != null) aviso(e) else {
+                                mkSuper = n.trim()
+                                renderLista()
+                            }
+                        }
+                    }
+                    add("📤  Condividi catalogo «$sm»") {
+                        val ora = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                        mkCondividi("Catalogo $sm", Market.testoCatalogo(sm, Market.carica()[sm] ?: emptyList(), ora))
+                    }
+                    add("🧹  Svuota gli articoli di «$sm»") {
+                        stuConferma("Azzerare il catalogo?", "Cancellare TUTTI gli articoli di «$sm»?", "Azzera") {
+                            val e = Market.svuota(sm)
+                            if (e != null) aviso(e) else renderLista()
+                        }
+                    }
+                    add("🗑️  Elimina il supermercato «$sm»") {
+                        stuConferma("Eliminare il supermercato?", "«$sm» verrà rimosso (solo se è vuoto).", "Elimina") {
+                            val e = Market.eliminaSuper(sm)
+                            if (e != null) aviso(e) else {
+                                mkSuper = null
+                                renderLista()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        add("🔄  Aggiorna") { refresh() }
+        OcBuilder(this)
+            .setTitle("Azioni")
+            .setItems(voci.toTypedArray()) { _, k -> az[k]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
     private var infImp: String? = null
     private var infDa = 0
     private var infA = Inflazione.ULTIMO
 
     private fun renderInflazione() {
-        intestaLista("📈 Calcolatore Inflazione — ISTAT NIC", "", "🔄  Reimposta")
+        intestaLista("📈 Inflazione ISTAT", "", "🔄  Reimposta")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val uscite = Repo.voci().filter { it.tipo == "Uscita" }.map { Triple(it.data.year, it.data.monthValue, it.importo) }
         val impDef = Inflazione.mediaMensile(uscite).toString()
