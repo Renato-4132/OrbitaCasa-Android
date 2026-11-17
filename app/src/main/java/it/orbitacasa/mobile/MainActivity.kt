@@ -6700,7 +6700,7 @@ class MainActivity : AppCompatActivity() {
                     "«" + o.nome + "» costa " + Market.eur(o.prezzo) + " da " + o.supermercato + ".\n\n" +
                         "Lo trovi a " + Market.eur(m.prezzo) + " da " + m.supermercato + ".\n\nVuoi aggiungerlo al prezzo migliore?"
                 )
-                .setPositiveButton("Prezzo migliore") { _, _ -> fatto(m) }
+                .setPositiveButton("Migliore") { _, _ -> fatto(m) }
                 .setNegativeButton("Questo") { _, _ -> fatto(o) }
                 .setNeutralButton("Annulla", null)
                 .show()
