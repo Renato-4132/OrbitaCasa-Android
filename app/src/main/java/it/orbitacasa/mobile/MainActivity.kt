@@ -763,6 +763,52 @@ class MainActivity : AppCompatActivity() {
             voceLeg("Risparmio", verde, q.risparmio, q.risparmio >= q.entrate * 0.2)
             box.addView(legenda)
         }
+
+        if (Repo.targetMese > 0 || Repo.targetAnno > 0) {
+            val anno = LocalDate.now().year
+            val spesoMese = Repo.uscite(mese.atDay(1), mese.atEndOfMonth()).sumOf { it.importo }
+            val spesoAnno = Repo.uscite(LocalDate.of(anno, 1, 1), LocalDate.of(anno, 12, 31)).sumOf { it.importo }
+            val tgt = LinearLayout(this)
+            tgt.orientation = LinearLayout.VERTICAL
+            val lpT = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lpT.topMargin = (10 * dp).toInt()
+            tgt.layoutParams = lpT
+            tgt.setOnClickListener { mostra(Pagina.TARGET) }
+            fun e0(x: Double) = String.format(Locale.ITALY, "%,.0f", x)
+            fun rigaTarget(titolo: String, speso: Double, limite: Double) {
+                val resto = limite - speso
+                val pct = speso / limite * 100.0
+                val col = ContextCompat.getColor(
+                    this, when { pct >= 100 -> R.color.oc_red; pct >= 80 -> R.color.oc_orange; else -> R.color.oc_green }
+                )
+                val testa = LinearLayout(this)
+                testa.orientation = LinearLayout.HORIZONTAL
+                val tl = TextView(this)
+                tl.text = titolo
+                tl.textSize = 11f
+                tl.setTextColor(medio)
+                tl.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                val tr = TextView(this)
+                tr.text = e0(speso) + " di " + e0(limite) + " · " + (if (resto >= 0) "restano " + e0(resto) else "sforato di " + e0(-resto))
+                tr.textSize = 11f
+                tr.maxLines = 1
+                testa.addView(tl)
+                testa.addView(tr)
+                tgt.addView(testa)
+                val pb = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
+                pb.max = 100
+                pb.progress = pct.toInt().coerceIn(0, 100)
+                pb.progressTintList = ColorStateList.valueOf(col)
+                val plp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (8 * dp).toInt())
+                plp.topMargin = (3 * dp).toInt()
+                plp.bottomMargin = (6 * dp).toInt()
+                pb.layoutParams = plp
+                tgt.addView(pb)
+            }
+            if (Repo.targetMese > 0) rigaTarget("Target mese", spesoMese, Repo.targetMese)
+            if (Repo.targetAnno > 0) rigaTarget("Target anno", spesoAnno, Repo.targetAnno)
+            box.addView(tgt)
+        }
     }
 
     private class Dest(val pag: Pagina, val ico: String, val lbl: String)
