@@ -812,10 +812,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dialogSceltaBarra(slot: Int) {
+        val coll = java.text.Collator.getInstance(Locale.ITALY).apply { strength = java.text.Collator.PRIMARY }
+        val ordinate = destinazioni.sortedWith { a, b -> coll.compare(a.lbl, b.lbl) }
         OcBuilder(this)
             .setCustomTitle(titoloSpiegato("Posizione " + (slot + 1) + " della barra", "Scegli la pagina da mostrare in questa posizione. Se è già nella barra, le due pagine si scambiano di posto."))
-            .setItems(destinazioni.map { it.ico + "  " + it.lbl }.toTypedArray()) { _, k ->
-                val nuova = destinazioni[k].pag.name
+            .setItems(ordinate.map { it.ico + "  " + it.lbl }.toTypedArray()) { _, k ->
+                val nuova = ordinate[k].pag.name
                 val l = Repo.barra.toMutableList()
                 val gia = l.indexOf(nuova)
                 if (gia >= 0) l[gia] = l[slot]

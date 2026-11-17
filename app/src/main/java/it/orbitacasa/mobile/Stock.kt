@@ -90,7 +90,6 @@ object Stock {
 
     fun errore(): String? = err
 
-    // ---------- utilità ----------
     fun s(o: JSONObject, k: String): String = if (o.isNull(k)) "" else o.optString(k, "").trim()
 
     fun d(o: JSONObject, k: String): Double {
@@ -145,7 +144,6 @@ object Stock {
         return String.format(Locale.ITALY, "%,.3f", v).trimEnd('0').trimEnd(',')
     }
 
-    // ---------- persistenza ----------
     private fun scrivi(dati: Dati): String? {
         if (err != null) return err
         return try {
@@ -225,7 +223,6 @@ object Stock {
         return o
     }
 
-    // ---------- stato ----------
     fun stato(a: JSONObject): Stato {
         val q = d(a, "quantita")
         val mn = d(a, "qta_min")
@@ -261,8 +258,6 @@ object Stock {
         return if (sc.tag.isNotEmpty()) sc.tag else stato(a).tag
     }
 
-    /** Normalizza un codice per il confronto: spazi tolti, maiuscole; per i codici numerici
-     *  ignora gli zeri iniziali, così UPC-A (12 cifre) ed EAN-13 con 0 davanti coincidono. */
     fun normCodice(c: String): String {
         val x = c.filter { !it.isWhitespace() }.uppercase()
         return if (x.isNotEmpty() && x.all { it.isDigit() }) x.trimStart('0').ifEmpty { "0" } else x
@@ -313,13 +308,11 @@ object Stock {
         l.count { scadenza(it).nome == "In scadenza" },
     )
 
-    // ---------- validazione e salvataggio articolo ----------
     class Form(
         val nome: String, val codice: String, val categoria: String, val descrizione: String, val unita: String,
         val quantita: String, val min: String, val max: String, val prezzo: String, val scadenza: String, val data: String,
     )
 
-    /** Ritorna Pair(errore, articoloCampi). Se errore != null il secondo è null. */
     fun leggi(f: Form): Pair<String?, JSONObject?> {
         val nome = f.nome.trim()
         if (nome.isEmpty()) return "Il campo Articolo è obbligatorio." to null
@@ -416,8 +409,6 @@ object Stock {
         return salva(dati)
     }
 
-    // ---------- movimenti ----------
-    /** delta > 0 carico, < 0 scarico. forza = ignora la giacenza insufficiente. */
     fun movimento(id: String, delta: Double, nota: String, forza: Boolean = false): String? {
         if (delta == 0.0 || delta.isNaN() || delta.isInfinite()) return "Inserisci una quantità maggiore di zero."
         val dati = carica()
@@ -436,7 +427,6 @@ object Stock {
         return salva(dati)
     }
 
-    /** Carico = quantità di riordino per tutti gli articoli indicati (solo quelli da riordinare). Ritorna (n, errore). */
     fun caricaRiordino(ids: Collection<String>): Pair<Int, String?> {
         val dati = carica()
         if (err != null) return 0 to err
@@ -462,7 +452,6 @@ object Stock {
         return n to salva(dati)
     }
 
-    // ---------- scorta minima suggerita ----------
     class Sugg(val id: String, val nome: String, val unita: String, val alGiorno: Double, val attuale: Double, val suggerita: Double, val max: Double) {
         val sfora: Boolean get() = max > 0 && suggerita > max
     }
@@ -512,7 +501,6 @@ object Stock {
         return n to (if (n > 0) salva(dati) else null)
     }
 
-    // ---------- categorie ----------
     fun conteggioCategorie(dati: Dati): List<Pair<String, Int>> =
         dati.tutteCategorie().map { c -> c to dati.articoli.count { s(it, "categoria") == c } }
 
@@ -527,7 +515,6 @@ object Stock {
         return salva(dati)
     }
 
-    /** Rinomina (o unisce se esiste già un'altra categoria con quel nome). */
     fun rinominaCategoria(vecchio: String, nuovo: String): String? {
         val n = nuovo.trim()
         if (n.isEmpty()) return "Nome obbligatorio"
@@ -569,7 +556,6 @@ object Stock {
         }
     }
 
-    // ---------- testi ----------
     fun righeRiordino(dati: Dati): List<Pair<JSONObject, Double>> =
         dati.articoli.sortedWith(compareBy({ s(it, "categoria").lowercase() }, { s(it, "nome").lowercase() }))
             .mapNotNull { a -> stato(a).daOrdinare.takeIf { it > 0 }?.let { a to it } }

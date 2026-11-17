@@ -161,7 +161,6 @@ object Market {
 
     fun nomi(db: Map<String, List<JSONObject>>): List<String> = db.keys.sorted()
 
-    // ---------- validazione ----------
     private val LIMITI = listOf("NOME" to 27, "DESCRIZIONE" to 35, "CATEGORIA" to 24, "QUANTITA" to 18, "PREZZO" to 7, "PREZZO_PROMO" to 7)
 
     fun valida(f: Form): List<String> {
@@ -214,7 +213,6 @@ object Market {
         return o
     }
 
-    // ---------- promo e confronto ----------
     fun statoPromo(a: JSONObject, oggi: LocalDate): Stato {
         if (!promoOn(a) || s(a, "prezzo_promo").isBlank()) return Stato.NESSUNA
         val ini = data(s(a, "data_inizio_promo")) ?: return Stato.NESSUNA
@@ -291,7 +289,6 @@ object Market {
         return n
     }
 
-    // ---------- catalogo ----------
     private fun controlla(db: Map<String, List<JSONObject>>, sm: String, idx: Int, nome: String): String? {
         val l = db[sm] ?: return "Supermercato non trovato"
         if (idx !in l.indices || s(l[idx], "nome") != nome) return "Articolo non più presente: ricarica la lista"
@@ -381,7 +378,6 @@ object Market {
         return salva(db)
     }
 
-    // ---------- lista spesa (locale, non sincronizzata) ----------
     fun leggiLista(): List<Riga> {
         val v = try {
             leggiFile(F_LISTA)
