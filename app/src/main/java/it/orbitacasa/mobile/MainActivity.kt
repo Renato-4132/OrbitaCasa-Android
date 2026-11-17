@@ -4723,21 +4723,31 @@ class MainActivity : AppCompatActivity() {
                         r.meseMin?.let { d.add("Mese min" to mesi3[it.first - 1] + "  " + euro(it.second)) }
                         dialogSchedaCk(r.cat, d, r.cat, abs(r.media))
                     }
-                    val tv = TextView(this)
-                    tv.typeface = Typeface.MONOSPACE
-                    tv.textSize = 11f
-                    tv.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
-                    tv.setPadding(28, 0, 8, 10)
-                    val l1 = StringBuilder()
-                    val l2 = StringBuilder()
+                    val colTxt = ContextCompat.getColor(this, R.color.oc_text_mid)
+                    val griglia = LinearLayout(this)
+                    griglia.orientation = LinearLayout.VERTICAL
+                    griglia.setPadding(28, 0, 8, 10)
+                    val riga1 = LinearLayout(this)
+                    val riga2 = LinearLayout(this)
                     for (i in 0 until 12) {
                         val cur = ckAnno == oggi.year && i + 1 == oggi.monthValue
                         val sim = if (r.mesi[i]) "✔" else "✖"
-                        l1.append(if (cur) "[" + lettere[i] + "]" else " " + lettere[i] + " ")
-                        l2.append(if (cur) "[$sim]" else " $sim ")
+                        fun cella(testo: String): TextView {
+                            val c = TextView(this)
+                            c.text = testo
+                            c.textSize = 11f
+                            c.gravity = android.view.Gravity.CENTER
+                            c.setTextColor(colTxt)
+                            c.maxLines = 1
+                            c.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                            return c
+                        }
+                        riga1.addView(cella(if (cur) "[" + lettere[i] + "]" else lettere[i].toString()))
+                        riga2.addView(cella(if (cur) "[$sim]" else sim))
                     }
-                    tv.text = l1.toString() + "\n" + l2.toString()
-                    cont.addView(tv)
+                    griglia.addView(riga1)
+                    griglia.addView(riga2)
+                    cont.addView(griglia)
                 }
                 vuoto(cont, "✔ presente · ✖ assente · [ ] mese corrente. Tocca una categoria per il dettaglio e per inserire il movimento.")
             }
@@ -6926,12 +6936,12 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun mkCondividi(titolo: String, testo: String) {
-        val i = Intent(Intent.ACTION_SEND)
-            .setType("text/plain")
-            .putExtra(Intent.EXTRA_TEXT, testo)
-            .putExtra(Intent.EXTRA_SUBJECT, titolo)
-        startActivity(Intent.createChooser(i, "Condividi"))
+    private fun mkPdf(crea: () -> java.io.File, titolo: String) {
+        try {
+            PensionePdf.condividi(this, crea(), titolo)
+        } catch (e: Exception) {
+            aviso("Impossibile creare il PDF: " + (e.message ?: "errore"))
+        }
     }
 
     private fun mkTestoInput(titolo: String, iniziale: String, ok: String, onOk: (String) -> Unit) {
@@ -6957,7 +6967,7 @@ class MainActivity : AppCompatActivity() {
             1 -> {
                 val l = Market.leggiLista()
                 if (l.isNotEmpty()) {
-                    add("📤  Condividi la lista") { mkCondividi("Lista spesa", Market.testoLista(l, LocalDate.now())) }
+                    add("📤  Condividi la lista (PDF)") { mkPdf({ MarketPdf.lista(this, l, LocalDate.now()) }, "Lista spesa") }
                     add("🗑️  Svuota la lista") {
                         stuConferma("Svuotare la lista?", "Verranno rimossi tutti gli articoli dalla lista spesa.", "Svuota") {
                             Market.salvaLista(emptyList())
@@ -6986,9 +6996,8 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
-                    add("📤  Condividi catalogo «$sm»") {
-                        val ora = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                        mkCondividi("Catalogo $sm", Market.testoCatalogo(sm, Market.carica()[sm] ?: emptyList(), ora))
+                    add("📤  Condividi catalogo «$sm» (PDF)") {
+                        mkPdf({ MarketPdf.catalogo(this, sm, Market.carica()[sm] ?: emptyList()) }, "Catalogo $sm")
                     }
                     add("🧹  Svuota gli articoli di «$sm»") {
                         stuConferma("Azzerare il catalogo?", "Cancellare TUTTI gli articoli di «$sm»?", "Azzera") {
@@ -7309,8 +7318,7 @@ class MainActivity : AppCompatActivity() {
         OcBuilder(this)
             .setTitle("Lista riordino")
             .setMessage(t)
-            .setPositiveButton("Condividi") { _, _ -> mkCondividi("Lista riordino", t) }
-            .setNeutralButton("PDF") { _, _ -> stkPdf({ StockPdf.riordino(this, dati) }, "Lista riordino") }
+            .setPositiveButton("Condividi PDF") { _, _ -> stkPdf({ StockPdf.riordino(this, dati) }, "Lista riordino") }
             .setNegativeButton("Chiudi", null)
             .show()
     }
@@ -7418,17 +7426,11 @@ class MainActivity : AppCompatActivity() {
         add("📥  Carica tutto il riordino") { stkCaricaTutto() }
         add("📈  Scorta minima suggerita") { stkScorte() }
         add("🏷️  Categorie") { stkCategorie() }
-        add("📤  Inventario in PDF") {
+        add("📤  Condividi inventario (PDF)") {
             val dati = Stock.carica()
             val l = Stock.filtra(dati, stkTesto, stkCat, stkStato)
             val filtrato = stkTesto.isNotBlank() || stkCat != Stock.TUTTE_CAT || stkStato != Stock.STATI_FILTRO[0]
             if (l.isEmpty()) aviso("Nessun articolo da esportare") else stkPdf({ StockPdf.inventario(this, l, filtrato) }, "Inventario magazzino")
-        }
-        add("📤  Condividi inventario (testo)") {
-            val dati = Stock.carica()
-            val l = Stock.filtra(dati, stkTesto, stkCat, stkStato)
-            val filtrato = stkTesto.isNotBlank() || stkCat != Stock.TUTTE_CAT || stkStato != Stock.STATI_FILTRO[0]
-            if (l.isEmpty()) aviso("Nessun articolo da esportare") else mkCondividi("Inventario magazzino", Stock.testoInventario(l, filtrato))
         }
         add("🔙  Reset magazzino") {
             stuConferma("Reset magazzino", "Cancellare TUTTI gli articoli del magazzino?", "Cancella") {
