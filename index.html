@@ -289,11 +289,11 @@ footer a{color:#818cf8}
 (function(){
 var API='https://api.github.com/repos/Renato-4132/OrbitaCasa-Android/releases?per_page=100';
 var ver=document.getElementById('ver'),cnt=document.getElementById('dlCnt'),num=document.getElementById('dlNum'),btn=document.getElementById('btnApk');
-var BASE_DL=5;
+var BASE_DL=0;
 function show(d){
 if(d.tag)ver.textContent='Versione '+String(d.tag).replace(/^v/i,'')+' · Android 8.0+';
 if(d.url&&btn){btn.href=d.url;btn.setAttribute('download','');}
-if(typeof d.dl==='number'){num.textContent=d.dl.toLocaleString('it-IT');cnt.hidden=false;}
+//if(typeof d.dl==='number'){num.textContent=d.dl.toLocaleString('it-IT');cnt.hidden=false;}
 }
 fetch(API,{headers:{'Accept':'application/vnd.github+json'}})
 .then(function(r){return r.ok?r.json():Promise.reject();})
