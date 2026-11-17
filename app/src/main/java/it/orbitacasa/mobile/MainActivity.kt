@@ -772,37 +772,58 @@ class MainActivity : AppCompatActivity() {
             cont.addView(box)
         }
 
-        sezione(cont, "ULTIMI MOVIMENTI")
         val oggi = LocalDate.now()
-        val ultimi = tutte.filter { !it.data.isAfter(oggi) }
+        val delMese = tutte.filter { YearMonth.from(it.data) == mese }
             .sortedWith(compareByDescending<Voce> { it.data }.thenByDescending { it.ora })
-            .take(10)
-        if (ultimi.isEmpty()) {
-            vuoto(cont, "Nessun movimento registrato.")
-        } else {
-            for (v in ultimi) {
-                val riga = layoutInflater.inflate(R.layout.item_voce, cont, false)
-                val desc = descPulita(v.descrizione)
-                riga.findViewById<TextView>(R.id.tvTit).text = if (desc.isEmpty()) v.categoria else v.categoria + " · " + desc
-                val tvSub = riga.findViewById<TextView>(R.id.tvSub)
-                tvSub.text = listOf(v.data.format(FMT_DATA), v.ora).filter { it.isNotBlank() }.joinToString(" · ")
-                tvSub.visibility = View.VISIBLE
-                val tvImp = riga.findViewById<TextView>(R.id.tvImp)
-                val entrata = v.tipo == "Entrata"
-                tvImp.text = (if (entrata) "+" else "−") + euro(v.importo)
-                tvImp.setTextColor(if (entrata) verde else rosso)
-                riga.setOnClickListener { dialogVoce(v) }
-                cont.addView(riga)
-            }
+        sezione(cont, "MOVIMENTI DEL MESE · " + delMese.size)
+        if (delMese.isEmpty()) {
+            vuoto(cont, "Nessun movimento in questo mese.")
+            return
         }
-        val tutto = TextView(this)
-        tutto.text = "Mostra tutto  ›"
-        tutto.setTextColor(ContextCompat.getColor(this, R.color.oc_gold))
-        tutto.setTypeface(null, Typeface.BOLD)
-        tutto.gravity = android.view.Gravity.CENTER
-        tutto.setPadding(0, (14 * dp).toInt(), 0, (14 * dp).toInt())
-        tutto.setOnClickListener { mostra(Pagina.MOVIMENTI) }
-        cont.addView(tutto)
+        val finestra = LinearLayout(this)
+        finestra.orientation = LinearLayout.VERTICAL
+        finestra.setBackgroundResource(R.drawable.bg_tile)
+        finestra.setPadding((8 * dp).toInt(), (4 * dp).toInt(), (4 * dp).toInt(), (4 * dp).toInt())
+        val lpFin = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (260 * dp).toInt())
+        lpFin.bottomMargin = (12 * dp).toInt()
+        finestra.layoutParams = lpFin
+
+        val sv = android.widget.ScrollView(this)
+        sv.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        sv.isVerticalScrollBarEnabled = true
+        sv.isScrollbarFadingEnabled = false
+        sv.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+        sv.overScrollMode = View.OVER_SCROLL_NEVER
+        sv.setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_MOVE ->
+                    v.parent.requestDisallowInterceptTouchEvent(true)
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                    v.parent.requestDisallowInterceptTouchEvent(false)
+            }
+            false
+        }
+        val lista = LinearLayout(this)
+        lista.orientation = LinearLayout.VERTICAL
+        lista.setPadding(0, 0, (8 * dp).toInt(), 0)
+        for (v in delMese) {
+            val riga = layoutInflater.inflate(R.layout.item_voce, lista, false)
+            val desc = descPulita(v.descrizione)
+            riga.findViewById<TextView>(R.id.tvTit).text = if (desc.isEmpty()) v.categoria else v.categoria + " · " + desc
+            val tvSub = riga.findViewById<TextView>(R.id.tvSub)
+            tvSub.text = listOf(v.data.format(FMT_DATA), v.ora, if (v.data.isAfter(oggi)) "futura" else "")
+                .filter { it.isNotBlank() }.joinToString(" · ")
+            tvSub.visibility = View.VISIBLE
+            val tvImp = riga.findViewById<TextView>(R.id.tvImp)
+            val entrata = v.tipo == "Entrata"
+            tvImp.text = (if (entrata) "+" else "−") + euro(v.importo)
+            tvImp.setTextColor(if (entrata) verde else rosso)
+            riga.setOnClickListener { dialogVoce(v) }
+            lista.addView(riga)
+        }
+        sv.addView(lista)
+        finestra.addView(sv)
+        cont.addView(finestra)
     }
 
     private class Dest(val pag: Pagina, val ico: String, val lbl: String)
