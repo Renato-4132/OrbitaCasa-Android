@@ -698,6 +698,111 @@ class MainActivity : AppCompatActivity() {
             )
         )
         tabsHome(cont)
+        riepilogoHome(cont)
+    }
+
+    private fun riepilogoHome(cont: LinearLayout) {
+        val dp = resources.displayMetrics.density
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val tutte = Repo.voci()
+
+        val q = Repo.calcola503020(tutte.filter { YearMonth.from(it.data) == mese })
+        sezione(cont, "METODO 50/30/20 · " + maiuscola(mese.format(FMT_MESE)).uppercase())
+        if (q.entrate <= 0 || (q.bisogni + q.desideri + q.risparmio) <= 0) {
+            vuoto(cont, "Nessun dato per questo mese: servono entrate e categorie con la classe 50/30/20 assegnata.")
+        } else {
+            val box = LinearLayout(this)
+            box.orientation = LinearLayout.VERTICAL
+            box.setBackgroundResource(R.drawable.bg_tile)
+            box.setPadding((12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt())
+            val lpBox = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lpBox.bottomMargin = (6 * dp).toInt()
+            box.layoutParams = lpBox
+
+            val b = maxOf(q.bisogni, 0.0)
+            val d = maxOf(q.desideri, 0.0)
+            val r = maxOf(q.risparmio, 0.0)
+            val somma = b + d + r
+            val totale = maxOf(somma, q.entrate)
+            val barra = LinearLayout(this)
+            barra.orientation = LinearLayout.HORIZONTAL
+            barra.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (14 * dp).toInt())
+            fun pezzo(valore: Double, colore: Int) {
+                if (valore <= 0) return
+                val v = View(this)
+                v.setBackgroundColor(colore)
+                v.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, (valore / totale).toFloat())
+                barra.addView(v)
+            }
+            val blu = ContextCompat.getColor(this, R.color.oc_blue)
+            val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+            pezzo(b, blu)
+            pezzo(d, arancio)
+            pezzo(r, verde)
+            pezzo(totale - somma, ContextCompat.getColor(this, R.color.oc_surface3))
+            box.addView(barra)
+
+            val legenda = LinearLayout(this)
+            legenda.orientation = LinearLayout.HORIZONTAL
+            val lpLeg = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lpLeg.topMargin = (8 * dp).toInt()
+            legenda.layoutParams = lpLeg
+            fun voceLeg(nome: String, pallino: Int, valore: Double, obiettivo: String, ok: Boolean) {
+                val col = LinearLayout(this)
+                col.orientation = LinearLayout.VERTICAL
+                col.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                val t1 = TextView(this)
+                t1.text = "● $nome"
+                t1.textSize = 12f
+                t1.setTypeface(null, Typeface.BOLD)
+                t1.setTextColor(pallino)
+                val t2 = TextView(this)
+                t2.text = String.format(Locale.ITALY, "%.0f%%", valore / q.entrate * 100) + " · " + obiettivo
+                t2.textSize = 11f
+                t2.setTextColor(if (ok) verde else rosso)
+                col.addView(t1)
+                col.addView(t2)
+                legenda.addView(col)
+            }
+            voceLeg("Bisogni", blu, q.bisogni, "ob. ≤50%", q.bisogni <= q.entrate * 0.5)
+            voceLeg("Desideri", arancio, q.desideri, "ob. ≤30%", q.desideri <= q.entrate * 0.3)
+            voceLeg("Risparmio", verde, q.risparmio, "ob. ≥20%", q.risparmio >= q.entrate * 0.2)
+            box.addView(legenda)
+            cont.addView(box)
+        }
+
+        sezione(cont, "ULTIMI MOVIMENTI")
+        val oggi = LocalDate.now()
+        val ultimi = tutte.filter { !it.data.isAfter(oggi) }
+            .sortedWith(compareByDescending<Voce> { it.data }.thenByDescending { it.ora })
+            .take(10)
+        if (ultimi.isEmpty()) {
+            vuoto(cont, "Nessun movimento registrato.")
+        } else {
+            for (v in ultimi) {
+                val riga = layoutInflater.inflate(R.layout.item_voce, cont, false)
+                val desc = descPulita(v.descrizione)
+                riga.findViewById<TextView>(R.id.tvTit).text = if (desc.isEmpty()) v.categoria else v.categoria + " · " + desc
+                val tvSub = riga.findViewById<TextView>(R.id.tvSub)
+                tvSub.text = listOf(v.data.format(FMT_DATA), v.ora).filter { it.isNotBlank() }.joinToString(" · ")
+                tvSub.visibility = View.VISIBLE
+                val tvImp = riga.findViewById<TextView>(R.id.tvImp)
+                val entrata = v.tipo == "Entrata"
+                tvImp.text = (if (entrata) "+" else "−") + euro(v.importo)
+                tvImp.setTextColor(if (entrata) verde else rosso)
+                riga.setOnClickListener { dialogVoce(v) }
+                cont.addView(riga)
+            }
+        }
+        val tutto = TextView(this)
+        tutto.text = "Mostra tutto  ›"
+        tutto.setTextColor(ContextCompat.getColor(this, R.color.oc_gold))
+        tutto.setTypeface(null, Typeface.BOLD)
+        tutto.gravity = android.view.Gravity.CENTER
+        tutto.setPadding(0, (14 * dp).toInt(), 0, (14 * dp).toInt())
+        tutto.setOnClickListener { mostra(Pagina.MOVIMENTI) }
+        cont.addView(tutto)
     }
 
     private class Dest(val pag: Pagina, val ico: String, val lbl: String)
