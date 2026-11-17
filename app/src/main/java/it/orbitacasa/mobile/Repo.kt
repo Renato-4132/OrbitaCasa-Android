@@ -182,6 +182,7 @@ object Repo {
         Pensione.init(dir)
         Studio.init(dir)
         Market.init(dir)
+        Stock.init(dir)
         Dieta.init(dir) { ctx.assets.open("alimenti.json").bufferedReader(Charsets.UTF_8).use { it.readText() } }
         Doc.init(dir)
         Utenze.init(dir)

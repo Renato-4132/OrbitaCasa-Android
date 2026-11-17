@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, STOCK, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -253,6 +253,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.DIETA -> menuDieta()
                 Pagina.STUDIO -> stuNuovo()
                 Pagina.MARKET -> mkNuovo()
+                Pagina.STOCK -> dialogStkArticolo(null)
                 Pagina.PIANIFICA -> dialogNuovoPiano()
                 Pagina.DOCUMENTI, Pagina.DOCPERS -> nuovoDocumento()
                 Pagina.UTENZE -> dialogNuovaLettura()
@@ -301,6 +302,8 @@ class MainActivity : AppCompatActivity() {
                 renderLista()
             } else if (pagina == Pagina.MARKET) {
                 menuMarket()
+            } else if (pagina == Pagina.STOCK) {
+                menuStock()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -556,7 +559,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.STOCK || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -632,6 +635,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("📩", "Notifiche" + Notif.nAttesa().let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.NOTIFICHE) },
                 Tessera("🔎", "Cerca Operazioni") { mostra(Pagina.RICERCA) },
                 Tessera("🛒", "Supermercati") { mostra(Pagina.MARKET) },
+                Tessera("📦", "StockBox") { mostra(Pagina.STOCK) },
             )
         )
         gruppo(
@@ -716,6 +720,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.INFLAZIONE, "📈", "Inflazione"),
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
         Dest(Pagina.DOCPERS, "🪪", "Personali"),
+        Dest(Pagina.STOCK, "📦", "StockBox"),
         Dest(Pagina.UTENZE, "💡", "Utenze"),
         Dest(Pagina.MARKET, "🛒", "Spesa"),
         Dest(Pagina.FAIRSHARE, "🤝", "FairShare"),
@@ -1317,6 +1322,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.STUDIO -> renderStudio()
             Pagina.INFLAZIONE -> renderInflazione()
             Pagina.MARKET -> renderMarket()
+            Pagina.STOCK -> renderStock()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -6999,6 +7005,404 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
+                }
+            }
+        }
+        add("🔄  Aggiorna") { refresh() }
+        OcBuilder(this)
+            .setTitle("Azioni")
+            .setItems(voci.toTypedArray()) { _, k -> az[k]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private var stkTesto = ""
+    private var stkCat = Stock.TUTTE_CAT
+    private var stkStato = Stock.STATI_FILTRO[0]
+
+    private fun renderStock() {
+        intestaLista("📦 StockBox", "➕  Nuovo articolo", "🔀  Azioni")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val dati = Stock.carica()
+        Stock.errore()?.let { vuoto(cont, "⚠️ $it") }
+        val cats = listOf(Stock.TUTTE_CAT) + dati.tutteCategorie()
+        if (stkCat !in cats) stkCat = Stock.TUTTE_CAT
+        cont.addView(
+            pulsanteSel("Stato:  $stkStato   ▾", true) {
+                OcBuilder(this)
+                    .setTitle("Stato")
+                    .setItems(Stock.STATI_FILTRO.toTypedArray()) { _, k ->
+                        stkStato = Stock.STATI_FILTRO[k]
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            stuLp()
+        )
+        cont.addView(
+            pulsanteSel("Categoria:  $stkCat   ▾", false) {
+                OcBuilder(this)
+                    .setTitle("Categoria")
+                    .setItems(cats.toTypedArray()) { _, k ->
+                        stkCat = cats[k]
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            },
+            stuLp()
+        )
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        lateinit var ris: LinearLayout
+        fun aggiorna() {
+            ris.removeAllViews()
+            val l = Stock.filtra(dati, stkTesto, stkCat, stkStato)
+            if (dati.articoli.isEmpty()) {
+                vuoto(ris, "Magazzino vuoto. Usa ➕ Nuovo articolo.")
+                return
+            }
+            val r = Stock.riepilogo(l)
+            riga(
+                ris, "Valore in magazzino",
+                listOfNotNull(
+                    "${r.n} su ${dati.articoli.size} articoli",
+                    if (r.sotto > 0) "${r.sotto} sotto scorta" else null,
+                    if (r.esauriti > 0) "${r.esauriti} esauriti" else null,
+                    if (r.daOrdinare > 0) "${r.daOrdinare} da riordinare" else null,
+                    if (r.scaduti > 0) "${r.scaduti} scaduti" else null,
+                    if (r.inScadenza > 0) "${r.inScadenza} in scadenza" else null,
+                ).joinToString(" · "),
+                Stock.eur(r.valore), null, null
+            )
+            if (l.isEmpty()) {
+                vuoto(ris, "Nessun articolo trovato.")
+                return
+            }
+            for (a in l.take(300)) {
+                val st = Stock.stato(a)
+                val sc = Stock.scadenza(a)
+                val tag = Stock.tagRiga(a)
+                val ico = when (tag) {
+                    "esaurito" -> "⛔ "
+                    "sotto" -> "🔻 "
+                    "eccesso" -> "🔺 "
+                    "scaduto" -> "❌ "
+                    "scadenza" -> "⏳ "
+                    else -> ""
+                }
+                val mx = Stock.d(a, "qta_max")
+                val sotto = listOfNotNull(
+                    Stock.s(a, "categoria").takeIf { it.isNotBlank() },
+                    st.nome,
+                    "min " + Stock.q(Stock.d(a, "qta_min")) + if (mx > 0) " · max " + Stock.q(mx) else "",
+                    if (st.daOrdinare > 0) "ordina " + Stock.q(st.daOrdinare) else null,
+                    if (sc.testo.isNotEmpty()) "scad. " + sc.testo else null,
+                    if (Stock.d(a, "prezzo") > 0) Stock.eur(Stock.d(a, "quantita") * Stock.d(a, "prezzo")) else null,
+                ).joinToString(" · ")
+                val critico = tag == "esaurito" || tag == "sotto" || tag == "scaduto"
+                riga(
+                    ris, ico + Stock.s(a, "nome"), sotto,
+                    Stock.q(Stock.d(a, "quantita")) + " " + Stock.s(a, "unita"),
+                    if (critico) rosso else null
+                ) { stkMenuArticolo(a) }
+            }
+            if (l.size > 300) vuoto(ris, "Mostrati i primi 300: affina la ricerca.")
+        }
+        ris = mkCampoRicerca(cont, stkTesto) {
+            stkTesto = it
+            aggiorna()
+        }
+        aggiorna()
+    }
+
+    private fun stkMenuArticolo(a: org.json.JSONObject) {
+        val id = Stock.s(a, "id")
+        val nome = Stock.s(a, "nome")
+        OcBuilder(this)
+            .setTitle(nome)
+            .setItems(arrayOf("🔄  Carico / Scarico", "📜  Storico movimenti", "✏️  Modifica", "📄  Duplica", "🗑️  Elimina")) { _, k ->
+                when (k) {
+                    0 -> dialogStkMovimento(a)
+                    1 -> stkStorico(a)
+                    2 -> dialogStkArticolo(a)
+                    3 -> {
+                        val e = Stock.duplica(id)
+                        if (e != null) aviso(e) else {
+                            aviso("Articolo duplicato")
+                            renderLista()
+                        }
+                    }
+                    else -> stuConferma("Eliminare l'articolo?", nome, "Elimina") {
+                        val e = Stock.elimina(id)
+                        if (e != null) aviso(e) else {
+                            aviso("Articolo eliminato")
+                            renderLista()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun stkStorico(a: org.json.JSONObject) {
+        val mov = a.optJSONArray("movimenti")
+        val righe = ArrayList<String>()
+        if (mov != null) for (i in mov.length() - 1 downTo 0) {
+            val m = mov.optJSONObject(i) ?: continue
+            val dl = Stock.d(m, "delta")
+            righe.add(
+                Stock.s(m, "data") + "   " + (if (dl > 0) "+" else "") + Stock.q(dl) + "   →  " + Stock.q(Stock.d(m, "qta")) +
+                    (Stock.s(m, "nota").takeIf { it.isNotBlank() }?.let { "\n" + it } ?: "")
+            )
+        }
+        if (righe.isEmpty()) {
+            aviso("Nessun movimento registrato")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Storico · " + Stock.s(a, "nome"))
+            .setItems(righe.toTypedArray(), null)
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogStkMovimento(a: org.json.JSONObject) {
+        val (view, corpo) = corpoDialogo()
+        val id = Stock.s(a, "id")
+        val um = Stock.s(a, "unita")
+        val ord = Stock.stato(a).daOrdinare
+        val tipi = arrayListOf("➕ Carico (entrata)", "➖ Scarico (uscita)")
+        val voceRiord = "📥 Carico riordino (+" + Stock.q(ord) + " $um)"
+        if (ord > 0) tipi.add(voceRiord)
+        val tv = TextView(ctxDialogo)
+        tv.text = "Giacenza attuale: " + Stock.q(Stock.d(a, "quantita")) + " $um"
+        tv.setPadding(4, 4, 4, 8)
+        corpo.addView(tv)
+        val tilTipo = campoMenu(corpo, "Tipo di movimento", tipi, tipi[0])
+        val etQ = campoTesto(corpo, "Quantità", "", TIPO_DECIMALE, 10)
+        val etNota = campoTesto(corpo, "Nota (facoltativa)", "", InputType.TYPE_CLASS_TEXT, 28)
+        OcBuilder(this)
+            .setTitle(Stock.s(a, "nome"))
+            .setView(view)
+            .setPositiveButton("Registra") { _, _ ->
+                val t = stuTesto(tilTipo)
+                val e: String?
+                if (t == voceRiord) {
+                    val r = Stock.caricaRiordino(listOf(id))
+                    e = r.second
+                } else {
+                    val q = Stock.numOrNull(etQ.text.toString())
+                    if (q == null || q <= 0) {
+                        aviso("Inserisci una quantità maggiore di zero")
+                        return@setPositiveButton
+                    }
+                    e = Stock.movimento(id, if (t.startsWith("➖")) -q else q, etNota.text.toString())
+                }
+                if (e != null) aviso(e) else {
+                    aviso("Movimento registrato")
+                    renderLista()
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dialogStkArticolo(a: org.json.JSONObject?) {
+        val dati = Stock.carica()
+        val (view, corpo) = corpoDialogo()
+        fun v(k: String) = if (a == null) "" else Stock.s(a, k)
+        fun n(k: String) = if (a == null) "" else Stock.q(Stock.d(a, k)).replace(".", "").replace(',', '.')
+        val etNome = campoTesto(corpo, "Articolo", v("nome"), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, Stock.MAX_NOME)
+        val etCod = campoTesto(corpo, "Codice (facoltativo)", v("codice"), InputType.TYPE_CLASS_TEXT, Stock.MAX_CODICE)
+        val cat0 = v("categoria")
+        val cats = (listOf("") + dati.tutteCategorie()).let { if (cat0 !in it) it + cat0 else it }
+        val tilCat = campoMenu(corpo, "Categoria", cats, cat0)
+        val etDesc = campoTesto(corpo, "Descrizione", if (a == null) "" else (a.optString("descrizione", "")), InputType.TYPE_CLASS_TEXT, Stock.MAX_DESC)
+        val um0 = v("unita").ifBlank { "pz" }
+        val tilUm = campoMenu(corpo, "Unità di misura", if (um0 in Stock.UNITA) Stock.UNITA else Stock.UNITA + um0, um0)
+        val etQ = campoTesto(corpo, "Quantità in magazzino", if (a == null) "0" else n("quantita"), TIPO_DECIMALE, 10)
+        val etMin = campoTesto(corpo, "Quantità minima (scorta)", if (a == null) "0" else n("qta_min"), TIPO_DECIMALE, 10)
+        val etMax = campoTesto(corpo, "Quantità massima (0 = nessuna)", if (a == null) "0" else n("qta_max"), TIPO_DECIMALE, 10)
+        val etPr = campoTesto(corpo, "Prezzo unitario (€)", if (a == null) "0" else Stock.itNum(Stock.d(a, "prezzo")).replace(".", "").replace(',', '.'), TIPO_DECIMALE, 10)
+        var dScad: LocalDate? = Stock.data(v("scadenza"))
+        bottoneData(corpo, "Scadenza (pressione lunga = nessuna)", dScad, true) { dScad = it }
+        var dData: LocalDate? = Stock.data(v("data")) ?: LocalDate.now()
+        bottoneData(corpo, "Data (se invariata si aggiorna a oggi)", dData, false) { dData = it }
+        fun salva(ignoraDoppione: Boolean) {
+            val f = Stock.Form(
+                etNome.text.toString(), etCod.text.toString(), stuTesto(tilCat), etDesc.text.toString(), stuTesto(tilUm),
+                etQ.text.toString(), etMin.text.toString(), etMax.text.toString(), etPr.text.toString(),
+                dScad?.format(Stock.DMY) ?: "", dData?.format(Stock.DMY) ?: "",
+            )
+            val (err, campi) = Stock.leggi(f)
+            if (err != null || campi == null) {
+                aviso(err ?: "Dati non validi")
+                return
+            }
+            if (a == null && !ignoraDoppione && Stock.doppione(dati, campi)) {
+                stuConferma("Articolo già presente", "Esiste già «" + Stock.s(campi, "nome") + "» in questa categoria.\nAggiungerlo comunque?", "Aggiungi") { salva(true) }
+                return
+            }
+            val e = if (a == null) Stock.aggiungi(campi) else Stock.modifica(Stock.s(a, "id"), campi)
+            if (e != null) aviso(e) else {
+                aviso(if (a == null) "Articolo aggiunto" else "Articolo modificato")
+                renderLista()
+            }
+        }
+        OcBuilder(this)
+            .setTitle(if (a == null) "Nuovo articolo" else "Modifica articolo")
+            .setView(view)
+            .setPositiveButton("Salva") { _, _ -> salva(false) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun stkPdf(crea: () -> java.io.File, titolo: String) {
+        try {
+            StockPdf.condividi(this, crea(), titolo)
+        } catch (e: Exception) {
+            aviso("Impossibile creare il PDF: " + (e.message ?: "errore"))
+        }
+    }
+
+    private fun stkRiordino() {
+        val dati = Stock.carica()
+        val t = Stock.testoRiordino(dati)
+        if (t.isEmpty()) {
+            aviso("Nessun articolo da riordinare")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Lista riordino")
+            .setMessage(t)
+            .setPositiveButton("Condividi") { _, _ -> mkCondividi("Lista riordino", t) }
+            .setNeutralButton("PDF") { _, _ -> stkPdf({ StockPdf.riordino(this, dati) }, "Lista riordino") }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun stkCaricaTutto() {
+        val dati = Stock.carica()
+        val r = Stock.righeRiordino(dati)
+        if (r.isEmpty()) {
+            aviso("Nessun articolo da riordinare")
+            return
+        }
+        stuConferma("Carico riordino", "Caricare in magazzino la quantità di riordino di " + r.size + " articoli?", "Carica") {
+            val (n, e) = Stock.caricaRiordino(r.map { Stock.s(it.first, "id") })
+            if (e != null) aviso(e) else {
+                aviso("Caricati $n articoli")
+                renderLista()
+            }
+        }
+    }
+
+    private fun stkScorte() {
+        val dati = Stock.carica()
+        val sug = Stock.suggerimenti(Stock.filtra(dati, stkTesto, stkCat, stkStato))
+        if (sug.isEmpty()) {
+            aviso("Nessuna scorta da aggiornare (servono almeno 2 scarichi negli ultimi 90 giorni)")
+            return
+        }
+        val testo = sug.joinToString("\n") {
+            "• " + it.nome + ": min " + Stock.q(it.attuale) + " → " + Stock.q(it.suggerita) + " " + it.unita +
+                " (consumo " + Stock.q(Math.round(it.alGiorno * 7 * 100) / 100.0) + "/sett.)" + if (it.sfora) "  ⚠ supera il max, escluso" else ""
+        }
+        OcBuilder(this)
+            .setTitle("Scorta minima suggerita")
+            .setMessage(testo)
+            .setPositiveButton("Applica") { _, _ ->
+                val (n, e) = Stock.applicaSuggerimenti(sug.map { it.id })
+                if (e != null) aviso(e) else {
+                    aviso("Scorta minima aggiornata su $n articoli")
+                    renderLista()
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun stkCategorie() {
+        val dati = Stock.carica()
+        val cc = Stock.conteggioCategorie(dati)
+        val voci = arrayListOf("➕  Nuova categoria", "📚  Aggiungi categorie suggerite")
+        for ((c, n) in cc) voci.add("$c  ($n)")
+        OcBuilder(this)
+            .setTitle("Categorie")
+            .setItems(voci.toTypedArray()) { _, k ->
+                when (k) {
+                    0 -> mkTestoInput("Nuova categoria", "", "Crea") { n ->
+                        val e = Stock.nuovaCategoria(n)
+                        if (e != null) aviso(e) else renderLista()
+                    }
+                    1 -> {
+                        val prof = Stock.PROFILI.keys.toList()
+                        OcBuilder(this)
+                            .setTitle("Profilo di utilizzo")
+                            .setItems(prof.toTypedArray()) { _, j ->
+                                val n = Stock.aggiungiCategorie(Stock.PROFILI[prof[j]] ?: emptyList())
+                                aviso(if (n > 0) "$n categorie aggiunte" else "Categorie già presenti")
+                                renderLista()
+                            }
+                            .setNegativeButton("Annulla", null)
+                            .show()
+                    }
+                    else -> {
+                        val (c, n) = cc[k - 2]
+                        OcBuilder(this)
+                            .setTitle(c)
+                            .setItems(arrayOf("✏️  Rinomina / unisci", "🗑️  Elimina")) { _, j ->
+                                if (j == 0) mkTestoInput("Rinomina categoria", c, "Salva") { nuovo ->
+                                    val e = Stock.rinominaCategoria(c, nuovo)
+                                    if (e != null) aviso(e) else renderLista()
+                                } else stuConferma(
+                                    "Eliminare la categoria?",
+                                    "«$c» verrà rimossa; i $n articoli collegati resteranno senza categoria.", "Elimina"
+                                ) {
+                                    val e = Stock.eliminaCategoria(c)
+                                    if (e != null) aviso(e) else renderLista()
+                                }
+                            }
+                            .setNegativeButton("Chiudi", null)
+                            .show()
+                    }
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun menuStock() {
+        val voci = ArrayList<String>()
+        val az = ArrayList<() -> Unit>()
+        fun add(t: String, f: () -> Unit) {
+            voci.add(t)
+            az.add(f)
+        }
+        add("🧾  Lista riordino") { stkRiordino() }
+        add("📥  Carica tutto il riordino") { stkCaricaTutto() }
+        add("📈  Scorta minima suggerita") { stkScorte() }
+        add("🏷️  Categorie") { stkCategorie() }
+        add("📤  Inventario in PDF") {
+            val dati = Stock.carica()
+            val l = Stock.filtra(dati, stkTesto, stkCat, stkStato)
+            val filtrato = stkTesto.isNotBlank() || stkCat != Stock.TUTTE_CAT || stkStato != Stock.STATI_FILTRO[0]
+            if (l.isEmpty()) aviso("Nessun articolo da esportare") else stkPdf({ StockPdf.inventario(this, l, filtrato) }, "Inventario magazzino")
+        }
+        add("📤  Condividi inventario (testo)") {
+            val dati = Stock.carica()
+            val l = Stock.filtra(dati, stkTesto, stkCat, stkStato)
+            val filtrato = stkTesto.isNotBlank() || stkCat != Stock.TUTTE_CAT || stkStato != Stock.STATI_FILTRO[0]
+            if (l.isEmpty()) aviso("Nessun articolo da esportare") else mkCondividi("Inventario magazzino", Stock.testoInventario(l, filtrato))
+        }
+        add("🔙  Reset magazzino") {
+            stuConferma("Reset magazzino", "Cancellare TUTTI gli articoli del magazzino?", "Cancella") {
+                val e = Stock.reset()
+                if (e != null) aviso(e) else {
+                    aviso("Magazzino resettato")
+                    renderLista()
                 }
             }
         }
