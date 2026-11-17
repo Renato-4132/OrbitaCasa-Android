@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity() {
     private var grafSempre = false
     private var grafAnno = LocalDate.now().year
     private var grafConto = ""
-    private val gruppiAperti = HashSet<String>()
+    private var homeTab = "Movimenti"
     private var docAperto: String? = null
     private var utenzaAperta: String? = null
     private var docQ = ""
@@ -148,7 +148,8 @@ class MainActivity : AppCompatActivity() {
     private var rcFuturi = true
     private var ckAnno = LocalDate.now().year
     private var ultimoControlloFm = 0L
-    private val aggiornaGruppi = ArrayList<() -> Unit>()
+    private class GruppoHome(val titolo: String, val ico: String, val tessere: List<Tessera>)
+    private val homeGruppi = ArrayList<GruppoHome>()
 
     private val apriZip =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -615,7 +616,7 @@ class MainActivity : AppCompatActivity() {
 
         val cont = vista<LinearLayout>(R.id.groups)
         cont.removeAllViews()
-        aggiornaGruppi.clear()
+        homeGruppi.clear()
         if (Repo.demoAttiva) {
             val banner = TextView(this)
             banner.text = "🎭 MODALITÀ DEMO: stai vedendo dati di esempio. I tuoi dati sono al sicuro. Tocca per uscire."
@@ -696,6 +697,7 @@ class MainActivity : AppCompatActivity() {
                 },
             )
         )
+        tabsHome(cont)
     }
 
     private class Dest(val pag: Pagina, val ico: String, val lbl: String)
@@ -842,54 +844,82 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun gruppo(cont: LinearLayout, titolo: String, ico: String, tessere: List<Tessera>) {
-        val head = layoutInflater.inflate(R.layout.item_group, cont, false)
-        val tvTit = head.findViewById<TextView>(R.id.tvGroup)
-        val tvFreccia = head.findViewById<TextView>(R.id.tvFreccia)
-        tvTit.text = "$ico  $titolo"
+        homeGruppi.add(GruppoHome(titolo, ico, tessere))
+    }
 
-        val griglia = LinearLayout(this)
-        griglia.orientation = LinearLayout.VERTICAL
-        griglia.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        for (coppia in tessere.chunked(3)) {
-            val riga = LinearLayout(this)
-            riga.orientation = LinearLayout.HORIZONTAL
-            riga.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            for (t in coppia) {
-                val v = layoutInflater.inflate(R.layout.item_tile, riga, false)
-                v.findViewById<TextView>(R.id.tvIco).text = t.ico
-                v.findViewById<TextView>(R.id.tvLbl).text = t.lbl
-                v.setOnClickListener { t.azione() }
-                riga.addView(v)
-            }
-            repeat(3 - coppia.size) {
-                val vuoto = View(this)
-                val lp = LinearLayout.LayoutParams(0, 1, 1f)
-                lp.setMargins(8, 0, 8, 0)
-                vuoto.layoutParams = lp
-                riga.addView(vuoto)
-            }
-            griglia.addView(riga)
-        }
+    private fun tabsHome(cont: LinearLayout) {
+        if (homeGruppi.isEmpty()) return
+        if (homeGruppi.none { it.titolo == homeTab }) homeTab = homeGruppi[0].titolo
+        val dp = resources.displayMetrics.density
+        val attivo = ContextCompat.getColor(this, R.color.oc_gold)
+        val spento = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val barra = LinearLayout(this)
+        barra.orientation = LinearLayout.HORIZONTAL
+        barra.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        val corpo = LinearLayout(this)
+        corpo.orientation = LinearLayout.VERTICAL
+        val lpCorpo = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpCorpo.topMargin = (8 * dp).toInt()
+        corpo.layoutParams = lpCorpo
 
-        fun aggiorna() {
-            val aperto = titolo in gruppiAperti
-            griglia.visibility = if (aperto) View.VISIBLE else View.GONE
-            tvFreccia.text = if (aperto) "▼" else "▶"
+        fun disegna() {
+            barra.removeAllViews()
+            corpo.removeAllViews()
+            for (g in homeGruppi) {
+                val on = g.titolo == homeTab
+                val v = LinearLayout(this)
+                v.orientation = LinearLayout.VERTICAL
+                v.gravity = android.view.Gravity.CENTER
+                v.setPadding((2 * dp).toInt(), (8 * dp).toInt(), (2 * dp).toInt(), (8 * dp).toInt())
+                val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                lp.setMargins((2 * dp).toInt(), 0, (2 * dp).toInt(), 0)
+                v.layoutParams = lp
+                if (on) v.setBackgroundResource(R.drawable.bg_tile)
+                val i = TextView(this)
+                i.text = g.ico
+                i.textSize = 18f
+                i.gravity = android.view.Gravity.CENTER
+                val t = TextView(this)
+                t.text = g.titolo
+                t.textSize = 10f
+                t.gravity = android.view.Gravity.CENTER
+                t.maxLines = 1
+                t.ellipsize = android.text.TextUtils.TruncateAt.END
+                t.setTextColor(if (on) attivo else spento)
+                if (on) t.setTypeface(null, Typeface.BOLD)
+                v.addView(i)
+                v.addView(t)
+                v.setOnClickListener {
+                    homeTab = g.titolo
+                    disegna()
+                }
+                barra.addView(v)
+            }
+            val sel = homeGruppi.first { it.titolo == homeTab }
+            for (terna in sel.tessere.chunked(3)) {
+                val riga = LinearLayout(this)
+                riga.orientation = LinearLayout.HORIZONTAL
+                riga.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                for (t in terna) {
+                    val v = layoutInflater.inflate(R.layout.item_tile, riga, false)
+                    v.findViewById<TextView>(R.id.tvIco).text = t.ico
+                    v.findViewById<TextView>(R.id.tvLbl).text = t.lbl
+                    v.setOnClickListener { t.azione() }
+                    riga.addView(v)
+                }
+                repeat(3 - terna.size) {
+                    val vuoto = View(this)
+                    val lp = LinearLayout.LayoutParams(0, 1, 1f)
+                    lp.setMargins(8, 0, 8, 0)
+                    vuoto.layoutParams = lp
+                    riga.addView(vuoto)
+                }
+                corpo.addView(riga)
+            }
         }
-        aggiorna()
-        aggiornaGruppi.add { aggiorna() }
-        head.setOnClickListener {
-            val eraAperto = titolo in gruppiAperti
-            gruppiAperti.clear()
-            if (!eraAperto) gruppiAperti.add(titolo)
-            aggiornaGruppi.forEach { it() }
-        }
-        val blocco = LinearLayout(this)
-        blocco.orientation = LinearLayout.VERTICAL
-        blocco.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        blocco.addView(head)
-        blocco.addView(griglia)
-        cont.addView(blocco)
+        disegna()
+        cont.addView(barra)
+        cont.addView(corpo)
     }
 
     private fun renderMovimenti() {
