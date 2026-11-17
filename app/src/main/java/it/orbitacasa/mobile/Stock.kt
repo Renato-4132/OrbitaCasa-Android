@@ -261,6 +261,19 @@ object Stock {
         return if (sc.tag.isNotEmpty()) sc.tag else stato(a).tag
     }
 
+    /** Normalizza un codice per il confronto: spazi tolti, maiuscole; per i codici numerici
+     *  ignora gli zeri iniziali, così UPC-A (12 cifre) ed EAN-13 con 0 davanti coincidono. */
+    fun normCodice(c: String): String {
+        val x = c.filter { !it.isWhitespace() }.uppercase()
+        return if (x.isNotEmpty() && x.all { it.isDigit() }) x.trimStart('0').ifEmpty { "0" } else x
+    }
+
+    fun trovaPerCodice(dati: Dati, codice: String): List<JSONObject> {
+        val n = normCodice(codice)
+        if (n.isEmpty()) return emptyList()
+        return dati.articoli.filter { normCodice(s(it, "codice")) == n }.sortedBy { s(it, "nome").lowercase() }
+    }
+
     fun corrisponde(a: JSONObject, testo: String): Boolean {
         val parole = testo.lowercase().trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
         if (parole.isEmpty()) return true

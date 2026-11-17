@@ -7027,6 +7027,7 @@ class MainActivity : AppCompatActivity() {
         Stock.errore()?.let { vuoto(cont, "⚠️ $it") }
         val cats = listOf(Stock.TUTTE_CAT) + dati.tutteCategorie()
         if (stkCat !in cats) stkCat = Stock.TUTTE_CAT
+        cont.addView(pulsanteSel("📷  Scansiona codice a barre", false) { stkScansiona() }, stuLp())
         cont.addView(
             pulsanteSel("Stato:  $stkStato   ▾", true) {
                 OcBuilder(this)
@@ -7114,6 +7115,32 @@ class MainActivity : AppCompatActivity() {
             aggiorna()
         }
         aggiorna()
+    }
+
+    private fun stkScansiona() {
+        scansionaCodice { cod ->
+            val trovati = Stock.trovaPerCodice(Stock.carica(), cod)
+            when {
+                trovati.size == 1 -> stkMenuArticolo(trovati[0])
+                trovati.size > 1 -> OcBuilder(this)
+                    .setTitle("Codice $cod")
+                    .setItems(trovati.map { Stock.s(it, "nome") + " · " + Stock.q(Stock.d(it, "quantita")) + " " + Stock.s(it, "unita") }.toTypedArray()) { _, k ->
+                        stkMenuArticolo(trovati[k])
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+                else -> OcBuilder(this)
+                    .setTitle("Codice non trovato")
+                    .setMessage("Nessun articolo con il codice $cod.")
+                    .setPositiveButton("Nuovo articolo") { _, _ -> dialogStkArticolo(null, cod) }
+                    .setNeutralButton("Cerca") { _, _ ->
+                        stkTesto = cod
+                        renderLista()
+                    }
+                    .setNegativeButton("Annulla", null)
+                    .show()
+            }
+        }
     }
 
     private fun stkMenuArticolo(a: org.json.JSONObject) {
@@ -7209,13 +7236,18 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun dialogStkArticolo(a: org.json.JSONObject?) {
+    private fun dialogStkArticolo(a: org.json.JSONObject?, codiceIniz: String = "") {
         val dati = Stock.carica()
         val (view, corpo) = corpoDialogo()
         fun v(k: String) = if (a == null) "" else Stock.s(a, k)
         fun n(k: String) = if (a == null) "" else Stock.q(Stock.d(a, k)).replace(".", "").replace(',', '.')
         val etNome = campoTesto(corpo, "Articolo", v("nome"), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, Stock.MAX_NOME)
-        val etCod = campoTesto(corpo, "Codice (facoltativo)", v("codice"), InputType.TYPE_CLASS_TEXT, Stock.MAX_CODICE)
+        val etCod = campoTesto(corpo, "Codice (facoltativo)", v("codice").ifBlank { codiceIniz }, InputType.TYPE_CLASS_TEXT, Stock.MAX_CODICE)
+        val btnCod = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
+        btnCod.text = "📷 Scansiona codice a barre"
+        btnCod.isAllCaps = false
+        corpo.addView(btnCod)
+        btnCod.setOnClickListener { scansionaCodice { v -> etCod.setText(v) } }
         val cat0 = v("categoria")
         val cats = (listOf("") + dati.tutteCategorie()).let { if (cat0 !in it) it + cat0 else it }
         val tilCat = campoMenu(corpo, "Categoria", cats, cat0)
@@ -7381,6 +7413,7 @@ class MainActivity : AppCompatActivity() {
             voci.add(t)
             az.add(f)
         }
+        add("📷  Scansiona codice a barre") { stkScansiona() }
         add("🧾  Lista riordino") { stkRiordino() }
         add("📥  Carica tutto il riordino") { stkCaricaTutto() }
         add("📈  Scorta minima suggerita") { stkScorte() }
@@ -11206,6 +11239,33 @@ class MainActivity : AppCompatActivity() {
                 val v = b.rawValue?.trim().orEmpty()
                 if (v.isNotEmpty()) onResult(v) else aviso("QR vuoto")
             }
+            .addOnFailureListener { e -> aviso("Scansione non riuscita: ${e.message}") }
+    }
+
+    private fun scansionaCodice(onResult: (String) -> Unit) {
+        val opzioni = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_39,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_93,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ITF,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODABAR,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE,
+                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_DATA_MATRIX,
+            )
+            .build()
+        com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(this, opzioni).startScan()
+            .addOnSuccessListener { b ->
+                val v = b.rawValue?.trim().orEmpty()
+                if (v.isEmpty()) aviso("Codice vuoto")
+                else if (v.length > Stock.MAX_CODICE) aviso("Codice troppo lungo (max ${Stock.MAX_CODICE} caratteri)")
+                else onResult(v)
+            }
+            .addOnCanceledListener { }
             .addOnFailureListener { e -> aviso("Scansione non riuscita: ${e.message}") }
     }
 
