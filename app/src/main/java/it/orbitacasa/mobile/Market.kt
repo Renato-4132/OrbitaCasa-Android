@@ -430,38 +430,4 @@ object Market {
     }
 
     fun totaleLista(l: List<Riga>): Double = l.sumOf { it.totale }
-
-    fun testoLista(l: List<Riga>, oggi: LocalDate): String {
-        val sb = StringBuilder("SPESA OTTIMIZZATA (" + oggi.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")\n\n")
-        for ((sm, righe) in l.groupBy { it.supermercato }.toSortedMap()) {
-            sb.append("[").append(sm.uppercase()).append("]\n")
-            for (r in righe.sortedBy { it.nome }) {
-                sb.append("[ ] ").append(r.nome)
-                if (r.qtaCatalogo.isNotBlank()) sb.append(" (").append(r.qtaCatalogo).append(")")
-                sb.append("  x ").append(r.qta).append("  –  ").append(eur(r.prezzoUn)).append("  =  ").append(eur(r.totale)).append("\n")
-            }
-            sb.append("  Totale parziale: ").append(eur(righe.sumOf { it.totale })).append("\n\n")
-        }
-        sb.append("TOTALE GENERALE STIMATO: ").append(eur(totaleLista(l))).append("\n")
-        return sb.toString()
-    }
-
-    fun testoCatalogo(sm: String, articoli: List<JSONObject>, ora: String): String {
-        val sb = StringBuilder("CATALOGO SUPERMERCATO: " + sm.uppercase() + " (" + ora + ")\n\n")
-        if (articoli.isEmpty()) return sb.append("Nessun articolo registrato.").toString()
-        for (a in articoli.sortedBy { s(it, "nome").lowercase() }) {
-            val p = prezzo(a, "prezzo") ?: continue
-            sb.append(s(a, "nome"))
-            if (s(a, "quantita").isNotBlank()) sb.append(" (").append(s(a, "quantita")).append(")")
-            sb.append(" – ").append(eur(p))
-            if (s(a, "categoria").isNotBlank()) sb.append(" – ").append(s(a, "categoria"))
-            val pp = prezzo(a, "prezzo_promo")
-            if (promoOn(a) && pp != null) {
-                sb.append(" – PROMO ").append(eur(pp)).append(" ").append(s(a, "data_inizio_promo")).append(" → ").append(s(a, "data_scadenza"))
-            }
-            sb.append("\n")
-        }
-        sb.append("\nArticoli: ").append(articoli.size)
-        return sb.toString()
-    }
 }

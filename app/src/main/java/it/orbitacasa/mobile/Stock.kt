@@ -582,7 +582,7 @@ object Stock {
         for ((a, o) in r) {
             val costo = o * d(a, "prezzo")
             tot += costo
-            sb.append("[ ] ").append(s(a, "nome"))
+            sb.append("• ").append(s(a, "nome"))
             if (s(a, "categoria").isNotEmpty()) sb.append(" (").append(s(a, "categoria")).append(")")
             sb.append(": ordinare ").append(q(o)).append(" ").append(s(a, "unita"))
             sb.append("  (giacenza ").append(q(d(a, "quantita"))).append(", min ").append(q(d(a, "qta_min"))).append(")")
@@ -590,22 +590,6 @@ object Stock {
             sb.append("\n")
         }
         sb.append("\nTOTALE STIMATO: ").append(eur(tot))
-        return sb.toString()
-    }
-
-    fun testoInventario(l: List<JSONObject>, filtrato: Boolean, oggi: String = oggi()): String {
-        val sb = StringBuilder("INVENTARIO MAGAZZINO — $oggi" + (if (filtrato) " (filtrato)" else "") + "\n\n")
-        for (a in l.sortedWith(compareBy({ s(it, "categoria").lowercase() }, { s(it, "nome").lowercase() }))) {
-            sb.append(s(a, "nome"))
-            if (s(a, "categoria").isNotEmpty()) sb.append(" (").append(s(a, "categoria")).append(")")
-            sb.append(": ").append(q(d(a, "quantita"))).append(" ").append(s(a, "unita"))
-            sb.append(" · ").append(stato(a).nome)
-            val sc = scadenza(a).testo
-            if (sc.isNotEmpty()) sb.append(" · scad. ").append(sc)
-            if (d(a, "prezzo") > 0) sb.append(" · ").append(eur(d(a, "quantita") * d(a, "prezzo")))
-            sb.append("\n")
-        }
-        sb.append("\nVALORE TOTALE: ").append(eur(l.sumOf { d(it, "quantita") * d(it, "prezzo") }))
         return sb.toString()
     }
 }
