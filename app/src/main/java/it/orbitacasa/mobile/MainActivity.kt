@@ -614,6 +614,7 @@ class MainActivity : AppCompatActivity() {
         tvSaldo.text = (if (saldo >= 0) "+" else "−") + euro(abs(saldo))
         tvSaldo.setTextColor(ContextCompat.getColor(this, if (saldo >= 0) R.color.oc_green else R.color.oc_red))
 
+        riepilogoHome()
         val cont = vista<LinearLayout>(R.id.groups)
         cont.removeAllViews()
         homeGruppi.clear()
@@ -698,28 +699,27 @@ class MainActivity : AppCompatActivity() {
             )
         )
         tabsHome(cont)
-        riepilogoHome(cont)
     }
 
-    private fun riepilogoHome(cont: LinearLayout) {
+    private fun riepilogoHome() {
+        val box = vista<LinearLayout>(R.id.blocco503020)
+        box.removeAllViews()
         val dp = resources.displayMetrics.density
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val blu = ContextCompat.getColor(this, R.color.oc_blue)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
         val tutte = Repo.voci()
 
         val q = Repo.calcola503020(tutte.filter { YearMonth.from(it.data) == mese })
-        sezione(cont, "METODO 50/30/20 · " + maiuscola(mese.format(FMT_MESE)).uppercase())
         if (q.entrate <= 0 || (q.bisogni + q.desideri + q.risparmio) <= 0) {
-            vuoto(cont, "Nessun dato per questo mese: servono entrate e categorie con la classe 50/30/20 assegnata.")
+            val t = TextView(this)
+            t.text = "50/30/20: servono entrate e categorie con la classe assegnata."
+            t.textSize = 11f
+            t.setTextColor(medio)
+            box.addView(t)
         } else {
-            val box = LinearLayout(this)
-            box.orientation = LinearLayout.VERTICAL
-            box.setBackgroundResource(R.drawable.bg_tile)
-            box.setPadding((12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt())
-            val lpBox = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lpBox.bottomMargin = (6 * dp).toInt()
-            box.layoutParams = lpBox
-
             val b = maxOf(q.bisogni, 0.0)
             val d = maxOf(q.desideri, 0.0)
             val r = maxOf(q.risparmio, 0.0)
@@ -727,7 +727,7 @@ class MainActivity : AppCompatActivity() {
             val totale = maxOf(somma, q.entrate)
             val barra = LinearLayout(this)
             barra.orientation = LinearLayout.HORIZONTAL
-            barra.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (14 * dp).toInt())
+            barra.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (8 * dp).toInt())
             fun pezzo(valore: Double, colore: Int) {
                 if (valore <= 0) return
                 val v = View(this)
@@ -735,8 +735,6 @@ class MainActivity : AppCompatActivity() {
                 v.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, (valore / totale).toFloat())
                 barra.addView(v)
             }
-            val blu = ContextCompat.getColor(this, R.color.oc_blue)
-            val arancio = ContextCompat.getColor(this, R.color.oc_orange)
             pezzo(b, blu)
             pezzo(d, arancio)
             pezzo(r, verde)
@@ -746,46 +744,55 @@ class MainActivity : AppCompatActivity() {
             val legenda = LinearLayout(this)
             legenda.orientation = LinearLayout.HORIZONTAL
             val lpLeg = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lpLeg.topMargin = (8 * dp).toInt()
+            lpLeg.topMargin = (5 * dp).toInt()
             legenda.layoutParams = lpLeg
-            fun voceLeg(nome: String, pallino: Int, valore: Double, obiettivo: String, ok: Boolean) {
-                val col = LinearLayout(this)
-                col.orientation = LinearLayout.VERTICAL
-                col.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                val t1 = TextView(this)
-                t1.text = "● $nome"
-                t1.textSize = 12f
-                t1.setTypeface(null, Typeface.BOLD)
-                t1.setTextColor(pallino)
-                val t2 = TextView(this)
-                t2.text = String.format(Locale.ITALY, "%.0f%%", valore / q.entrate * 100) + " · " + obiettivo
-                t2.textSize = 11f
-                t2.setTextColor(if (ok) verde else rosso)
-                col.addView(t1)
-                col.addView(t2)
-                legenda.addView(col)
+            fun voceLeg(nome: String, pallino: Int, valore: Double, ok: Boolean) {
+                val t = TextView(this)
+                val pct = String.format(Locale.ITALY, "%.0f%%", valore / q.entrate * 100)
+                val s = android.text.SpannableString("● $nome $pct")
+                s.setSpan(android.text.style.ForegroundColorSpan(pallino), 0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                s.setSpan(android.text.style.ForegroundColorSpan(if (ok) verde else rosso), 1, s.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                t.text = s
+                t.textSize = 11f
+                t.maxLines = 1
+                t.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                legenda.addView(t)
             }
-            voceLeg("Bisogni", blu, q.bisogni, "ob. ≤50%", q.bisogni <= q.entrate * 0.5)
-            voceLeg("Desideri", arancio, q.desideri, "ob. ≤30%", q.desideri <= q.entrate * 0.3)
-            voceLeg("Risparmio", verde, q.risparmio, "ob. ≥20%", q.risparmio >= q.entrate * 0.2)
+            voceLeg("Bisogni", blu, q.bisogni, q.bisogni <= q.entrate * 0.5)
+            voceLeg("Desideri", arancio, q.desideri, q.desideri <= q.entrate * 0.3)
+            voceLeg("Risparmio", verde, q.risparmio, q.risparmio >= q.entrate * 0.2)
             box.addView(legenda)
-            cont.addView(box)
         }
 
-        val oggi = LocalDate.now()
         val delMese = tutte.filter { YearMonth.from(it.data) == mese }
             .sortedWith(compareByDescending<Voce> { it.data }.thenByDescending { it.ora })
-        sezione(cont, "MOVIMENTI DEL MESE · " + delMese.size)
-        if (delMese.isEmpty()) {
-            vuoto(cont, "Nessun movimento in questo mese.")
-            return
+        if (delMese.isEmpty()) return
+        val prefs = getSharedPreferences("orbita", MODE_PRIVATE)
+        val aperto = prefs.getBoolean("home_mov_aperti", false)
+
+        val riga = TextView(this)
+        riga.text = "Movimenti del mese · " + delMese.size + "   " + (if (aperto) "▴" else "▾")
+        riga.textSize = 13f
+        riga.setTypeface(null, Typeface.BOLD)
+        riga.setBackgroundResource(R.drawable.bg_tile)
+        riga.setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+        val lpRiga = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpRiga.topMargin = (10 * dp).toInt()
+        riga.layoutParams = lpRiga
+        riga.setOnClickListener {
+            prefs.edit().putBoolean("home_mov_aperti", !aperto).apply()
+            riepilogoHome()
         }
+        box.addView(riga)
+        if (!aperto) return
+
+        val oggi = LocalDate.now()
         val finestra = LinearLayout(this)
         finestra.orientation = LinearLayout.VERTICAL
         finestra.setBackgroundResource(R.drawable.bg_tile)
-        finestra.setPadding((8 * dp).toInt(), (4 * dp).toInt(), (4 * dp).toInt(), (4 * dp).toInt())
-        val lpFin = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (260 * dp).toInt())
-        lpFin.bottomMargin = (12 * dp).toInt()
+        finestra.setPadding((8 * dp).toInt(), (2 * dp).toInt(), (4 * dp).toInt(), (2 * dp).toInt())
+        val lpFin = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (200 * dp).toInt())
+        lpFin.topMargin = (6 * dp).toInt()
         finestra.layoutParams = lpFin
 
         val sv = android.widget.ScrollView(this)
@@ -807,23 +814,23 @@ class MainActivity : AppCompatActivity() {
         lista.orientation = LinearLayout.VERTICAL
         lista.setPadding(0, 0, (8 * dp).toInt(), 0)
         for (v in delMese) {
-            val riga = layoutInflater.inflate(R.layout.item_voce, lista, false)
+            val r = layoutInflater.inflate(R.layout.item_voce, lista, false)
             val desc = descPulita(v.descrizione)
-            riga.findViewById<TextView>(R.id.tvTit).text = if (desc.isEmpty()) v.categoria else v.categoria + " · " + desc
-            val tvSub = riga.findViewById<TextView>(R.id.tvSub)
+            r.findViewById<TextView>(R.id.tvTit).text = if (desc.isEmpty()) v.categoria else v.categoria + " · " + desc
+            val tvSub = r.findViewById<TextView>(R.id.tvSub)
             tvSub.text = listOf(v.data.format(FMT_DATA), v.ora, if (v.data.isAfter(oggi)) "futura" else "")
                 .filter { it.isNotBlank() }.joinToString(" · ")
             tvSub.visibility = View.VISIBLE
-            val tvImp = riga.findViewById<TextView>(R.id.tvImp)
+            val tvImp = r.findViewById<TextView>(R.id.tvImp)
             val entrata = v.tipo == "Entrata"
             tvImp.text = (if (entrata) "+" else "−") + euro(v.importo)
             tvImp.setTextColor(if (entrata) verde else rosso)
-            riga.setOnClickListener { dialogVoce(v) }
-            lista.addView(riga)
+            r.setOnClickListener { dialogVoce(v) }
+            lista.addView(r)
         }
         sv.addView(lista)
         finestra.addView(sv)
-        cont.addView(finestra)
+        box.addView(finestra)
     }
 
     private class Dest(val pag: Pagina, val ico: String, val lbl: String)
