@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -295,6 +295,9 @@ class MainActivity : AppCompatActivity() {
                 menuDieta()
             } else if (pagina == Pagina.STUDIO) {
                 menuStudio()
+            } else if (pagina == Pagina.INFLAZIONE) {
+                infImp = null
+                renderLista()
             } else if (pagina == Pagina.CATEGORIE) {
                 menuStrumentiCategorie()
             } else if (pagina == Pagina.PROMEMORIA) {
@@ -550,7 +553,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -649,6 +652,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("💰", "Fondo Risparmio") { mostra(Pagina.FONDO) },
                 Tessera("🏖️", "Fondo Pensione") { mostra(Pagina.PENSIONE) },
                 Tessera("💼", "MyBusiness") { mostra(Pagina.STUDIO) },
+                Tessera("📈", "Inflazione") { mostra(Pagina.INFLAZIONE) },
             )
         )
         gruppo(
@@ -705,6 +709,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.PENSIONE, "🏖️", "Pensione"),
         Dest(Pagina.DIETA, "🥗", "Dieta"),
         Dest(Pagina.STUDIO, "💼", "MyBusiness"),
+        Dest(Pagina.INFLAZIONE, "📈", "Inflazione"),
         Dest(Pagina.DOCUMENTI, "🧾", "Contabili"),
         Dest(Pagina.DOCPERS, "🪪", "Personali"),
         Dest(Pagina.UTENZE, "💡", "Utenze"),
@@ -1305,6 +1310,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.PENSIONE -> renderPensione()
             Pagina.DIETA -> renderDieta()
             Pagina.STUDIO -> renderStudio()
+            Pagina.INFLAZIONE -> renderInflazione()
             Pagina.GRAFICI -> renderGrafici()
             Pagina.PIANIFICA -> renderPianifica()
             Pagina.DOCUMENTI -> renderDocumenti()
@@ -6570,6 +6576,73 @@ class MainActivity : AppCompatActivity() {
         "", "➕  Nuovo cliente", "➕  Appuntamento", "➕  Nuova prestazione", "➕  Nuovo documento", "➕  Nuovo movimento",
         "➕  Nuovo articolo", "",
     )
+
+    private var infImp: String? = null
+    private var infDa = 0
+    private var infA = Inflazione.ULTIMO
+
+    private fun renderInflazione() {
+        intestaLista("📈 Calcolatore Inflazione — ISTAT NIC", "", "🔄  Reimposta")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val uscite = Repo.voci().filter { it.tipo == "Uscita" }.map { Triple(it.data.year, it.data.monthValue, it.importo) }
+        val impDef = Inflazione.mediaMensile(uscite).toString()
+        val daDef = Inflazione.annoDefault(Repo.voci().minOfOrNull { it.data.year })
+        if (infImp == null) {
+            infImp = impDef
+            infDa = daDef
+            infA = Inflazione.ULTIMO
+        }
+        vuoto(cont, "Dati ISTAT NIC (variazione annua dei prezzi al consumo). Media mensile uscite: " + euro(impDef.toDouble()))
+        val corpo = LinearLayout(this)
+        corpo.orientation = LinearLayout.VERTICAL
+        val etImp = campoTesto(corpo, "Importo iniziale (€)", infImp!!, TIPO_DECIMALE, 12)
+        val anni = Inflazione.ANNI.map { it.toString() }
+        val risultati = LinearLayout(this)
+        risultati.orientation = LinearLayout.VERTICAL
+        fun aggiorna() {
+            risultati.removeAllViews()
+            infImp = etImp.text.toString()
+            val imp = Inflazione.importo(infImp!!)
+            val e = if (imp == null) null else Inflazione.calcola(imp, infDa, infA)
+            if (e == null) {
+                vuoto(risultati, "Inserisci un importo valido e un anno di arrivo successivo a quello di partenza.")
+                return
+            }
+            val verde = ContextCompat.getColor(this, R.color.oc_green)
+            val rosso = ContextCompat.getColor(this, R.color.oc_red)
+            fun pct(v: Double) = String.format(Locale.ITALY, "%+.1f %%", v)
+            sezione(risultati, "RISULTATO")
+            riga(risultati, "Valore rivalutato", "Equivale a " + euro(imp!!) + " del " + infDa, euro(e.rivalutato), verde, null)
+            riga(risultati, "Potere d'acquisto perso", pct(e.totale) + " rispetto al " + infDa, euro(e.perdita), rosso, null)
+            riga(risultati, "Inflazione totale", "", pct(e.totale), null, null)
+            riga(risultati, "Anni", "", e.anni.toString(), null, null)
+            riga(risultati, "Media annua", "", String.format(Locale.ITALY, "%.2f%%/a", e.media), null, null)
+            vuoto(
+                risultati,
+                if (e.elevata) "⚠  Inflazione elevata nel periodo" else "✔  Inflazione moderata nel periodo"
+            )
+            sezione(risultati, "ANDAMENTO DEL VALORE")
+            dietGrafico(
+                risultati, GraficoView.Modo.LINEA, e.etichette, e.valori, e.valori.map { null },
+                verde, verde, "€", "", 0, false,
+            ) { i ->
+                val t = Inflazione.NIC[e.etichette[i].toInt()]
+                e.etichette[i] + ": " + euro(e.valori[i]) + (if (i > 0 && t != null) "  (inflazione " + pct(t) + ")" else "")
+            }
+        }
+        campoMenu(corpo, "Anno di partenza", anni, infDa.toString()) {
+            infDa = anni[it].toInt()
+            aggiorna()
+        }
+        campoMenu(corpo, "Anno di arrivo", anni, infA.toString()) {
+            infA = anni[it].toInt()
+            aggiorna()
+        }
+        etImp.doAfterTextChanged { aggiorna() }
+        cont.addView(corpo)
+        cont.addView(risultati)
+        aggiorna()
+    }
 
     private fun stuLp() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
