@@ -1337,7 +1337,7 @@ class MainActivity : AppCompatActivity() {
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         fun pct(v: Double) = String.format(Locale.ITALY, "%.0f", v) + "%"
 
-        sezione(cont, maiuscola(oggi.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALY))).uppercase())
+        sezioneForte(cont, "PREVISIONE FINE MESE · " + maiuscola(oggi.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALY))).uppercase())
         if (es.righe.isEmpty()) {
             vuoto(cont, "Nessuna uscita registrata questo mese: niente da prevedere.")
             previsioneAnno(cont, oggi)
@@ -1358,7 +1358,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        sezione(cont, "PER CATEGORIA (tocca per vedere le operazioni)")
+        sezioneForte(cont, "PER CATEGORIA", "Tocca una categoria per vedere le operazioni")
         for (r in es.righe) {
             val sotto = if (r.budget > 0)
                 "Speso " + euro(r.speso) + " · budget " + euro(r.budget) + " (" + pct(r.speso / r.budget * 100.0) + ")" +
@@ -1396,7 +1396,7 @@ class MainActivity : AppCompatActivity() {
         val an = Previsione.annuale(Repo.voci(), oggi)
         val tm = Repo.targetMese
         val ta = Repo.targetAnno
-        sezione(cont, "PREVISIONE FINE ANNO · " + oggi.year)
+        sezioneForte(cont, "PREVISIONE FINE ANNO · " + oggi.year)
         val proiez = an.proiezione
         if (proiez == null) {
             riga(cont, "Registrato nell'anno", "Nessun mese chiuso: la proiezione parte da febbraio.", euro(an.totale), null, null)
@@ -1545,6 +1545,37 @@ class MainActivity : AppCompatActivity() {
         t.setTypeface(null, Typeface.BOLD)
         t.setPadding(4, 14, 4, 6)
         cont.addView(t)
+    }
+
+    private fun sezioneForte(cont: LinearLayout, testo: String, sotto: String? = null) {
+        val dp = resources.displayMetrics.density
+        val col = LinearLayout(this)
+        col.orientation = LinearLayout.VERTICAL
+        col.setPadding(0, (18 * dp).toInt(), 0, (6 * dp).toInt())
+        val riga = LinearLayout(this)
+        riga.orientation = LinearLayout.HORIZONTAL
+        riga.gravity = android.view.Gravity.CENTER_VERTICAL
+        val barra = View(this)
+        barra.setBackgroundColor(ContextCompat.getColor(this, R.color.oc_gold))
+        barra.layoutParams = LinearLayout.LayoutParams((4 * dp).toInt(), (22 * dp).toInt())
+        val t = TextView(this)
+        t.text = testo
+        t.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        t.textSize = 16f
+        t.setTypeface(null, Typeface.BOLD)
+        t.setPadding((10 * dp).toInt(), 0, 0, 0)
+        riga.addView(barra)
+        riga.addView(t)
+        col.addView(riga)
+        if (sotto != null) {
+            val s = TextView(this)
+            s.text = sotto
+            s.textSize = 11f
+            s.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
+            s.setPadding((14 * dp).toInt(), (2 * dp).toInt(), 0, 0)
+            col.addView(s)
+        }
+        cont.addView(col)
     }
 
     private fun vuoto(cont: LinearLayout, testo: String) {
