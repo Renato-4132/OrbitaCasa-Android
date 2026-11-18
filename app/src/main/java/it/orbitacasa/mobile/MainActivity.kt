@@ -11781,7 +11781,7 @@ class MainActivity : AppCompatActivity() {
             aviso("Non disponibile in modalità demo")
             return
         }
-        val tutte = Backup.elenca(this).sortedByDescending { it.modificato }
+        var tutte = Backup.elenca(this).sortedByDescending { it.modificato }
         val date = listOf("Tutte") + tutte.map { Backup.data(it) }.distinct()
         val dp = resources.displayMetrics.density
         val radice = LinearLayout(this).apply {
@@ -11837,19 +11837,44 @@ class MainActivity : AppCompatActivity() {
         chk.setOnCheckedChangeListener { _, _ -> ricarica() }
         fun scelti(): List<String> = (0 until visibili.size).filter { lista.isItemChecked(it) }.map { visibili[it].nome }
 
-        var dlg: androidx.appcompat.app.AlertDialog? = null
+        fun rileggi() {
+            tutte = Backup.elenca(this@MainActivity).sortedByDescending { it.modificato }
+            val prec = spin.selectedItem as? String ?: "Tutte"
+            val nuove = listOf("Tutte") + tutte.map { Backup.data(it) }.distinct()
+            spin.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, nuove)
+            spin.setSelection(nuove.indexOf(prec).coerceAtLeast(0))
+            ricarica()
+        }
 
-        val bBackup = android.widget.Button(this).apply {
+        fun stileBtn(b: MaterialButton, colore: Int) {
+            b.isAllCaps = false
+            b.maxLines = 1
+            b.insetTop = 0
+            b.insetBottom = 0
+            b.minHeight = (40 * dp).toInt()
+            b.minimumHeight = (40 * dp).toInt()
+            b.textSize = 14f
+            b.strokeWidth = (1 * dp).toInt()
+            b.strokeColor = ColorStateList.valueOf(colore)
+            b.setTextColor(colore)
+        }
+        val bBackup = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             text = "Backup ora"
-            isAllCaps = false
         }
-        val bElimina = android.widget.Button(this).apply {
+        stileBtn(bBackup, ContextCompat.getColor(this, R.color.oc_outline_strong))
+        bBackup.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        val bElimina = MaterialButton(ctxDialogo, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             text = "Elimina"
-            isAllCaps = false
         }
-        val righe = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        righe.addView(bBackup, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        righe.addView(bElimina, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        stileBtn(bElimina, ContextCompat.getColor(this, R.color.oc_red))
+        val righe = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
+        }
+        val lpA = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = (4 * dp).toInt() }
+        val lpB = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = (4 * dp).toInt() }
+        righe.addView(bBackup, lpA)
+        righe.addView(bElimina, lpB)
 
         bBackup.setOnClickListener {
             bBackup.isEnabled = false
@@ -11858,19 +11883,15 @@ class MainActivity : AppCompatActivity() {
                 val f = Repo.creaSnapshot(applicationContext, "manuale")
                 runOnUiThread {
                     aviso(if (f != null) "Backup creato: " + Backup.rapporto else "Backup non riuscito")
-                    dlg?.dismiss()
-                    dialogCopie(chk.isChecked)
+                    bBackup.isEnabled = true
+                    bBackup.text = "Backup ora"
+                    rileggi()
                 }
             }
         }
         bElimina.setOnClickListener {
             val sel = scelti()
-            if (sel.isEmpty()) {
-                aviso("Seleziona almeno un file")
-            } else {
-                dlg?.dismiss()
-                confermaEliminaSel(sel, chk.isChecked)
-            }
+            if (sel.isEmpty()) aviso("Seleziona almeno un file") else confermaEliminaSel(sel) { rileggi() }
         }
 
         radice.addView(chk)
@@ -11885,7 +11906,6 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Ripristina", null)
             .setNegativeButton("Chiudi", null)
             .show()
-        dlg = d
         d.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val sel = scelti()
             if (sel.isEmpty()) {
@@ -11943,7 +11963,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun confermaEliminaSel(nomi: List<String>, soloSnap: Boolean = false) {
+    private fun confermaEliminaSel(nomi: List<String>, dopo: () -> Unit) {
         if (nomi.isEmpty()) {
             aviso("Seleziona almeno un file")
             return
@@ -11957,7 +11977,7 @@ class MainActivity : AppCompatActivity() {
                     val n = nomi.count { Backup.elimina(applicationContext, it) }
                     runOnUiThread {
                         aviso("$n file eliminati")
-                        dialogCopie(soloSnap)
+                        dopo()
                     }
                 }
             }
