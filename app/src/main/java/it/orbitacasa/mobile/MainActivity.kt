@@ -3523,11 +3523,13 @@ class MainActivity : AppCompatActivity() {
         val riga1 = LinearLayout(this)
         riga1.orientation = LinearLayout.HORIZONTAL
         val nomiVista = listOf("📈 Andamento", if (grafSempre) "📊 Annuale" else "📊 Mensile", "🧾 Spese", "📋 Tabella")
+        val bVista = ArrayList<MaterialButton>()
         nomiVista.forEachIndexed { i, t ->
             val b = pulsanteSel(t, grafVista == i) { grafVista = i; renderGrafici() }
             b.maxLines = 1
             b.setPadding((6 * dp).toInt(), b.paddingTop, (6 * dp).toInt(), b.paddingBottom)
             b.setAutoSizeTextTypeUniformWithConfiguration(10, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+            bVista.add(b)
             riga1.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         cont.addView(riga1)
@@ -3542,8 +3544,18 @@ class MainActivity : AppCompatActivity() {
             b.setAutoSizeTextTypeUniformWithConfiguration(10, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
             return b
         }
-        riga2.addView(unaRiga(pulsanteSel("Anno", !grafSempre) { grafSempre = false; renderGrafici() }), lpPer())
-        riga2.addView(unaRiga(pulsanteSel("Sempre", grafSempre) { grafSempre = true; renderGrafici() }), lpPer())
+        val bAnno = unaRiga(pulsanteSel("Anno", !grafSempre) { grafSempre = false; renderGrafici() })
+        val bSempre = unaRiga(pulsanteSel("Sempre", grafSempre) { grafSempre = true; renderGrafici() })
+        riga2.addView(bAnno, lpPer())
+        riga2.addView(bSempre, lpPer())
+        val bTutti = bVista + listOf(bAnno, bSempre)
+        cont.post {
+            val m = bTutti.minOf { it.textSize }
+            for (b in bTutti) {
+                b.setAutoSizeTextTypeWithDefaults(android.widget.TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+                b.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, m)
+            }
+        }
         if (!grafSempre) {
             val i = anni.indexOf(grafAnno)
             val larg = (38 * dp).toInt()
@@ -4555,8 +4567,13 @@ class MainActivity : AppCompatActivity() {
         val rigaChiedi = LinearLayout(this)
         rigaChiedi.orientation = LinearLayout.HORIZONTAL
         rigaChiedi.addView(inv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        val lpMic = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpMic.marginStart = (8 * resources.displayMetrics.density).toInt()
+        for (b in listOf(clip, arch, mic)) {
+            b.minWidth = 0
+            b.minimumWidth = 0
+            b.setPadding(0, b.paddingTop, 0, b.paddingBottom)
+        }
+        val lpMic = LinearLayout.LayoutParams((44 * resources.displayMetrics.density).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpMic.marginStart = (4 * resources.displayMetrics.density).toInt()
         rigaChiedi.addView(clip, LinearLayout.LayoutParams(lpMic))
         rigaChiedi.addView(arch, LinearLayout.LayoutParams(lpMic))
         rigaChiedi.addView(mic, lpMic)
@@ -11780,10 +11797,32 @@ class MainActivity : AppCompatActivity() {
                         runOnUiThread { aviso(if (f != null) "Copia creata" else "Copia non riuscita") }
                     }
                 } else {
-                    confermaRipristino(elenco[k - 1])
+                    azioniCopia(elenco[k - 1])
                 }
             }
             .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun azioniCopia(c: Repo.Snap) {
+        val quando = java.text.SimpleDateFormat("d MMM yyyy HH:mm", Locale.ITALY).format(java.util.Date(c.quando))
+        OcBuilder(this)
+            .setTitle("$quando · ${c.etichetta}")
+            .setItems(arrayOf("♻️  Ripristina", "🗑️  Elimina")) { _, k ->
+                if (k == 0) confermaRipristino(c) else confermaEliminaCopia(c)
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun confermaEliminaCopia(c: Repo.Snap) {
+        OcBuilder(this)
+            .setTitle("Elimina copia")
+            .setMessage("Eliminare questa copia di sicurezza (${c.etichetta})? Non si può annullare.")
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Elimina") { _, _ ->
+                aviso(if (Repo.eliminaSnapshot(applicationContext, c.nome)) "Copia eliminata" else "Copia non eliminata")
+            }
             .show()
     }
 

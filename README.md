@@ -83,7 +83,7 @@
 **🟣 Strumenti**
 
 * **Importa / Esporta** — Zip di OrbitaCasa in entrambe le direzioni, con copia di sicurezza prima di sostituire i dati
-* **Copie di sicurezza** — Snapshot dei dati salvati prima di ogni import, sync, ripristino e azzeramento, più la copia manuale. Le ultime 5 per tipo si ripristinano con un tocco; i file dei documenti (PDF e foto) non sono inclusi
+* **Copie di sicurezza** — Snapshot dei dati salvati prima di ogni import, sync, ripristino e azzeramento, più la copia manuale. Si ripristinano con un tocco e si possono eliminare. Le automatiche sono le ultime 5 per tipo, le manuali restano finché non le elimini; i file dei documenti (PDF e foto) non sono inclusi
 * **Azzera dati** — Cancella solo gli ambiti che scegli (movimenti, conti, documenti, dieta, MyBusiness…) senza toccare il resto, con copia di sicurezza prima
 * **Sync PC** — Sincronizzazione diretta con OrbitaCasa desktop
 * **Scansiona PDF** — Scanner di documenti con la fotocamera: più pagine in un solo PDF da condividere o salvare
