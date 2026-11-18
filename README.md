@@ -59,7 +59,7 @@
 **🔵 Finanze**
 
 * **Conti** — Fino a 10 conti (personale, comune, figli, risparmio, altro) con saldo iniziale e IBAN
-* **Trasferimenti** tra conti
+* **Trasferimenti** tra conti; le uscite di una categoria con classe Risparmio diventano in automatico trasferimenti verso il conto risparmio scelto, come sul desktop
 * **Categorie e Target** — Budget mensile e annuale per categoria, con classe 50/30/20 (Bisogni, Desideri, Risparmio), più target di spesa mensile e annuale
 * **Ricorrenze** — Affitto, abbonamenti, stipendio: inseriti una volta
 * **Finanziamenti** — Rate e piano di ammortamento dei prestiti

@@ -52,6 +52,7 @@ data class Trasf(
     val importo: Double,
     val note: String,
     val idRicorrenza: String,
+    val auto: Boolean = false,
 )
 
 data class Ric(
@@ -314,6 +315,12 @@ object Repo {
     }
 
     private fun savePf() {
+        val es = risparmioAuto()
+        scriviPf()
+        if (es.db) scriviDb()
+    }
+
+    private fun scriviPf() {
         val f = File(dir, PF)
         val tmp = File(dir, "$PF.tmp")
         tmp.writeText(pf.toString(2), Charsets.UTF_8)
@@ -371,10 +378,20 @@ object Repo {
                 }
             }
         }
-        if (dirty) save()
+        if (dirty) save() else {
+            val es = risparmioAuto()
+            if (es.db) scriviDb()
+            if (es.pf) scriviPf()
+        }
     }
 
     private fun save() {
+        val es = risparmioAuto()
+        scriviDb()
+        if (es.pf) scriviPf()
+    }
+
+    private fun scriviDb() {
         val f = File(dir, MAIN)
         val tmp = File(dir, "$MAIN.tmp")
         tmp.writeText(db.toString(2), Charsets.UTF_8)
@@ -1283,6 +1300,7 @@ object Repo {
                     id = str(t, "id"), data = d, da = str(t, "da"), a = str(t, "a"),
                     importo = t.optDouble("importo", 0.0), note = str(t, "note"),
                     idRicorrenza = str(t, "id_ricorrenza"),
+                    auto = t.optBoolean("auto_risparmio", false),
                 )
             )
         }
@@ -1418,6 +1436,129 @@ object Repo {
             i--
         }
         savePf()
+    }
+
+    // ---- Risparmio automatico: stesso algoritmo del desktop (moduli/risparmio_auto.py) ----
+    // Ogni uscita di una categoria con classe Risparmio e un conto risparmio assegnato diventa un trasferimento
+    // (auto_risparmio + id_spesa); il conto della spesa passa al trasferimento. Si esegue a ogni salvataggio
+    // e all'avvio; se non c'è niente da cambiare non scrive nulla.
+    private class EsitoRisp(var db: Boolean = false, var pf: Boolean = false)
+
+    private var inRisparmio = false
+
+    private fun risparmioAuto(): EsitoRisp {
+        val es = EsitoRisp()
+        if (inRisparmio) return es
+        inRisparmio = true
+        try {
+            sincronizzaRisparmio(es)
+        } catch (_: Exception) {
+        } finally {
+            inRisparmio = false
+        }
+        return es
+    }
+
+    private fun rimuoviOggetto(a: JSONArray, o: JSONObject): Boolean {
+        for (i in 0 until a.length()) if (a.opt(i) === o) { a.remove(i); return true }
+        return false
+    }
+
+    private fun sincronizzaRisparmio(es: EsitoRisp) {
+        val conti = pf.optJSONArray("conti") ?: return
+        val trasf = pf.optJSONArray("trasferimenti") ?: return
+        val sp = db.optJSONArray("spese") ?: return
+        val idANome = HashMap<String, String>()
+        for (i in 0 until conti.length()) conti.optJSONObject(i)?.let { idANome[str(it, "id")] = str(it, "nome") }
+        val nomeAId = HashMap<String, String>()
+        for ((k, v) in idANome) nomeAId[v] = k
+        val classi = db.optJSONObject("categorie_classi")
+        val dest = db.optJSONObject("categorie_conti_risparmio")
+
+        val auto = HashMap<String, JSONObject>()
+        for (i in 0 until trasf.length()) {
+            val t = trasf.optJSONObject(i) ?: continue
+            if (t.optBoolean("auto_risparmio", false) && str(t, "id_spesa").isNotBlank()) auto[str(t, "id_spesa")] = t
+        }
+        if (auto.isEmpty() && (dest == null || dest.length() == 0)) return
+
+        val idVisti = HashSet<String>()
+        for (i in 0 until trasf.length()) {
+            val t = trasf.optJSONObject(i) ?: continue
+            if (!idVisti.add(str(t, "id"))) {
+                t.put("id", nuovoIdPf("t", trasf))
+                idVisti.add(str(t, "id"))
+                es.pf = true
+            }
+        }
+
+        val visti = HashSet<String>()
+        val esistenti = HashSet<String>()
+        for (i in 0 until sp.length()) {
+            val day = sp.optJSONObject(i) ?: continue
+            val d = parseData(day.optString("date"))
+            val en = day.optJSONArray("entries") ?: continue
+            for (j in 0 until en.length()) {
+                val e = en.optJSONObject(j) ?: continue
+                val idsp = str(e, "id_spesa")
+                if (idsp.isBlank()) continue
+                esistenti.add(idsp)
+                if (d == null) continue
+                val cat = str(e, "categoria")
+                val destId = dest?.optString(cat, "") ?: ""
+                val tipo = str(e, "tipo").ifBlank { "Uscita" }.trim().lowercase().replaceFirstChar { it.uppercase() }
+                val eleggibile = tipo == "Uscita" && classi?.optString(cat, "") == "Risparmio" &&
+                    destId.isNotBlank() && destId in idANome
+                val t = auto[idsp]
+                if (!eleggibile) {
+                    if (t != null) {
+                        val da = str(t, "da")
+                        if (str(e, "conto").isBlank() && da in idANome) {
+                            e.put("conto", idANome[da] ?: "")
+                            es.db = true
+                        }
+                        if (rimuoviOggetto(trasf, t)) es.pf = true
+                    }
+                    continue
+                }
+                val conto = str(e, "conto")
+                val src = if (conto.isNotBlank()) nomeAId[conto] else t?.let { str(it, "da") }
+                if (src.isNullOrBlank() || src == destId || src !in idANome) continue
+                val dataS = d.format(DF)
+                val imp = Math.round(e.optDouble("importo", 0.0) * 100.0) / 100.0
+                val descr = str(e, "descrizione")
+                val nota = if (descr.isNotEmpty()) ("Risparmio: $descr").trim().take(60) else "Risparmio"
+                if (t == null) {
+                    val nuovo = JSONObject().put("id", nuovoIdPf("t", trasf)).put("data", dataS).put("da", src)
+                        .put("a", destId).put("importo", imp).put("note", nota)
+                        .put("auto_risparmio", true).put("id_spesa", idsp)
+                    trasf.put(nuovo)
+                    auto[idsp] = nuovo
+                    es.pf = true
+                } else if (str(t, "data") != dataS || str(t, "da") != src || str(t, "a") != destId ||
+                    abs(t.optDouble("importo", 0.0) - imp) > 1e-9 || str(t, "note") != nota
+                ) {
+                    t.put("data", dataS).put("da", src).put("a", destId).put("importo", imp).put("note", nota)
+                    es.pf = true
+                }
+                visti.add(idsp)
+                if (conto.isNotBlank()) {
+                    e.put("conto", "")
+                    es.db = true
+                }
+            }
+        }
+
+        // Trasferimenti rimasti senza la loro spesa. Prudenza: non si tocca niente se non ci sono spese
+        // (database vuoto o non letto) e si conservano quelli con più di un anno (storico già potato dal desktop).
+        if (esistenti.isEmpty()) return
+        val limite = LocalDate.now().minusDays(365)
+        for ((idsp, t) in auto.entries.toList()) {
+            if (idsp in visti || idsp in esistenti) continue
+            val dt = parseData(str(t, "data"))
+            if (dt != null && dt.isBefore(limite)) continue
+            if (rimuoviOggetto(trasf, t)) es.pf = true
+        }
     }
 
     fun contoRisparmio(c: String): String =

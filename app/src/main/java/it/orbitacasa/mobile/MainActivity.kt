@@ -1746,6 +1746,7 @@ class MainActivity : AppCompatActivity() {
                 t.data.format(FMT_DATA),
                 t.note.takeIf { it.isNotBlank() },
                 if (t.idRicorrenza.isNotBlank()) "ricorrente" else null,
+                if (t.auto) "risparmio automatico" else null,
                 if (t.data.isAfter(oggi)) "futuro" else null,
             ).joinToString(" · ")
             riga(
