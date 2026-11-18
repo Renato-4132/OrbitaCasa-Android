@@ -11776,7 +11776,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun dialogCopie(soloSnap: Boolean = true, dataSel: String = "Tutte") {
+    private fun dialogCopie(soloSnap: Boolean = false, dataSel: String = "Tutte") {
         if (Repo.demoAttiva) {
             aviso("Non disponibile in modalità demo")
             return
@@ -11819,26 +11819,68 @@ class MainActivity : AppCompatActivity() {
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
         }
         chk.setOnCheckedChangeListener { _, _ -> ricarica() }
-        radice.addView(chk)
-        radice.addView(spin)
-        radice.addView(lista, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (320 * dp).toInt()))
-        ricarica()
         fun scelti(): List<String> = (0 until visibili.size).filter { lista.isItemChecked(it) }.map { visibili[it].nome }
-        OcBuilder(this)
-            .setTitle("Gestione backup")
-            .setView(radice)
-            .setPositiveButton("Ripristina") { _, _ -> confermaRipristinoSel(scelti()) }
-            .setNegativeButton("Elimina") { _, _ -> confermaEliminaSel(scelti()) }
-            .setNeutralButton("Backup ora") { _, _ ->
-                thread {
-                    val f = Repo.creaSnapshot(applicationContext, "manuale")
-                    runOnUiThread {
-                        aviso(if (f != null) "Backup creato" else "Backup non riuscito")
-                        dialogCopie()
-                    }
+
+        var dlg: androidx.appcompat.app.AlertDialog? = null
+
+        val bBackup = android.widget.Button(this).apply {
+            text = "Backup ora"
+            isAllCaps = false
+        }
+        val bElimina = android.widget.Button(this).apply {
+            text = "Elimina"
+            isAllCaps = false
+        }
+        val righe = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        righe.addView(bBackup, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        righe.addView(bElimina, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        bBackup.setOnClickListener {
+            bBackup.isEnabled = false
+            bBackup.text = "Backup in corso…"
+            thread {
+                val f = Repo.creaSnapshot(applicationContext, "manuale")
+                runOnUiThread {
+                    aviso(if (f != null) "Backup creato" else "Backup non riuscito")
+                    dlg?.dismiss()
+                    dialogCopie(chk.isChecked)
                 }
             }
+        }
+        bElimina.setOnClickListener {
+            val sel = scelti()
+            if (sel.isEmpty()) {
+                aviso("Seleziona almeno un file")
+            } else {
+                dlg?.dismiss()
+                confermaEliminaSel(sel, chk.isChecked)
+            }
+        }
+
+        radice.addView(chk)
+        radice.addView(spin)
+        radice.addView(righe)
+        radice.addView(lista, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (280 * dp).toInt()))
+        ricarica()
+
+        val d = OcBuilder(this)
+            .setTitle("Gestione backup")
+            .setView(radice)
+            .setPositiveButton("Ripristina", null)
+            .setNegativeButton("Chiudi", null)
             .show()
+        dlg = d
+        d.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val sel = scelti()
+            if (sel.isEmpty()) {
+                aviso("Seleziona almeno un file")
+            } else if (sel.any { Backup.eZip(it) } && sel.size > 1) {
+                aviso("Se scegli uno zip non puoi sceglierne altri")
+            } else {
+                d.dismiss()
+                confermaRipristinoSel(sel)
+            }
+        }
     }
 
     private fun confermaRipristinoSel(nomi: List<String>) {
@@ -11885,10 +11927,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun confermaEliminaSel(nomi: List<String>) {
+    private fun confermaEliminaSel(nomi: List<String>, soloSnap: Boolean = false) {
         if (nomi.isEmpty()) {
             aviso("Seleziona almeno un file")
-            dialogCopie()
             return
         }
         OcBuilder(this)
@@ -11900,7 +11941,7 @@ class MainActivity : AppCompatActivity() {
                     val n = nomi.count { Backup.elimina(applicationContext, it) }
                     runOnUiThread {
                         aviso("$n file eliminati")
-                        dialogCopie()
+                        dialogCopie(soloSnap)
                     }
                 }
             }
