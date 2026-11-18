@@ -1568,7 +1568,26 @@ class MainActivity : AppCompatActivity() {
             u("Saldo " + (if (saldo >= 0) "+" else "−") + euro(abs(saldo)))
     }
 
+    /** Titolo di sezione come in Previsione: barretta oro + titolo grande, e il suggerimento tra parentesi sotto. */
     private fun sezione(cont: LinearLayout, testo: String) {
+        val nl = testo.indexOf('\n')
+        if (nl > 0) {
+            sezioneForte(cont, testo.substring(0, nl), testo.substring(nl + 1))
+            return
+        }
+        val ap = testo.lastIndexOf(" (")
+        if (ap > 0 && testo.endsWith(")")) {
+            val dentro = testo.substring(ap + 2, testo.length - 1)
+            if (dentro.contains(' ') && dentro.length >= 8) {
+                sezioneForte(cont, testo.substring(0, ap), dentro.substring(0, 1).uppercase() + dentro.substring(1).lowercase())
+                return
+            }
+        }
+        sezioneForte(cont, testo)
+    }
+
+    /** Titolo piccolo grigio, per i dialoghi. */
+    private fun sezionePiccola(cont: LinearLayout, testo: String) {
         val t = TextView(this)
         t.text = testo
         t.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
@@ -1588,7 +1607,8 @@ class MainActivity : AppCompatActivity() {
         riga.gravity = android.view.Gravity.CENTER_VERTICAL
         val barra = View(this)
         barra.setBackgroundColor(ContextCompat.getColor(this, R.color.oc_gold))
-        barra.layoutParams = LinearLayout.LayoutParams((4 * dp).toInt(), (22 * dp).toInt())
+        barra.minimumHeight = (22 * dp).toInt()
+        barra.layoutParams = LinearLayout.LayoutParams((4 * dp).toInt(), ViewGroup.LayoutParams.MATCH_PARENT)
         val t = TextView(this)
         t.text = testo
         t.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
@@ -5625,13 +5645,13 @@ class MainActivity : AppCompatActivity() {
         val totAcc = info.sumOf { it.accantonato }
         val totOra = info.sumOf { it.quotaOra ?: 0.0 }
 
-        sezione(cont, "RIEPILOGO")
+        sezioneForte(cont, "RIEPILOGO")
         riga(cont, "Piani attivi", "importo totale " + euro(totImp), info.size.toString(), null, null)
         riga(cont, "Da accantonare questo mese", "", euro(totOra), rosso, null)
         riga(cont, "Già accantonato", "", euro(totAcc), verde, null)
         riga(cont, "Residuo", "", euro(totImp - totAcc), null, null)
 
-        sezione(cont, "PIANI")
+        sezioneForte(cont, "PIANI")
         for (i in info) {
             val n = i.mesi.size
             val trascorsi = i.mesi.count { it.isBefore(YearMonth.now()) }
@@ -10201,7 +10221,7 @@ class MainActivity : AppCompatActivity() {
         val (view, corpo) = corpoDialogo()
         val campi = LinkedHashMap<String, TextInputEditText>()
         fun gruppoCampi(titolo: String, chiavi: List<String>) {
-            sezione(corpo, titolo)
+            sezionePiccola(corpo, titolo)
             for (k in chiavi) {
                 val tipo = when (k) {
                     "Telefono", "Pronto Intervento" -> InputType.TYPE_CLASS_PHONE
