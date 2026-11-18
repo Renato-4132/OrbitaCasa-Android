@@ -3199,7 +3199,7 @@ class MainActivity : AppCompatActivity() {
         val usciteMese = Repo.uscite(inizioMese, fineMese)
         val usciteAnno = Repo.uscite(inizioAnno, fineAnno)
 
-        sezione(cont, "TARGET DI SPESA")
+        sezioneForte(cont, "TARGET DI SPESA")
         if (Repo.targetMese <= 0 && Repo.targetAnno <= 0) {
             vuoto(cont, "Nessun target impostato. Tocca il pulsante in basso per definirlo.")
         }
@@ -3214,7 +3214,7 @@ class MainActivity : AppCompatActivity() {
         val conBudgetM = Repo.categorie().filter { Repo.budgetMensile(it) > 0 }
             .sortedByDescending { (spesoM[it] ?: 0.0) / Repo.budgetMensile(it) }
         if (conBudgetM.isNotEmpty()) {
-            sezione(cont, "BUDGET MENSILI PER CATEGORIA")
+            sezioneForte(cont, "BUDGET MENSILI PER CATEGORIA")
             val sfM = conBudgetM.count { (spesoM[it] ?: 0.0) > Repo.budgetMensile(it) }
             if (sfM > 0) vuoto(cont, "⚠️ " + sfM + (if (sfM == 1) " categoria sopra budget" else " categorie sopra budget") + " questo mese")
             for (c in conBudgetM) {
@@ -3225,7 +3225,7 @@ class MainActivity : AppCompatActivity() {
         val conBudgetA = Repo.categorie().filter { Repo.budgetAnnuo(it) > 0 }
             .sortedByDescending { (spesoA[it] ?: 0.0) / Repo.budgetAnnuo(it) }
         if (conBudgetA.isNotEmpty()) {
-            sezione(cont, "BUDGET ANNUALI PER CATEGORIA")
+            sezioneForte(cont, "BUDGET ANNUALI PER CATEGORIA")
             val sfA = conBudgetA.count { (spesoA[it] ?: 0.0) > Repo.budgetAnnuo(it) }
             if (sfA > 0) vuoto(cont, "⚠️ " + sfA + (if (sfA == 1) " categoria sopra budget" else " categorie sopra budget") + " quest'anno")
             for (c in conBudgetA) {
@@ -3235,7 +3235,7 @@ class MainActivity : AppCompatActivity() {
 
         val q = Repo.calcola503020(Repo.voci().filter { YearMonth.from(it.data) == ym })
         if (q.entrate > 0 && (q.bisogni + q.desideri + q.risparmio) > 0) {
-            sezione(cont, "METODO 50/30/20 · entrate " + euro(q.entrate))
+            sezioneForte(cont, "METODO 50/30/20 · entrate " + euro(q.entrate))
             barra(cont, "Bisogni (obiettivo 50%)", q.bisogni, q.entrate * 0.5, "")
             barra(cont, "Desideri (obiettivo 30%)", q.desideri, q.entrate * 0.3, "")
             val r = LinearLayout(this)
