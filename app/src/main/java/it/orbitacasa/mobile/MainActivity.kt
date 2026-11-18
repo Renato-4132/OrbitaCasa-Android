@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, STOCK, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, POOL, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, STOCK, INFO, ESTRATTI, CHIEDI }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -148,6 +148,12 @@ class MainActivity : AppCompatActivity() {
     private var rcTesto = ""
     private var rcFuturi = true
     private var ckAnno = LocalDate.now().year
+    private var poolVista = 0
+    private var poolDati: JSONObject? = null
+    private var poolOra = 0L
+    private var poolErrore: String? = null
+    private var poolInCorso = false
+    private var poolChiuse = false
     private var ultimoControlloFm = 0L
     private class GruppoHome(val titolo: String, val ico: String, val tessere: List<Tessera>)
     private val homeGruppi = ArrayList<GruppoHome>()
@@ -270,6 +276,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.UTENZE -> dialogNuovaLettura()
                 Pagina.GRAFICI -> dialogContoGrafici()
                 Pagina.FAIRSHARE -> dialogPartecipante(null)
+                Pagina.POOL -> caricaPool()
                 Pagina.CHECKOUT -> {
                     ckVista = (ckVista + 1) % 3
                     renderCheckout()
@@ -323,6 +330,9 @@ class MainActivity : AppCompatActivity() {
                 dialogNotifProva()
             } else if (pagina == Pagina.FAIRSHARE) {
                 dialogFiltriFs()
+            } else if (pagina == Pagina.POOL) {
+                poolVista = (poolVista + 1) % 4
+                renderPool()
             } else if (pagina == Pagina.CHECKOUT) {
                 dialogAvvisoCk()
             } else if (pagina == Pagina.RICERCA) {
@@ -571,11 +581,15 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.STOCK || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.POOL || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.STOCK || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
             Pagina.MOVIMENTI -> renderMovimenti()
+            Pagina.POOL -> {
+                renderLista()
+                caricaPool()
+            }
             else -> renderLista()
         }
         renderBarra()
@@ -684,6 +698,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("💡", "Utenze") { mostra(Pagina.UTENZE) },
                 Tessera("🛠️", "CasaCare") { mostra(Pagina.CASACARE) },
                 Tessera("🤝", "FairShare") { mostra(Pagina.FAIRSHARE) },
+                Tessera("👥", "CommunityPool") { mostra(Pagina.POOL) },
                 Tessera("🚗", "AutoPark") { schedaAperta = null; mostra(Pagina.AUTOPARK) },
                 Tessera("🏢", "ImmoBil") { schedaAperta = null; mostra(Pagina.IMMOBIL) },
                 Tessera("🐾", "Pet Care") { schedaAperta = null; mostra(Pagina.PET) },
@@ -851,6 +866,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.UTENZE, "💡", "Utenze"),
         Dest(Pagina.MARKET, "🛒", "Spesa"),
         Dest(Pagina.FAIRSHARE, "🤝", "FairShare"),
+        Dest(Pagina.POOL, "👥", "Pool"),
         Dest(Pagina.CHECKOUT, "🔁", "Checkout"),
         Dest(Pagina.RICERCA, "🔎", "Cerca"),
         Dest(Pagina.PREVISIONE, "📉", "Previsione"),
@@ -1486,6 +1502,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.DOCPERS -> renderDocPers()
             Pagina.UTENZE -> renderUtenze()
             Pagina.FAIRSHARE -> renderFairshare()
+            Pagina.POOL -> renderPool()
             Pagina.CHECKOUT -> renderCheckout()
             Pagina.RICERCA -> renderRicerca()
             Pagina.PREVISIONE -> renderPrevisione()
@@ -4868,6 +4885,250 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Nascondi") { _, _ -> Repo.setFmDismiss(LocalDate.now()) }
             .setNeutralButton("Più tardi", null)
+            .show()
+    }
+
+    private fun caricaPool() {
+        if (poolInCorso) return
+        if (poolDati == null) Pool.carica(this)?.let {
+            poolDati = it.first
+            poolOra = it.second
+        }
+        poolInCorso = true
+        if (pagina == Pagina.POOL) renderPool()
+        Sync.poolDati(this, true) { j, err ->
+            poolInCorso = false
+            if (j != null) {
+                poolDati = j
+                poolOra = System.currentTimeMillis()
+                poolErrore = null
+                Pool.salva(this, j)
+            } else {
+                poolErrore = err ?: "PC non raggiungibile"
+            }
+            if (pagina == Pagina.POOL) renderPool()
+        }
+    }
+
+    private fun poolInvia(corpo: JSONObject, esito: String) {
+        poolInCorso = true
+        if (pagina == Pagina.POOL) renderPool()
+        Sync.poolAzione(this, corpo) { err ->
+            poolInCorso = false
+            aviso(err ?: esito)
+            caricaPool()
+        }
+    }
+
+    private fun renderPool() {
+        val nomiVista = listOf("Spese", "Da confermare", "Le mie quote", "Saldi")
+        intestaLista("👥 CommunityPool", "🔄  Aggiorna", "🔀  Vista: " + nomiVista[poolVista])
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val oro = ContextCompat.getColor(this, R.color.oc_gold)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        fun testo(t: String, col: Int) {
+            val v = TextView(this)
+            v.text = t
+            v.setTextColor(col)
+            v.setPadding(8, 8, 8, 12)
+            cont.addView(v)
+        }
+        val d = poolDati
+        if (poolInCorso) {
+            testo("Comunicazione con OrbitaCasa desktop…", medio)
+        } else if (poolErrore != null) {
+            testo("Sincronizza OrbitaCasa desktop per usare il CommunityPool\n" + poolErrore, arancio)
+        }
+        if (d == null) return
+        if (!d.optBoolean("attivo", true)) {
+            vuoto(cont, d.optString("messaggio").ifBlank { "CommunityPool non attivo sul PC." })
+            return
+        }
+        val attivo = !poolInCorso && poolErrore == null
+        val quando = if (poolOra > 0) java.text.SimpleDateFormat("dd-MM HH:mm", Locale.ITALY).format(java.util.Date(poolOra)) else "--"
+        testo(
+            "Profilo sul PC: " + d.optString("me") + " · aggiornato " + quando + if (attivo) "" else " (sola lettura)",
+            medio
+        )
+        when (poolVista) {
+            0 -> {
+                sezione(cont, "SPESE CONDIVISE")
+                val sp = d.optJSONArray("spese") ?: org.json.JSONArray()
+                if (sp.length() == 0) vuoto(cont, "Nessuna spesa nel pool.")
+                for (i in 0 until sp.length()) {
+                    val s = sp.getJSONObject(i)
+                    val sotto = s.optString("data_it") + " · " + s.optString("pagante") + " · " + s.optString("categoria") +
+                        "\nCoperto € " + s.optString("coperto_t") + " · Residuo € " + s.optString("residuo_t") + " · " + s.optString("stato")
+                    riga(cont, s.optString("descrizione"), sotto, "€ " + s.optString("importo_t"), if (s.optBoolean("mia_spesa")) verde else rosso) {
+                        poolSpesaClick(s, attivo)
+                    }
+                }
+            }
+            1 -> {
+                sezione(cont, "PROPOSTE DA CONFERMARE")
+                val dc = d.optJSONArray("da_confermare") ?: org.json.JSONArray()
+                if (dc.length() == 0) vuoto(cont, "Nessuna proposta in attesa sulle spese pagate da te.")
+                for (i in 0 until dc.length()) {
+                    val c = dc.getJSONObject(i)
+                    val nota = c.optString("nota")
+                    val sotto = c.optString("data_it") + " · Da: " + c.optString("da") + " · Residuo € " + c.optString("residuo_t") +
+                        if (nota.isBlank()) "" else "\n" + nota
+                    riga(cont, c.optString("descrizione"), sotto, "€ " + c.optString("proposta_t"), oro) {
+                        if (attivo) dialogPoolRisposta(c) else aviso("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
+                    }
+                }
+            }
+            2 -> {
+                sezione(cont, "LE MIE QUOTE")
+                val mie = d.optJSONArray("mie") ?: org.json.JSONArray()
+                if (mie.length() == 0) vuoto(cont, "Non hai ancora proposto quote.")
+                for (i in 0 until mie.length()) {
+                    val q = mie.getJSONObject(i)
+                    val stato = q.optString("stato")
+                    val nota = q.optString("nota")
+                    val sotto = q.optString("data_it") + " · Pagante: " + q.optString("pagante") + " · " + q.optString("stato_lbl") +
+                        if (nota.isBlank()) "" else "\n" + nota
+                    val valore = if (stato == "confermata") q.optString("importo_t") else q.optString("proposta_t")
+                    val col = when (stato) {
+                        "confermata" -> verde
+                        "proposta" -> oro
+                        else -> rosso
+                    }
+                    riga(cont, q.optString("descrizione"), sotto, "€ $valore", col) {
+                        if (stato != "proposta") {
+                            aviso("Solo le proposte in attesa si possono annullare")
+                        } else if (!attivo) {
+                            aviso("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
+                        } else {
+                            OcBuilder(this)
+                                .setTitle("Annulla proposta")
+                                .setMessage("Annullare la proposta di € " + q.optString("proposta_t") + " su «" + q.optString("descrizione") + "»?")
+                                .setNegativeButton("No", null)
+                                .setPositiveButton("Annulla proposta") { _, _ ->
+                                    poolInvia(JSONObject().put("azione", "annulla").put("id_contrib", q.optString("id_contrib")), "Proposta annullata")
+                                }
+                                .show()
+                        }
+                    }
+                }
+            }
+            else -> {
+                val sal = d.optJSONObject(if (poolChiuse) "saldi_tutti" else "saldi")
+                riga(cont, "Spese chiuse", "Tocca per cambiare", if (poolChiuse) "Incluse" else "Nascoste", oro) {
+                    poolChiuse = !poolChiuse
+                    renderPool()
+                }
+                sezione(cont, "SALDI PER PROFILO")
+                val righe = sal?.optJSONArray("righe") ?: org.json.JSONArray()
+                if (righe.length() == 0) vuoto(cont, "Nessun movimento nel pool.")
+                for (i in 0 until righe.length()) {
+                    val r = righe.getJSONObject(i)
+                    val n = r.optDouble("residuo_n", 0.0)
+                    val sotto = "Anticipate € " + r.optString("anticipate") + " · Ricevute € " + r.optString("ricevute") + " · Versate € " + r.optString("versate")
+                    val col = if (n > 0.004) verde else if (n < -0.004) rosso else null
+                    riga(cont, r.optString("nome"), sotto, (if (n < -0.004) "−" else "") + euro(abs(n)), col, null)
+                }
+                val tot = sal?.optJSONObject("tot")
+                if (tot != null) {
+                    val sotto = "Anticipate € " + tot.optString("anticipate") + " · Ricevute € " + tot.optString("ricevute") + " · Versate € " + tot.optString("versate")
+                    riga(cont, "Totale", sotto, "€ " + tot.optString("residuo"), oro, null)
+                }
+            }
+        }
+    }
+
+    private fun poolSpesaClick(s: JSONObject, attivo: Boolean) {
+        if (!attivo) {
+            aviso("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
+            return
+        }
+        if (s.optBoolean("puo_proporre")) {
+            dialogPoolProponi(s)
+            return
+        }
+        aviso(
+            when {
+                s.optBoolean("mia_spesa") -> "Hai pagato tu questa spesa"
+                s.optBoolean("mia_attesa") -> "Hai già una proposta in attesa su questa spesa"
+                s.optString("stato") == "Chiusa" -> "La spesa è chiusa dal pagante"
+                else -> "La spesa è già coperta"
+            }
+        )
+    }
+
+    private fun dialogPoolProponi(s: JSONObject) {
+        val (view, corpo) = corpoDialogo()
+        val info = TextView(this)
+        info.text = s.optString("descrizione") + "\nTotale € " + s.optString("importo_t") + " · Residuo € " + s.optString("residuo_t")
+        info.setPadding(4, 4, 4, 12)
+        corpo.addView(info)
+        val etImp = campoTesto(corpo, "Importo da coprire (€)", s.optString("residuo_t").replace(".", ""), TIPO_DECIMALE, 12)
+        val etNota = campoTesto(corpo, "Nota (facoltativa)", "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 200)
+        val arr = poolDati?.optJSONArray("categorie") ?: org.json.JSONArray()
+        val cats = (0 until arr.length()).map { arr.optString(it) }
+        var cat = s.optString("categoria")
+        if (cats.isNotEmpty() && cat !in cats) cat = cats[0]
+        if (cats.isNotEmpty()) campoMenu(corpo, "Categoria", cats, cat) { cat = cats[it] }
+        val dlg = OcBuilder(this)
+            .setTitle("Proponi quota")
+            .setView(view)
+            .setPositiveButton("Invia", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            if (importoOk(etImp.text.toString()) == null) {
+                etImp.error = "Importo non valido"
+                return@setOnClickListener
+            }
+            dlg.dismiss()
+            poolInvia(
+                JSONObject()
+                    .put("azione", "proponi")
+                    .put("id_fam", s.optString("id_fam"))
+                    .put("importo", etImp.text.toString().trim())
+                    .put("nota", etNota.text.toString().trim())
+                    .put("categoria", cat),
+                "Quota inviata, in attesa di conferma"
+            )
+        }
+    }
+
+    private fun dialogPoolRisposta(c: JSONObject) {
+        val (view, corpo) = corpoDialogo()
+        val info = TextView(this)
+        info.text = c.optString("descrizione") + "\nDa: " + c.optString("da") + " · Proposta € " + c.optString("proposta_t") +
+            "\nResiduo della spesa € " + c.optString("residuo_t") +
+            if (c.optBoolean("chiusa")) "\nLa spesa è chiusa: per confermare va riaperta dal desktop." else ""
+        info.setPadding(4, 4, 4, 12)
+        corpo.addView(info)
+        val etImp = campoTesto(corpo, "Importo confermato (€)", c.optString("proposta_t").replace(".", ""), TIPO_DECIMALE, 12)
+        val etNota = campoTesto(corpo, "Nota in caso di rifiuto (facoltativa)", "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 200)
+        OcBuilder(this)
+            .setTitle("Proposta di quota")
+            .setView(view)
+            .setPositiveButton("Conferma") { _, _ ->
+                poolInvia(
+                    JSONObject()
+                        .put("azione", "conferma")
+                        .put("id_contrib", c.optString("id_contrib"))
+                        .put("importo", etImp.text.toString().trim()),
+                    "Quota confermata, rientro registrato"
+                )
+            }
+            .setNegativeButton("Rifiuta") { _, _ ->
+                poolInvia(
+                    JSONObject()
+                        .put("azione", "rifiuta")
+                        .put("id_contrib", c.optString("id_contrib"))
+                        .put("nota", etNota.text.toString().trim()),
+                    "Quota rifiutata"
+                )
+            }
+            .setNeutralButton("Chiudi", null)
             .show()
     }
 

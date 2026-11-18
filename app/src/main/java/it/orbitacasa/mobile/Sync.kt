@@ -515,6 +515,53 @@ object Sync {
         }
     }
 
+    fun poolDati(c: Context, primo: Boolean, fine: (JSONObject?, String?) -> Unit) {
+        val app = c.applicationContext
+        Thread {
+            var j: JSONObject? = null
+            var err: String? = null
+            try {
+                if (!configurato(app)) throw SyncErr("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
+                profiloSalvato = profilo(app)
+                val r = Http(indirizzo(app), gettone(app), improntaFissata(app)).get("/api/sync/pool" + if (primo) "?primo=1" else "")
+                if (r.codice == 404 && r.json == null) throw SyncErr("Aggiorna OrbitaCasa sul PC per usare il CommunityPool")
+                verifica(r, "CommunityPool")
+                val risposta = r.json ?: throw SyncErr("Risposta non valida dal PC")
+                if (!risposta.optBoolean("ok", true)) {
+                    throw SyncErr(risposta.optString("errore").ifBlank { "CommunityPool non leggibile sul PC" })
+                }
+                j = risposta
+            } catch (e: SyncErr) {
+                err = e.message
+            } catch (e: Exception) {
+                err = "PC non raggiungibile: ${e.message}"
+            }
+            main.post { fine(j, err) }
+        }.start()
+    }
+
+    fun poolAzione(c: Context, corpo: JSONObject, fine: (String?) -> Unit) {
+        val app = c.applicationContext
+        Thread {
+            var err: String? = null
+            try {
+                if (!configurato(app)) throw SyncErr("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
+                profiloSalvato = profilo(app)
+                val r = Http(indirizzo(app), gettone(app), improntaFissata(app)).post("/api/sync/pool/azione", corpo)
+                if (r.codice == 404 && r.json == null) throw SyncErr("Aggiorna OrbitaCasa sul PC per usare il CommunityPool")
+                verifica(r, "CommunityPool")
+                if (r.json?.optBoolean("ok") != true) {
+                    throw SyncErr(r.json?.optString("errore").orEmpty().ifBlank { "Operazione non riuscita" })
+                }
+            } catch (e: SyncErr) {
+                err = e.message
+            } catch (e: Exception) {
+                err = "PC non raggiungibile: ${e.message}"
+            }
+            main.post { fine(err) }
+        }.start()
+    }
+
     private fun verifica(r: Http.Risp, cosa: String) {
         when {
             r.codice == 401 -> throw SyncErr(
