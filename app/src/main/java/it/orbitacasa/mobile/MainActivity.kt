@@ -11824,7 +11824,9 @@ class MainActivity : AppCompatActivity() {
                         textSize = 14f
                         minHeight = 0
                         minimumHeight = 0
-                        setPadding(paddingLeft, (10 * dp).toInt(), paddingRight, (10 * dp).toInt())
+                        // Margini fissi: paddingRight di un CheckedTextView include già lo spazio della spunta,
+                        // rileggerlo a ogni riciclo lo faceva crescere fino a far sparire il testo.
+                        setPadding((16 * dp).toInt(), (10 * dp).toInt(), (16 * dp).toInt(), (10 * dp).toInt())
                     }
                     return v
                 }
