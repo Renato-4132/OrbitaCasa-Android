@@ -64,7 +64,6 @@ object Aggiorna {
 
     private fun nomeFile(r: Release): String = "OrbitaCasa-" + r.tag.trim().let { if (it.startsWith("v")) it else "v$it" } + ".apk"
 
-    /** Scarica l'APK nella cache e controlla che sia davvero OrbitaCasa. [progresso] riceve la percentuale (0-100). */
     fun scarica(ctx: Context, r: Release, progresso: (Int) -> Unit): File {
         val dir = cartellaCache(ctx)
         dir.mkdirs()
@@ -131,7 +130,6 @@ object Aggiorna {
 
     private fun eApkOrbita(nome: String) = nome.startsWith("OrbitaCasa-") && nome.endsWith(".apk")
 
-    /** Tiene in Documenti/OrbitaCasa/updates/ solo questa copia: le altre versioni scaricate vengono cancellate. */
     fun archivia(ctx: Context, f: File, r: Release): Boolean {
         val cr = ctx.contentResolver
         return try {
@@ -158,7 +156,6 @@ object Aggiorna {
         }
     }
 
-    /** All'avvio: svuota la cache e cancella dagli updates le versioni uguali o più vecchie di quella installata. */
     fun pulisci(ctx: Context, installata: String) {
         try {
             cartellaCache(ctx).listFiles()?.forEach { it.delete() }

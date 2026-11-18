@@ -14,14 +14,6 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * Backup nella cartella pubblica Documenti/OrbitaCasa/backup/, sul modello di esegui_backup_zip.py del desktop.
- *
- *  - file singoli:  DD-MM-YYYY-<nome>.json            (stesso giorno = sovrascritto, ne restano 5 per file)
- *  - snapshot:      DD-MM-YYYY-snapshot_db.zip        (contiene db/ con JSON e documenti, come il desktop, stesso giorno = sovrascritto, ne restano 5)
- *  - documenti:     Archivio_Doc_Contabili-DDMMYYYY_HHMM.zip e Archivio_Doc_Personali_DDMMYYYY_HHMM.zip
- *                   (solo se qualcosa è cambiato dall'ultimo zip, ne restano 3 per tipo)
- */
 object Backup {
     const val SUFFISSO_SNAP = "-snapshot_db.zip"
     const val PREF_CONTABILI = "Archivio_Doc_Contabili"
@@ -33,7 +25,6 @@ object Backup {
 
     private val RELATIVE = Environment.DIRECTORY_DOCUMENTS + "/OrbitaCasa/backup/"
 
-    /** Esito leggibile dell'ultimo backup (mostrato nel messaggio di "Backup ora"). */
     @Volatile
     var rapporto: String = ""
 
@@ -84,7 +75,6 @@ object Backup {
         }
     }
 
-    /** Copia [src] in Documenti/OrbitaCasa/backup/[nome], sovrascrivendo un file con lo stesso nome. */
     private fun salva(ctx: Context, nome: String, mime: String, src: File): Boolean {
         val cr = ctx.contentResolver
         return try {
@@ -124,7 +114,6 @@ object Backup {
 
     private fun adesso(): String = SimpleDateFormat("ddMMyyyy_HHmm", Locale.ROOT).format(Date())
 
-    /** Chiave ordinabile (yyyyMMddHHmm) ricavata dal nome; se manca, dalla data di modifica. */
     private fun chiave(v: Voce): String {
         Regex("^(\\d{2})-(\\d{2})-(\\d{4})-").find(v.nome)?.let {
             return it.groupValues[3] + it.groupValues[2] + it.groupValues[1] + "0000"
@@ -211,10 +200,6 @@ object Backup {
         }
     }
 
-    /**
-     * Esegue il backup. Restituisce il nome dello snapshot creato, oppure null se non è riuscito
-     * (o se non c'era nessun file da salvare).
-     */
     @Synchronized
     fun esegui(ctx: Context, dir: File, files: List<String>, conDocumenti: Boolean): String? {
         val tmpSnap = File(ctx.cacheDir, "backup_snap.tmp")
