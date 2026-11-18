@@ -11390,8 +11390,10 @@ class MainActivity : AppCompatActivity() {
                         startActivity(
                             Intent(Intent.ACTION_VIEW)
                                 .setDataAndType(uri, "application/vnd.android.package-archive")
-                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                         )
+                        // chiude il task di OrbitaCasa: l'installer non resta agganciato all'app che viene sostituita
+                        finishAndRemoveTask()
                     } catch (e: Exception) {
                         aviso("Non riesco ad avviare l'installazione: " + e.message)
                     }
