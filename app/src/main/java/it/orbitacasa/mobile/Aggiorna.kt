@@ -55,10 +55,6 @@ object Aggiorna {
         }
     }
 
-    // ---- Download dentro l'app (niente più copie nella cartella Download del browser) ----
-    // L'APK si scarica nella cache, si installa da lì e se ne tiene una sola copia in Documenti/OrbitaCasa/updates/.
-    // All'avvio successivo (a installazione fatta) si cancellano la cache e le copie non più nuove della versione installata.
-
     private val RELATIVE = Environment.DIRECTORY_DOCUMENTS + "/OrbitaCasa/updates/"
     private const val MIME_APK = "application/vnd.android.package-archive"
 

@@ -5592,12 +5592,12 @@ class MainActivity : AppCompatActivity() {
         if (Fondo.errore != null && cont.childCount == 0) vuoto(cont, "⚠️ " + Fondo.errore)
 
         riga(cont, "🧮 Simulatore risparmio", "In quanto tempo arrivi a un obiettivo, o quanto versare al mese", "›", null) { dialogSimulatore() }
-        sezione(cont, "ULTIMI 365 GIORNI")
+        sezioneForte(cont, "ULTIMI 365 GIORNI")
         riga(cont, "Entrate", "media " + euro(a.mediaE) + "/mese", euro(a.entrate365), verde, null)
         riga(cont, "Uscite", "media " + euro(a.mediaU) + "/mese", euro(a.uscite365), rosso, null)
         riga(cont, "Risparmio", "media " + euro(a.mediaR) + "/mese", euro(a.risparmio365), col(a.risparmio365), null)
 
-        sezione(cont, "FONDO DI EMERGENZA")
+        sezioneForte(cont, "FONDO DI EMERGENZA")
         riga(cont, "Fondo attuale", "Spesa media " + euro(a.mediaU) + "/mese", euro(fondo), null, { dialogImportiFondo() })
         val tasso = Fondo.tassoAnnuo()
         if (tasso > 0) {
@@ -5612,7 +5612,7 @@ class MainActivity : AppCompatActivity() {
         barraFondo(cont, "Obiettivo 6 mesi", fondo, a.fe6)
         barraFondo(cont, "Obiettivo 12 mesi", fondo, a.fe12)
 
-        sezione(cont, "OBIETTIVO ANNUALE")
+        sezioneForte(cont, "OBIETTIVO ANNUALE")
         if (annuale > 0) {
             barraFondo(cont, "Risparmio 365 gg", a.risparmio365, annuale)
             val diff = if (a.diffObj >= 0) "Sei in linea (+" + euro(a.diffObj) + "/mese)" else "Mancano " + euro(-a.diffObj) + "/mese"
@@ -5621,7 +5621,7 @@ class MainActivity : AppCompatActivity() {
             vuoto(cont, "Nessun obiettivo annuale: impostalo da \"Imposta fondo\".")
         }
 
-        sezione(cont, "OBIETTIVI DI RISPARMIO")
+        sezioneForte(cont, "OBIETTIVI DI RISPARMIO")
         if (a.obiettivi.isEmpty()) {
             vuoto(cont, "Nessun obiettivo impostato.")
         } else {
@@ -5643,7 +5643,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        sezione(cont, "PROIEZIONE " + LocalDate.now().year)
+        sezioneForte(cont, "PROIEZIONE " + LocalDate.now().year)
         riga(
             cont, "Risparmio atteso", "entrate " + euro(a.eProj) + " · uscite " + euro(a.uProj),
             euro(a.rProj), col(a.rProj), null
@@ -5655,7 +5655,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        sezione(cont, "ANDAMENTO ULTIMI 12 MESI")
+        sezioneForte(cont, "ANDAMENTO ULTIMI 12 MESI")
         a.migliore?.let {
             riga(cont, "Mese migliore", MESI_ESTESI[it.ym.monthValue - 1] + " " + it.ym.year, segnoEuro(it.r), verde, null)
         }
@@ -11392,7 +11392,6 @@ class MainActivity : AppCompatActivity() {
                                 .setDataAndType(uri, "application/vnd.android.package-archive")
                                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                         )
-                        // chiude il task di OrbitaCasa: l'installer non resta agganciato all'app che viene sostituita
                         finishAndRemoveTask()
                     } catch (e: Exception) {
                         aviso("Non riesco ad avviare l'installazione: " + e.message)
@@ -11874,8 +11873,6 @@ class MainActivity : AppCompatActivity() {
                         textSize = 14f
                         minHeight = 0
                         minimumHeight = 0
-                        // Margini fissi: paddingRight di un CheckedTextView include già lo spazio della spunta,
-                        // rileggerlo a ogni riciclo lo faceva crescere fino a far sparire il testo.
                         setPadding((16 * dp).toInt(), (10 * dp).toInt(), (16 * dp).toInt(), (10 * dp).toInt())
                     }
                     return v

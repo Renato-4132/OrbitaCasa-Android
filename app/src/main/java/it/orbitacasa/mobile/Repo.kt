@@ -1438,10 +1438,6 @@ object Repo {
         savePf()
     }
 
-    // ---- Risparmio automatico: stesso algoritmo del desktop (moduli/risparmio_auto.py) ----
-    // Ogni uscita di una categoria con classe Risparmio e un conto risparmio assegnato diventa un trasferimento
-    // (auto_risparmio + id_spesa); il conto della spesa passa al trasferimento. Si esegue a ogni salvataggio
-    // e all'avvio; se non c'è niente da cambiare non scrive nulla.
     private class EsitoRisp(var db: Boolean = false, var pf: Boolean = false)
 
     private var inRisparmio = false
@@ -1549,8 +1545,6 @@ object Repo {
             }
         }
 
-        // Trasferimenti rimasti senza la loro spesa. Prudenza: non si tocca niente se non ci sono spese
-        // (database vuoto o non letto) e si conservano quelli con più di un anno (storico già potato dal desktop).
         if (esistenti.isEmpty()) return
         val limite = LocalDate.now().minusDays(365)
         for ((idsp, t) in auto.entries.toList()) {

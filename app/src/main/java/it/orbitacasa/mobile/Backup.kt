@@ -219,7 +219,6 @@ object Backup {
     fun esegui(ctx: Context, dir: File, files: List<String>, conDocumenti: Boolean): String? {
         val tmpSnap = File(ctx.cacheDir, "backup_snap.tmp")
         val nomeSnap = oggi() + SUFFISSO_SNAP
-        // Prima di una sync (conDocumenti = false) non si ricomprime tutto: se oggi c'è già uno snapshot, resta quello.
         val salta = !conDocumenti && trova(ctx, nomeSnap) != null
         if (!salta) {
             try {
