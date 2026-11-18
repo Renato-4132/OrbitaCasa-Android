@@ -11776,69 +11776,101 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun dialogCopie() {
+    private fun dialogCopie(soloSnap: Boolean = true, dataSel: String = "Tutte") {
         if (Repo.demoAttiva) {
             aviso("Non disponibile in modalità demo")
             return
         }
-        val elenco = Repo.elencaSnapshot(this)
-        val fmt = java.text.SimpleDateFormat("d MMM yyyy HH:mm", Locale.ITALY)
-        val voci = ArrayList<String>()
-        voci.add("➕  Crea copia ora")
-        for (c in elenco) {
-            voci.add(fmt.format(java.util.Date(c.quando)) + " · " + c.etichetta + " · " + maxOf(1L, c.dimensione / 1024) + " KB")
+        val tutte = Backup.elenca(this).sortedByDescending { it.modificato }
+        val date = listOf("Tutte") + tutte.map { Backup.data(it) }.distinct()
+        val dp = resources.displayMetrics.density
+        val radice = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), 0)
         }
+        val chk = android.widget.CheckBox(this).apply {
+            text = "Solo snapshot"
+            isChecked = soloSnap
+        }
+        val spin = android.widget.Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, date)
+            setSelection(date.indexOf(dataSel).coerceAtLeast(0))
+        }
+        val lista = android.widget.ListView(this).apply {
+            choiceMode = android.widget.ListView.CHOICE_MODE_MULTIPLE
+        }
+        var visibili: List<Backup.Voce> = emptyList()
+        fun ricarica() {
+            val d = spin.selectedItem as? String ?: "Tutte"
+            visibili = tutte.filter {
+                (!chk.isChecked || it.nome.endsWith(Backup.SUFFISSO_SNAP)) && (d == "Tutte" || Backup.data(it) == d)
+            }
+            lista.adapter = ArrayAdapter(
+                this,
+                android.R.layout.simple_list_item_multiple_choice,
+                visibili.map {
+                    val dim = if (it.dimensione < 1048576) "${maxOf(1L, it.dimensione / 1024)} KB" else "%.1f MB".format(it.dimensione / 1048576.0)
+                    Backup.data(it) + " · " + Backup.tipo(it.nome) + " · " + dim
+                }
+            )
+        }
+        spin.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = ricarica()
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
+        chk.setOnCheckedChangeListener { _, _ -> ricarica() }
+        radice.addView(chk)
+        radice.addView(spin)
+        radice.addView(lista, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (320 * dp).toInt()))
+        ricarica()
+        fun scelti(): List<String> = (0 until visibili.size).filter { lista.isItemChecked(it) }.map { visibili[it].nome }
         OcBuilder(this)
-            .setTitle("Copie di sicurezza")
-            .setItems(voci.toTypedArray()) { _, k ->
-                if (k == 0) {
-                    thread {
-                        val f = Repo.creaSnapshot(applicationContext, "manuale")
-                        runOnUiThread { aviso(if (f != null) "Copia creata" else "Copia non riuscita") }
+            .setTitle("Gestione backup")
+            .setView(radice)
+            .setPositiveButton("Ripristina") { _, _ -> confermaRipristinoSel(scelti()) }
+            .setNegativeButton("Elimina") { _, _ -> confermaEliminaSel(scelti()) }
+            .setNeutralButton("Backup ora") { _, _ ->
+                thread {
+                    val f = Repo.creaSnapshot(applicationContext, "manuale")
+                    runOnUiThread {
+                        aviso(if (f != null) "Backup creato" else "Backup non riuscito")
+                        dialogCopie()
                     }
-                } else {
-                    azioniCopia(elenco[k - 1])
                 }
             }
-            .setNegativeButton("Chiudi", null)
             .show()
     }
 
-    private fun azioniCopia(c: Repo.Snap) {
-        val quando = java.text.SimpleDateFormat("d MMM yyyy HH:mm", Locale.ITALY).format(java.util.Date(c.quando))
+    private fun confermaRipristinoSel(nomi: List<String>) {
+        if (nomi.isEmpty()) {
+            aviso("Seleziona almeno un file")
+            dialogCopie()
+            return
+        }
+        val zip = nomi.filter { Backup.eZip(it) }
+        if (zip.isNotEmpty() && nomi.size > 1) {
+            aviso("Se scegli uno zip non puoi sceglierne altri")
+            dialogCopie()
+            return
+        }
+        val snap = zip.firstOrNull()?.endsWith(Backup.SUFFISSO_SNAP) == true
+        val msg = when {
+            snap -> "Ripristinare lo snapshot «${nomi[0]}»? I dati attuali vengono sostituiti e ne resta una copia. I documenti non cambiano."
+            zip.isNotEmpty() -> "Ripristinare l'archivio «${nomi[0]}»? I file dei documenti tornano nelle cartelle dell'app, sovrascrivendo quelli con lo stesso nome."
+            else -> "Ripristinare i ${nomi.size} file selezionati? I file attuali vengono sovrascritti."
+        }
         OcBuilder(this)
-            .setTitle("$quando · ${c.etichetta}")
-            .setItems(arrayOf("♻️  Ripristina", "🗑️  Elimina")) { _, k ->
-                if (k == 0) confermaRipristino(c) else confermaEliminaCopia(c)
-            }
-            .setNegativeButton("Annulla", null)
-            .show()
-    }
-
-    private fun confermaEliminaCopia(c: Repo.Snap) {
-        OcBuilder(this)
-            .setTitle("Elimina copia")
-            .setMessage("Eliminare questa copia di sicurezza (${c.etichetta})? Non si può annullare.")
-            .setNegativeButton("Annulla", null)
-            .setPositiveButton("Elimina") { _, _ ->
-                aviso(if (Repo.eliminaSnapshot(applicationContext, c.nome)) "Copia eliminata" else "Copia non eliminata")
-            }
-            .show()
-    }
-
-    private fun confermaRipristino(c: Repo.Snap) {
-        val quando = java.text.SimpleDateFormat("d MMMM yyyy HH:mm", Locale.ITALY).format(java.util.Date(c.quando))
-        OcBuilder(this)
-            .setTitle("Ripristina copia")
-            .setMessage(
-                "Ripristinare la copia del $quando (${c.etichetta})? I dati attuali vengono sostituiti; " +
-                    "ne resta una copia. I documenti (PDF e foto) non sono nelle copie e restano come sono."
-            )
+            .setTitle("Conferma ripristino")
+            .setMessage(msg)
             .setNegativeButton("Annulla", null)
             .setPositiveButton("Ripristina") { _, _ ->
                 thread {
                     try {
-                        val n = Repo.ripristinaSnapshot(applicationContext, c.nome)
+                        val n = when {
+                            snap -> Repo.ripristinaSnapshot(applicationContext, nomi[0])
+                            zip.isNotEmpty() -> Repo.ripristinaZipDocumenti(applicationContext, nomi[0])
+                            else -> Repo.ripristinaFile(applicationContext, nomi)
+                        }
                         runOnUiThread {
                             Repo.ricaricaDopoRipristino()
                             Avvisi.pianifica(applicationContext)
@@ -11847,6 +11879,28 @@ class MainActivity : AppCompatActivity() {
                         }
                     } catch (e: Exception) {
                         runOnUiThread { aviso("Ripristino non riuscito: " + e.message) }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun confermaEliminaSel(nomi: List<String>) {
+        if (nomi.isEmpty()) {
+            aviso("Seleziona almeno un file")
+            dialogCopie()
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Elimina backup")
+            .setMessage("Eliminare ${nomi.size} file di backup? Non si può annullare.")
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Elimina") { _, _ ->
+                thread {
+                    val n = nomi.count { Backup.elimina(applicationContext, it) }
+                    runOnUiThread {
+                        aviso("$n file eliminati")
+                        dialogCopie()
                     }
                 }
             }

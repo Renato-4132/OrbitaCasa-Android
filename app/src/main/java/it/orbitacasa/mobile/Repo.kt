@@ -1777,75 +1777,72 @@ object Repo {
             }
     }
 
-    private const val SNAP_MAX = 5
-
-    private fun cartellaSnap(ctx: Context): File = File(ctx.filesDir, "snapshots").also { it.mkdirs() }
-
-    private fun motivoSnap(nome: String): String = nome.removeSuffix(".zip").split('_').drop(3).joinToString("_")
-
-    fun creaSnapshot(ctx: Context, motivo: String): File? {
-        val tmp = File(cartellaSnap(ctx), "snapshot.tmp")
-        return try {
-            val fmt = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.ROOT)
-            val f = File(cartellaSnap(ctx), "snapshot_" + fmt.format(java.util.Date()) + "_" + motivo + ".zip")
-            var n = 0
-            ZipOutputStream(tmp.outputStream().buffered()).use { zip ->
-                for (name in FILES + SETT) {
-                    val src = File(dir, name)
-                    if (!src.isFile) continue
-                    zip.putNextEntry(ZipEntry("db/$name"))
-                    src.inputStream().use { it.copyTo(zip) }
-                    zip.closeEntry()
-                    n++
-                }
-            }
-            if (n == 0 || !tmp.renameTo(f)) {
-                tmp.delete()
-                return null
-            }
-            potaSnapshot(ctx, motivo)
-            f
+    fun creaSnapshot(ctx: Context, motivo: String): String? =
+        try {
+            Backup.esegui(ctx, dir, FILES + SETT, motivo != "sync")
         } catch (_: Exception) {
-            tmp.delete()
             null
         }
-    }
 
-    private fun potaSnapshot(ctx: Context, motivo: String) {
-        if (motivo == "manuale") return
-        try {
-            val tutti = cartellaSnap(ctx).listFiles { f -> f.name.endsWith(".zip") && motivoSnap(f.name) == motivo }
-                ?.sortedBy { it.name } ?: return
-            for (f in tutti.dropLast(SNAP_MAX)) f.delete()
-        } catch (_: Exception) {
-        }
-    }
-
-    fun elencaSnapshot(ctx: Context): List<Snap> {
-        val fmt = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.ROOT)
-        return cartellaSnap(ctx).listFiles { f -> f.name.endsWith(".zip") && f.name.startsWith("snapshot_") }
-            ?.sortedByDescending { it.name }
-            ?.map { f ->
-                val parti = f.name.split('_')
-                val quando = try {
-                    fmt.parse(parti[1] + "_" + parti[2])?.time ?: f.lastModified()
-                } catch (_: Exception) {
-                    f.lastModified()
-                }
-                Snap(f.name, quando, motivoSnap(f.name), f.length())
-            } ?: emptyList()
-    }
+    fun elencaSnapshot(ctx: Context): List<Snap> =
+        Backup.elenca(ctx)
+            .filter { it.nome.endsWith(Backup.SUFFISSO_SNAP) }
+            .sortedByDescending { it.modificato }
+            .map { Snap(it.nome, it.modificato, "copia", it.dimensione) }
 
     fun eliminaSnapshot(ctx: Context, nome: String): Boolean {
-        if (nome.contains('/') || nome.contains('\\') || !nome.startsWith("snapshot_")) return false
-        return File(cartellaSnap(ctx), nome).delete()
+        if (nome.contains('/') || nome.contains('\\') || !nome.endsWith(Backup.SUFFISSO_SNAP)) return false
+        return Backup.elimina(ctx, nome)
+    }
+
+    fun ripristinaFile(ctx: Context, nomi: List<String>): Int {
+        val validi = (FILES + SETT).toSet()
+        val letti = LinkedHashMap<String, ByteArray>()
+        for (nome in nomi) {
+            val originale = nome.split('-', limit = 4).getOrNull(3) ?: throw IllegalStateException("Nome non valido: $nome")
+            if (originale !in validi) throw IllegalStateException("«$originale» non è gestito")
+            val ingresso = Backup.apri(ctx, nome) ?: throw IllegalStateException("Copia non trovata: $nome")
+            val b = ingresso.use { it.readBytes() }
+            try {
+                JSONTokener(b.toString(Charsets.UTF_8)).nextValue()
+            } catch (ex: Exception) {
+                throw IllegalStateException("$originale non è valido: ${ex.message}")
+            }
+            letti[originale] = b
+        }
+        creaSnapshot(ctx, "ripristino")
+        for ((n, b) in letti) File(dir, n).writeBytes(b)
+        File(dir, "sync_stato.json").delete()
+        return letti.size
+    }
+
+    fun ripristinaZipDocumenti(ctx: Context, nome: String): Int {
+        val ingresso = Backup.apri(ctx, nome) ?: throw IllegalStateException("Copia non trovata")
+        val radice = dir.canonicalFile
+        val permessi = setOf("documenti", "documenti_personali", "documenti_archiviati.json")
+        var n = 0
+        ZipInputStream(ingresso.buffered()).use { zip ->
+            var e: ZipEntry? = zip.nextEntry
+            while (e != null) {
+                if (!e.isDirectory && e.name.substringBefore('/') in permessi) {
+                    val dest = File(radice, e.name).canonicalFile
+                    if (!dest.path.startsWith(radice.path + File.separator)) throw IllegalStateException("Percorso non valido nello zip")
+                    dest.parentFile?.mkdirs()
+                    dest.outputStream().use { zip.copyTo(it) }
+                    n++
+                }
+                zip.closeEntry()
+                e = zip.nextEntry
+            }
+        }
+        return n
     }
 
     fun ripristinaSnapshot(ctx: Context, nome: String): Int {
-        val f = File(cartellaSnap(ctx), nome)
-        if (!f.isFile || nome.contains('/') || nome.contains('\\')) throw IllegalStateException("Copia non trovata")
+        if (nome.contains('/') || nome.contains('\\')) throw IllegalStateException("Copia non trovata")
+        val ingresso = Backup.apri(ctx, nome) ?: throw IllegalStateException("Copia non trovata")
         val letti = LinkedHashMap<String, ByteArray>()
-        f.inputStream().buffered().use { raw ->
+        ingresso.buffered().use { raw ->
             ZipInputStream(raw).use { zip ->
                 var e: ZipEntry? = zip.nextEntry
                 while (e != null) {

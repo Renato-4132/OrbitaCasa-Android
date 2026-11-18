@@ -610,7 +610,7 @@ object Sync {
         val app = ctx.applicationContext
         prefs(app).edit().putLong("ultimo_tentativo", System.currentTimeMillis()).apply()
         Thread {
-            val snap = if (!Repo.demoAttiva && configurato(app)) Repo.creaSnapshot(app, "sync") else null
+            if (!Repo.demoAttiva && configurato(app)) Repo.creaSnapshot(app, "sync")
             val esito = try {
                 esegui(app)
             } catch (e: SyncErr) {
@@ -628,7 +628,6 @@ object Sync {
                 Esito(emptyList(), "Errore: ${e.message}", false)
             }
             inCorso = false
-            if (snap != null && esito.ok && !esito.modificato) snap.delete()
             if (esito.ok || esito.blocco.isNotEmpty()) {
                 prefs(app).edit().putString("blocco", esito.blocco).apply()
             }
