@@ -11812,6 +11812,11 @@ class MainActivity : AppCompatActivity() {
             lista.adapter = object : ArrayAdapter<String>(this@MainActivity, android.R.layout.simple_list_item_multiple_choice, testi) {
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                     val v = super.getView(position, convertView, parent)
+                    val lp = v.layoutParams
+                    if (lp != null) {
+                        lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                        v.layoutParams = lp
+                    }
                     (v as? android.widget.CheckedTextView)?.apply {
                         isSingleLine = false
                         maxLines = 4
@@ -11908,7 +11913,7 @@ class MainActivity : AppCompatActivity() {
         }
         val snap = zip.firstOrNull()?.endsWith(Backup.SUFFISSO_SNAP) == true
         val msg = when {
-            snap -> "Ripristinare lo snapshot «${nomi[0]}»? I dati attuali vengono sostituiti e ne resta una copia. I documenti non cambiano."
+            snap -> "Ripristinare lo snapshot «${nomi[0]}»? I dati attuali vengono sostituiti e ne resta una copia. I documenti dello snapshot tornano nelle cartelle dell'app, sovrascrivendo quelli con lo stesso nome."
             zip.isNotEmpty() -> "Ripristinare l'archivio «${nomi[0]}»? I file dei documenti tornano nelle cartelle dell'app, sovrascrivendo quelli con lo stesso nome."
             else -> "Ripristinare i ${nomi.size} file selezionati? I file attuali vengono sovrascritti."
         }

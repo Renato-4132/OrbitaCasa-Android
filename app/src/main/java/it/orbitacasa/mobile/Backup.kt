@@ -18,7 +18,7 @@ import java.util.zip.ZipOutputStream
  * Backup nella cartella pubblica Documenti/OrbitaCasa/backup/, sul modello di esegui_backup_zip.py del desktop.
  *
  *  - file singoli:  DD-MM-YYYY-<nome>.json            (stesso giorno = sovrascritto, ne restano 5 per file)
- *  - snapshot:      DD-MM-YYYY-snapshot_db.zip        (contiene db/..., stesso giorno = sovrascritto, ne restano 5)
+ *  - snapshot:      DD-MM-YYYY-snapshot_db.zip        (contiene db/ con JSON e documenti, come il desktop, stesso giorno = sovrascritto, ne restano 5)
  *  - documenti:     Archivio_Doc_Contabili-DDMMYYYY_HHMM.zip e Archivio_Doc_Personali_DDMMYYYY_HHMM.zip
  *                   (solo se qualcosa è cambiato dall'ultimo zip, ne restano 3 per tipo)
  */
@@ -219,14 +219,18 @@ object Backup {
     fun esegui(ctx: Context, dir: File, files: List<String>, conDocumenti: Boolean): String? {
         val tmpSnap = File(ctx.cacheDir, "backup_snap.tmp")
         val nomeSnap = oggi() + SUFFISSO_SNAP
-        try {
-            val n = comprimi(dir, files, emptyList(), "db/", tmpSnap)
-            if (n == 0) return null
-            if (!salva(ctx, nomeSnap, "application/zip", tmpSnap)) return null
-        } catch (_: Exception) {
-            return null
-        } finally {
-            tmpSnap.delete()
+        // Prima di una sync (conDocumenti = false) non si ricomprime tutto: se oggi c'è già uno snapshot, resta quello.
+        val salta = !conDocumenti && trova(ctx, nomeSnap) != null
+        if (!salta) {
+            try {
+                val n = comprimi(dir, files, listOf("documenti", "documenti_personali"), "db/", tmpSnap)
+                if (n == 0) return null
+                if (!salva(ctx, nomeSnap, "application/zip", tmpSnap)) return null
+            } catch (_: Exception) {
+                return null
+            } finally {
+                tmpSnap.delete()
+            }
         }
         pota(ctx, MAX_SNAP) { it.endsWith(SUFFISSO_SNAP) }
 

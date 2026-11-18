@@ -1816,16 +1816,16 @@ object Repo {
         return letti.size
     }
 
-    fun ripristinaZipDocumenti(ctx: Context, nome: String): Int {
-        val ingresso = Backup.apri(ctx, nome) ?: throw IllegalStateException("Copia non trovata")
+    private fun estraiDocumenti(ingresso: java.io.InputStream): Int {
         val radice = dir.canonicalFile
         val permessi = setOf("documenti", "documenti_personali", "documenti_archiviati.json")
         var n = 0
         ZipInputStream(ingresso.buffered()).use { zip ->
             var e: ZipEntry? = zip.nextEntry
             while (e != null) {
-                if (!e.isDirectory && e.name.substringBefore('/') in permessi) {
-                    val dest = File(radice, e.name).canonicalFile
+                val rel = e.name.replace('\\', '/').removePrefix("db/")
+                if (!e.isDirectory && rel.substringBefore('/') in permessi) {
+                    val dest = File(radice, rel).canonicalFile
                     if (!dest.path.startsWith(radice.path + File.separator)) throw IllegalStateException("Percorso non valido nello zip")
                     dest.parentFile?.mkdirs()
                     dest.outputStream().use { zip.copyTo(it) }
@@ -1836,6 +1836,11 @@ object Repo {
             }
         }
         return n
+    }
+
+    fun ripristinaZipDocumenti(ctx: Context, nome: String): Int {
+        val ingresso = Backup.apri(ctx, nome) ?: throw IllegalStateException("Copia non trovata")
+        return estraiDocumenti(ingresso)
     }
 
     fun ripristinaSnapshot(ctx: Context, nome: String): Int {
@@ -1865,7 +1870,12 @@ object Repo {
         for ((n, b) in letti) File(dir, n).writeBytes(b)
         for (n in FILES + SETT) if (n !in letti) File(dir, n).delete()
         File(dir, "sync_stato.json").delete()
-        return letti.size
+        val nDoc = try {
+            Backup.apri(ctx, nome)?.let { estraiDocumenti(it) } ?: 0
+        } catch (_: Exception) {
+            0
+        }
+        return letti.size + nDoc
     }
 
     fun ricaricaDopoRipristino() = ricaricaDopoScambio()
