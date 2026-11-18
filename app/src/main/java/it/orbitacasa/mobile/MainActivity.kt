@@ -1542,6 +1542,8 @@ class MainActivity : AppCompatActivity() {
         val barra = vista<LinearLayout>(R.id.barraAzioni)
         val b2 = vista<MaterialButton>(R.id.btnAddGen2)
         val b1 = vista<View>(R.id.btnAddGen)
+        b2.insetTop = 0
+        b2.insetBottom = 0
         barra.orientation = if (si) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
         (b2.layoutParams as LinearLayout.LayoutParams).let {
             it.width = if (si) 0 else ViewGroup.LayoutParams.MATCH_PARENT
@@ -1568,7 +1570,6 @@ class MainActivity : AppCompatActivity() {
             u("Saldo " + (if (saldo >= 0) "+" else "−") + euro(abs(saldo)))
     }
 
-    /** Titolo di sezione come in Previsione: barretta oro + titolo grande, e il suggerimento tra parentesi sotto. */
     private fun sezione(cont: LinearLayout, testo: String) {
         val nl = testo.indexOf('\n')
         if (nl > 0) {
@@ -1583,10 +1584,14 @@ class MainActivity : AppCompatActivity() {
                 return
             }
         }
+        val punto = testo.indexOf(" · ")
+        if (punto > 0 && testo.length > 30) {
+            sezioneForte(cont, testo.substring(0, punto), testo.substring(punto + 3))
+            return
+        }
         sezioneForte(cont, testo)
     }
 
-    /** Titolo piccolo grigio, per i dialoghi. */
     private fun sezionePiccola(cont: LinearLayout, testo: String) {
         val t = TextView(this)
         t.text = testo
@@ -1614,7 +1619,7 @@ class MainActivity : AppCompatActivity() {
         t.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
         t.textSize = 16f
         t.setTypeface(null, Typeface.BOLD)
-        t.setPadding((10 * dp).toInt(), 0, 0, 0)
+        t.setPadding((8 * dp).toInt(), 0, 0, 0)
         riga.addView(barra)
         riga.addView(t)
         col.addView(riga)
@@ -1623,17 +1628,18 @@ class MainActivity : AppCompatActivity() {
             s.text = sotto
             s.textSize = 11f
             s.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
-            s.setPadding((14 * dp).toInt(), (2 * dp).toInt(), 0, 0)
+            s.setPadding((12 * dp).toInt(), (2 * dp).toInt(), 0, 0)
             col.addView(s)
         }
         cont.addView(col)
     }
 
     private fun vuoto(cont: LinearLayout, testo: String) {
+        val dp = resources.displayMetrics.density
         val t = TextView(this)
         t.text = testo
         t.setTextColor(ContextCompat.getColor(this, R.color.oc_text_mid))
-        t.setPadding(8, 8, 8, 8)
+        t.setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
         cont.addView(t)
     }
 
@@ -2021,6 +2027,7 @@ class MainActivity : AppCompatActivity() {
         val n = r.childCount
         for (i in 0 until n) {
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            (r.getChildAt(i).layoutParams as? LinearLayout.LayoutParams)?.let { lp.topMargin = it.topMargin; lp.bottomMargin = it.bottomMargin }
             if (i < n - 1) lp.marginEnd = (8 * resources.displayMetrics.density).toInt()
             r.getChildAt(i).layoutParams = lp
         }
@@ -2062,7 +2069,8 @@ class MainActivity : AppCompatActivity() {
         t.textSize = size
         t.setTextColor(colore ?: ContextCompat.getColor(this, R.color.oc_text))
         if (grassetto) t.setTypeface(null, Typeface.BOLD)
-        t.setPadding(8, 8, 8, 8)
+        val dp = resources.displayMetrics.density
+        t.setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
         cont.addView(t)
     }
 
@@ -2070,7 +2078,7 @@ class MainActivity : AppCompatActivity() {
         val dp = resources.displayMetrics.density
         val r = LinearLayout(this)
         r.orientation = LinearLayout.VERTICAL
-        r.setPadding(8, 6, 8, 6)
+        r.setPadding(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
         val t = TextView(this)
         t.text = "$etichetta  ·  $testo"
         t.textSize = 13f
@@ -2540,12 +2548,12 @@ class MainActivity : AppCompatActivity() {
         val totE = elenco.sumOf { it.second.e }
         val totN = elenco.sumOf { it.second.n }
         val nome = if (anCat == AN_TUTTE) "tutte le categorie" else anCat
-        sezione(cont, "DISTRIBUZIONE PER " + anDist.uppercase() + "\n" + nome.uppercase())
+        sezione(cont, "DISTRIBUZIONE\n" + anDist.uppercase() + " · " + nome.uppercase())
         if (totN == 0) {
             anTesto(cont, "Nessun movimento nel periodo.", colore = medio)
             return
         }
-        anGrafico(cont, elenco.map { it.first.take(5) }, elenco.map { it.second.e }, elenco.map { it.second.u }, verde, rosso) { i ->
+        anGrafico(cont, elenco.map { it.first.take(if (anDist == AN_MODI_DIST[0]) 3 else 5) }, elenco.map { it.second.e }, elenco.map { it.second.u }, verde, rosso) { i ->
             val (nm, g) = elenco[i]
             nm + "\nMovimenti " + g.n + " · Entrate " + euro(g.e) + " · Uscite " + euro(g.u) +
                 (if (totU > 0 && g.u > 0) "\n" + anPct(g.u / totU * 100) + " delle uscite" else "")
@@ -4924,7 +4932,7 @@ class MainActivity : AppCompatActivity() {
                 poolErrore = null
                 Pool.salva(this, j)
             } else {
-                poolErrore = err ?: "PC non raggiungibile"
+                poolErrore = err ?: "Desktop non raggiungibile"
             }
             if (pagina == Pagina.POOL) renderPool()
         }
@@ -4953,24 +4961,27 @@ class MainActivity : AppCompatActivity() {
             val v = TextView(this)
             v.text = t
             v.setTextColor(col)
-            v.setPadding(8, 8, 8, 12)
+            val dpt = resources.displayMetrics.density
+            v.setPadding(0, (6 * dpt).toInt(), 0, (6 * dpt).toInt())
             cont.addView(v)
         }
         val d = poolDati
         if (poolInCorso) {
             testo("Comunicazione con OrbitaCasa desktop…", medio)
         } else if (poolErrore != null) {
-            testo("Sincronizza OrbitaCasa desktop per usare il CommunityPool\n" + poolErrore, arancio)
+            val errPool = poolErrore ?: ""
+            val msgPool = if (errPool.startsWith("Desktop non raggiungibile")) "🔴 Desktop offline · non raggiungibile" else errPool
+            testo("Sincronizza OrbitaCasa desktop per usare il CommunityPool\n" + msgPool, arancio)
         }
         if (d == null) return
         if (!d.optBoolean("attivo", true)) {
-            vuoto(cont, d.optString("messaggio").ifBlank { "CommunityPool non attivo sul PC." })
+            vuoto(cont, d.optString("messaggio").ifBlank { "CommunityPool non attivo su Desktop." })
             return
         }
         val attivo = !poolInCorso && poolErrore == null
         val quando = if (poolOra > 0) java.text.SimpleDateFormat("dd-MM HH:mm", Locale.ITALY).format(java.util.Date(poolOra)) else "--"
         testo(
-            "Profilo sul PC: " + d.optString("me") + " · aggiornato " + quando + if (attivo) "" else " (sola lettura)",
+            "Profilo su Desktop: " + d.optString("me") + " · aggiornato " + quando + if (attivo) "" else " (sola lettura)",
             medio
         )
         when (poolVista) {
@@ -11716,7 +11727,7 @@ class MainActivity : AppCompatActivity() {
                 tvProf.text = ""
                 return
             }
-            tvPc.text = "⚪ Controllo del PC..."
+            tvPc.text = "⚪ Controllo Desktop..."
             tvProf.text = if (Sync.profilo(this).isNotBlank()) "Profilo collegato: ${Sync.profilo(this)}" else ""
             Sync.controlla(this) { c ->
                 if (isFinishing || isDestroyed) return@controlla
@@ -11742,15 +11753,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 tvProf.text = righe.joinToString("\n")
                 if (c.segui.isNotBlank()) {
-                    btnRicollega.text = "➡ Segui il PC su «${c.segui}»"
+                    btnRicollega.text = "➡ Segui Desktop su «${c.segui}»"
                     btnRicollega.visibility = View.VISIBLE
                     btnRicollega.setOnClickListener {
                         OcBuilder(this)
-                            .setTitle("Segui il PC su «${c.segui}»")
+                            .setTitle("Segui Desktop su «${c.segui}»")
                             .setMessage(
-                                "Il PC ora usa il profilo «${c.segui}». I dati del profilo «$coll» restano " +
+                                "Desktop ora usa il profilo «${c.segui}». I dati del profilo «$coll» restano " +
                                     "salvati sul telefono. Il telefono passa ai dati di «${c.segui}» " +
-                                    "(se non ne ha, si scaricano dal PC)."
+                                    "(se non ne ha, si scaricano da Desktop)."
                             )
                             .setNegativeButton("Annulla", null)
                             .setPositiveButton("Segui") { _, _ ->
@@ -11779,7 +11790,7 @@ class MainActivity : AppCompatActivity() {
                         .setMessage(
                             "I dati attuali del telefono (profilo «$coll») restano salvati sul telefono e " +
                                 "li ritrovi quando torni a quel profilo. Ora il telefono passa ai dati del " +
-                                "profilo «${c.profiloPc}» (se non ne ha, si scaricano dal PC)."
+                                "profilo «${c.profiloPc}» (se non ne ha, si scaricano da Desktop)."
                         )
                         .setNegativeButton("Annulla", null)
                         .setPositiveButton("Ricollega") { _, _ ->
@@ -11803,7 +11814,7 @@ class MainActivity : AppCompatActivity() {
         btnCambia.visibility = if (Sync.configurato(this)) View.VISIBLE else View.GONE
         corpo.addView(btnCambia)
         btnCambia.setOnClickListener {
-            aviso("Leggo i profili del PC...")
+            aviso("Leggo i profili di Desktop...")
             Sync.elencoProfili(this) { el, err ->
                 if (isFinishing || isDestroyed) return@elencoProfili
                 if (el == null) {
@@ -11820,7 +11831,7 @@ class MainActivity : AppCompatActivity() {
                         val p = el.profili[k]
                         when {
                             p.nome == el.attivo -> aviso("Questo profilo è già attivo")
-                            !p.server -> aviso("Nel profilo «${p.nome}» il Web Server è spento: attivalo prima dal PC")
+                            !p.server -> aviso("Nel profilo «${p.nome}» il Web Server è spento: attivalo prima da Desktop")
                             !p.ssl -> aviso("Nel profilo «${p.nome}» l'HTTPS è disattivato: serve per il telefono")
                             else -> confermaCambioProfilo(p.nome, el.attivo, p.password)
                         }
@@ -11897,7 +11908,7 @@ class MainActivity : AppCompatActivity() {
             if (ult > 0) "Ultima sincronizzazione: " +
                 java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY).format(java.util.Date(ult))
             else "Mai sincronizzato"
-            ) + if (Sync.improntaFissata(this).isNotEmpty()) "\nCertificato del PC memorizzato" else ""
+            ) + if (Sync.improntaFissata(this).isNotEmpty()) "\nCertificato di Desktop memorizzato" else ""
         stato.setPadding(4, 8, 4, 4)
         corpo.addView(stato)
 
@@ -11937,7 +11948,7 @@ class MainActivity : AppCompatActivity() {
             box.addView(et)
             OcBuilder(this)
                 .setTitle("Profilo protetto")
-                .setMessage("Per passare a «$nome» serve la sua password (la stessa che usi sul PC). OrbitaCasa sul PC si riavvia con quel profilo e il telefono passa ai suoi dati.")
+                .setMessage("Per passare a «$nome» serve la sua password (la stessa che usi su Desktop). OrbitaCasa Desktop si riavvia con quel profilo e il telefono passa ai suoi dati.")
                 .setView(box)
                 .setNegativeButton("Annulla", null)
                 .setPositiveButton("Continua") { _, _ ->
@@ -11955,8 +11966,8 @@ class MainActivity : AppCompatActivity() {
         OcBuilder(this)
             .setTitle("Passare a «$nome»?")
             .setMessage(
-                "OrbitaCasa sul PC salva i dati e si riavvia con il profilo «$nome» (ci vuole qualche decina di secondi). " +
-                    "Il telefono mette da parte i dati attuali e usa quelli di «$nome»; se non ne ha, li scarica dal PC. " +
+                "OrbitaCasa Desktop salva i dati e si riavvia con il profilo «$nome» (ci vuole qualche decina di secondi). " +
+                    "Il telefono mette da parte i dati attuali e usa quelli di «$nome»; se non ne ha, li scarica da Desktop. " +
                     "Non chiudere l'app finché non finisce."
             )
             .setNegativeButton("Annulla", null)
@@ -11967,7 +11978,7 @@ class MainActivity : AppCompatActivity() {
     private fun eseguiCambioProfilo(nome: String, attivoPc: String, password: String) {
         val dlg = OcBuilder(this)
             .setTitle("Cambio profilo")
-            .setMessage("Richiesta al PC...")
+            .setMessage("Richiesta a Desktop...")
             .setCancelable(false)
             .show()
         Sync.cambiaProfilo(this, nome, attivoPc, password, { t ->
@@ -12031,7 +12042,7 @@ class MainActivity : AppCompatActivity() {
     private fun avviaSync(indirizzo: String, token: String, auto: Boolean) {
         val u = Sync.normalizzaUrl(indirizzo)
         if (u == null) {
-            aviso("Indirizzo non valido: serve https:// e l'indirizzo del PC")
+            aviso("Indirizzo non valido: serve https:// e l'indirizzo di Desktop")
             return
         }
         if (token.isBlank()) {
@@ -12040,13 +12051,13 @@ class MainActivity : AppCompatActivity() {
         }
         Sync.salva(this, u, token, auto)
         if (Sync.improntaFissata(this).isEmpty()) {
-            aviso("Controllo il certificato del PC...")
+            aviso("Controllo il certificato di Desktop...")
             thread {
                 try {
                     val imp = Sync.leggiImpronta(u)
                     runOnUiThread { if (!isFinishing && !isDestroyed) chiediFiducia(imp) }
                 } catch (e: Exception) {
-                    runOnUiThread { aviso("PC non raggiungibile: " + e.message) }
+                    runOnUiThread { aviso("Desktop non raggiungibile: " + e.message) }
                 }
             }
             return
@@ -12056,10 +12067,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun chiediFiducia(impronta: String) {
         OcBuilder(this)
-            .setTitle("Certificato del PC")
+            .setTitle("Certificato di Desktop")
             .setMessage(
                 "Impronta SHA-256:\n" + Sync.formatta(impronta) + "\n\n" +
-                    "È il certificato autofirmato di OrbitaCasa sul tuo PC? Se ti fidi lo ricordo " +
+                    "È il certificato autofirmato di OrbitaCasa sul tuo Desktop? Se ti fidi lo ricordo " +
                     "e da ora accetto solo questo: se cambia, la sincronizzazione si ferma."
             )
             .setNegativeButton("Annulla", null)
@@ -12083,8 +12094,8 @@ class MainActivity : AppCompatActivity() {
             }
             if (e.modificato || !auto) refresh()
             if (auto) {
-                if (e.ok && e.righe.firstOrNull() != "Tutto già allineato") aviso("Sync PC: " + e.righe.first())
-                else if (!e.ok && e.blocco.isNotEmpty()) aviso("Sync PC fermata: " + (e.errore ?: ""))
+                if (e.ok && e.righe.firstOrNull() != "Tutto già allineato") aviso("Sync Desktop: " + e.righe.first())
+                else if (!e.ok && e.blocco.isNotEmpty()) aviso("Sync Desktop fermata: " + (e.errore ?: ""))
             } else {
                 OcBuilder(this)
                     .setTitle(if (e.ok) "✅ Sync con OrbitaCasa Desktop" else "Sync non riuscita")
@@ -12343,7 +12354,7 @@ class MainActivity : AppCompatActivity() {
                 sel.joinToString("\n") { "• " + it.nome } + "\n\n" +
                     "I dati scelti vengono cancellati dal telefono; ne resta una copia in Copie di sicurezza." +
                     (if (filePdf) " I file dei documenti (PDF e foto) non sono nelle copie e non si recuperano." else "") +
-                    " Se usi la Sync, il PC potrebbe rimandare i dati azzerati."
+                    " Se usi la Sync, Desktop potrebbe rimandare i dati azzerati."
             )
             .setNegativeButton("Annulla", null)
             .setPositiveButton("Azzera") { _, _ ->

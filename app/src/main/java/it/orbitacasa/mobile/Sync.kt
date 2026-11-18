@@ -217,9 +217,9 @@ object Sync {
                 if (!configurato(app)) throw SyncErr("Sincronizzazione non configurata")
                 profiloSalvato = profilo(app)
                 val r = Http(indirizzo(app), gettone(app), improntaFissata(app)).get("/api/sync/profili")
-                if (r.codice == 404) throw SyncErr("Il PC non supporta il cambio profilo: aggiorna OrbitaCasa sul PC")
+                if (r.codice == 404) throw SyncErr("Desktop non supporta il cambio profilo: aggiorna OrbitaCasa Desktop")
                 verifica(r, "elenco profili")
-                val arr = r.json?.optJSONArray("profili") ?: throw SyncErr("Risposta non valida dal PC")
+                val arr = r.json?.optJSONArray("profili") ?: throw SyncErr("Risposta non valida da Desktop")
                 val l = ArrayList<ProfiloPc>()
                 for (i in 0 until arr.length()) {
                     val o = arr.optJSONObject(i) ?: continue
@@ -229,7 +229,7 @@ object Sync {
             } catch (e: SyncErr) {
                 err = e.message
             } catch (e: Exception) {
-                err = "PC non raggiungibile: ${e.message}"
+                err = "Desktop non raggiungibile: ${e.message}"
             }
             main.post { fine(el, err) }
         }.start()
@@ -248,12 +248,12 @@ object Sync {
                 if (!configurato(app)) throw SyncErr("Sincronizzazione non configurata")
                 profiloSalvato = profilo(app)
                 val http = Http(indirizzo(app), gettone(app), improntaFissata(app))
-                main.post { avanzamento("Richiesta al PC...") }
+                main.post { avanzamento("Richiesta a Desktop...") }
                 val r = http.post("/api/sync/cambia_profilo", JSONObject().put("nome", nome).put("password", password))
                 verifica(r, "cambio profilo")
                 val token = r.json?.optString("token").orEmpty()
                 val porta = r.json?.optInt("porta", 0) ?: 0
-                if (token.isBlank() || porta <= 0) throw SyncErr("Risposta del PC non valida")
+                if (token.isBlank() || porta <= 0) throw SyncErr("Risposta di Desktop non valida")
                 val u = URL(indirizzo(app))
                 val nuovoUrl = "https://" + u.host + ":" + porta
                 val vecchio = profilo(app).ifBlank { attivoPc.ifBlank { "Principale" } }
@@ -266,7 +266,7 @@ object Sync {
                     .putString("blocco", "")
                     .apply()
                 salvaCred(app, nome, nuovoUrl, token)
-                main.post { avanzamento("OrbitaCasa sul PC si sta riavviando...") }
+                main.post { avanzamento("OrbitaCasa Desktop si sta riavviando...") }
                 val nuovo = Http(nuovoUrl, token, improntaFissata(app))
                 var ok = false
                 val fineAttesa = System.currentTimeMillis() + 60_000L
@@ -282,8 +282,8 @@ object Sync {
                     }
                 }
                 if (!ok) {
-                    err = "OrbitaCasa sul PC non ha ancora riavviato il profilo «$nome». Il telefono è già passato a «$nome»: " +
-                        "aspetta che OrbitaCasa sia pronta sul PC e poi sincronizza."
+                    err = "OrbitaCasa Desktop non ha ancora riavviato il profilo «$nome». Il telefono è già passato a «$nome»: " +
+                        "aspetta che OrbitaCasa sia pronta su Desktop e poi sincronizza."
                 }
             } catch (e: SyncErr) {
                 err = e.message
@@ -307,7 +307,7 @@ object Sync {
                         val alt = cercaAlternativa(app)
                         Controllo(
                             true, false, "",
-                            if (alt != null) "Il PC è passato al profilo «${alt.nome}»"
+                            if (alt != null) "Desktop è passato al profilo «${alt.nome}»"
                             else "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}",
                             alt?.nome.orEmpty()
                         )
@@ -319,23 +319,23 @@ object Sync {
                                 val alt = cercaAlternativa(app)
                                 Controllo(
                                     true, false, "",
-                                    if (alt != null) "Il PC è passato al profilo «${alt.nome}»"
+                                    if (alt != null) "Desktop è passato al profilo «${alt.nome}»"
                                     else "Token non valido per il profilo ${profilo(app).ifBlank { "?" }}",
                                     alt?.nome.orEmpty()
                                 )
                             }
-                            rs.codice == 429 -> Controllo(true, false, "", "PC raggiungibile ma ti ha bloccato per 10 minuti")
-                            rs.codice !in 200..299 -> Controllo(true, false, "", "Il PC ha risposto con errore HTTP ${rs.codice}")
+                            rs.codice == 429 -> Controllo(true, false, "", "Desktop raggiungibile ma ti ha bloccato per 10 minuti")
+                            rs.codice !in 200..299 -> Controllo(true, false, "", "Desktop ha risposto con errore HTTP ${rs.codice}")
                             else -> {
                                 val pp = rs.json?.optString("profilo").orEmpty()
                                 salvaCred(app, pp, indirizzo(app), gettone(app))
-                                Controllo(true, true, pp, "PC online")
+                                Controllo(true, true, pp, "Desktop online")
                             }
                         }
                     }
                 }
             } catch (e: SSLException) {
-                Controllo(false, false, "", "Certificato del PC cambiato o non valido")
+                Controllo(false, false, "", "Certificato di Desktop cambiato o non valido")
             } catch (e: Exception) {
                 Controllo(false, false, "", "non raggiungibile")
             }
@@ -426,7 +426,7 @@ object Sync {
         } finally {
             cn.disconnect()
         }
-        val cert = trovato ?: throw IOException("Il PC non ha presentato nessun certificato")
+        val cert = trovato ?: throw IOException("Desktop non ha presentato nessun certificato")
         return sySha256(cert.encoded)
     }
 
@@ -441,7 +441,7 @@ object Sync {
 
                 override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
                     if (chain.isEmpty() || sySha256(chain[0].encoded) != impronta) {
-                        throw CertificateException("Il certificato del PC è cambiato")
+                        throw CertificateException("Il certificato di Desktop è cambiato")
                     }
                 }
 
@@ -524,17 +524,17 @@ object Sync {
                 if (!configurato(app)) throw SyncErr("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
                 profiloSalvato = profilo(app)
                 val r = Http(indirizzo(app), gettone(app), improntaFissata(app)).get("/api/sync/pool" + if (primo) "?primo=1" else "")
-                if (r.codice == 404 && r.json == null) throw SyncErr("Aggiorna OrbitaCasa sul PC per usare il CommunityPool")
+                if (r.codice == 404 && r.json == null) throw SyncErr("Aggiorna OrbitaCasa Desktop per usare il CommunityPool")
                 verifica(r, "CommunityPool")
-                val risposta = r.json ?: throw SyncErr("Risposta non valida dal PC")
+                val risposta = r.json ?: throw SyncErr("Risposta non valida da Desktop")
                 if (!risposta.optBoolean("ok", true)) {
-                    throw SyncErr(risposta.optString("errore").ifBlank { "CommunityPool non leggibile sul PC" })
+                    throw SyncErr(risposta.optString("errore").ifBlank { "CommunityPool non leggibile su Desktop" })
                 }
                 j = risposta
             } catch (e: SyncErr) {
                 err = e.message
             } catch (e: Exception) {
-                err = "PC non raggiungibile: ${e.message}"
+                err = "Desktop non raggiungibile: ${e.message}"
             }
             main.post { fine(j, err) }
         }.start()
@@ -548,7 +548,7 @@ object Sync {
                 if (!configurato(app)) throw SyncErr("Sincronizza OrbitaCasa desktop per usare il CommunityPool")
                 profiloSalvato = profilo(app)
                 val r = Http(indirizzo(app), gettone(app), improntaFissata(app)).post("/api/sync/pool/azione", corpo)
-                if (r.codice == 404 && r.json == null) throw SyncErr("Aggiorna OrbitaCasa sul PC per usare il CommunityPool")
+                if (r.codice == 404 && r.json == null) throw SyncErr("Aggiorna OrbitaCasa Desktop per usare il CommunityPool")
                 verifica(r, "CommunityPool")
                 if (r.json?.optBoolean("ok") != true) {
                     throw SyncErr(r.json?.optString("errore").orEmpty().ifBlank { "Operazione non riuscita" })
@@ -556,7 +556,7 @@ object Sync {
             } catch (e: SyncErr) {
                 err = e.message
             } catch (e: Exception) {
-                err = "PC non raggiungibile: ${e.message}"
+                err = "Desktop non raggiungibile: ${e.message}"
             }
             main.post { fine(err) }
         }.start()
@@ -566,12 +566,12 @@ object Sync {
         when {
             r.codice == 401 -> throw SyncErr(
                 "Token non valido per il profilo ${profiloSalvato.ifBlank { "collegato" }}. " +
-                    "Il PC potrebbe aver cambiato profilo: controllalo e reinserisci il token " +
-                    "(Configurazione sul PC).",
+                    "Desktop potrebbe aver cambiato profilo: controllalo e reinserisci il token " +
+                    "(Configurazione di Desktop).",
                 "token"
             )
-            r.codice == 403 -> throw SyncErr(r.json?.optString("errore").orEmpty().ifBlank { "Operazione non consentita dal PC" })
-            r.codice == 429 -> throw SyncErr("Troppi tentativi errati: il PC ti ha bloccato per 10 minuti", "token")
+            r.codice == 403 -> throw SyncErr(r.json?.optString("errore").orEmpty().ifBlank { "Operazione non consentita da Desktop" })
+            r.codice == 429 -> throw SyncErr("Troppi tentativi errati: Desktop ti ha bloccato per 10 minuti", "token")
             r.codice == 404 && r.json == null -> throw SyncErr("Accesso da app disattivato in OrbitaCasa Desktop (Configurazione > Rete)")
             r.codice !in 200..299 -> {
                 val msg = r.json?.optString("errore").orEmpty().ifBlank { "errore HTTP ${r.codice}" }
@@ -665,12 +665,12 @@ object Sync {
             } catch (e: SSLException) {
                 Esito(
                     emptyList(),
-                    "Connessione sicura non riuscita (certificato del PC cambiato?). " +
+                    "Connessione sicura non riuscita (certificato di Desktop cambiato?). " +
                         "Scollega e ricollega la sincronizzazione. (${e.message})",
                     false
                 )
             } catch (e: IOException) {
-                Esito(emptyList(), "PC non raggiungibile: ${e.message}", false)
+                Esito(emptyList(), "Desktop non raggiungibile: ${e.message}", false)
             } catch (e: Exception) {
                 Esito(emptyList(), "Errore: ${e.message}", false)
             }
@@ -692,16 +692,16 @@ object Sync {
             val alt = cercaAlternativa(app)
             if (alt != null) {
                 throw SyncErr(
-                    "Il PC è passato al profilo «${alt.nome}» (il telefono era collegato a «${profilo(app).ifBlank { "?" }}»). " +
-                        "Apri Sync e tocca «Segui il PC su ${alt.nome}» per passare ai suoi dati.",
+                    "Desktop è passato al profilo «${alt.nome}» (il telefono era collegato a «${profilo(app).ifBlank { "?" }}»). " +
+                        "Apri Sync e tocca «Segui Desktop su ${alt.nome}» per passare ai suoi dati.",
                     "token"
                 )
             }
         }
         verifica(s, "stato")
-        if (s.json?.optBoolean("ok") != true) throw SyncErr("Il PC non ha risposto correttamente")
+        if (s.json?.optBoolean("ok") != true) throw SyncErr("Desktop non ha risposto correttamente")
         if ((s.json?.optInt("proto", 0) ?: 0) != PROTO) {
-            throw SyncErr("Versione della sincronizzazione sul PC non compatibile: aggiorna OrbitaCasa sul PC")
+            throw SyncErr("Versione della sincronizzazione su Desktop non compatibile: aggiorna OrbitaCasa Desktop")
         }
         val profiloPc = s.json?.optString("profilo").orEmpty()
         if (profiloPc.isNotBlank()) {
@@ -711,9 +711,9 @@ object Sync {
                 prefs(app).edit().putString("profilo", profiloPc).apply()
             } else if (salvato != profiloPc) {
                 throw SyncErr(
-                    "Il PC ora usa il profilo «$profiloPc», il telefono era collegato a «$salvato». " +
+                    "Desktop ora usa il profilo «$profiloPc», il telefono era collegato a «$salvato». " +
                         "Sincronizzazione fermata per non mischiare i dati. Rimetti il profilo «$salvato» " +
-                        "sul PC, oppure apri Sync e tocca «Ricollega a questo profilo».",
+                        "su Desktop, oppure apri Sync e tocca «Ricollega a questo profilo».",
                     "profilo"
                 )
             }
@@ -743,21 +743,21 @@ object Sync {
         val r = ArrayList<String>()
         if (c.n("voci_giu") + c.n("voci_su") + c.n("voci_del_pc") + c.n("voci_del_tel") > 0) {
             r.add(
-                "Movimenti: ${c.n("voci_giu")} dal PC, ${c.n("voci_su")} al PC, " +
+                "Movimenti: ${c.n("voci_giu")} da Desktop, ${c.n("voci_su")} a Desktop, " +
                     "${c.n("voci_del_pc") + c.n("voci_del_tel")} eliminati"
             )
         }
         if (c.n("blocchi_giu") + c.n("blocchi_su") > 0) {
-            r.add("Impostazioni e categorie: ${c.n("blocchi_giu")} dal PC, ${c.n("blocchi_su")} al PC")
+            r.add("Impostazioni e categorie: ${c.n("blocchi_giu")} da Desktop, ${c.n("blocchi_su")} a Desktop")
         }
         if (c.n("file_giu") + c.n("file_su") > 0) {
-            r.add("Archivi: ${c.n("file_giu")} dal PC, ${c.n("file_su")} al PC")
+            r.add("Archivi: ${c.n("file_giu")} da Desktop, ${c.n("file_su")} a Desktop")
         }
         if (c.n("doc_giu") + c.n("doc_su") > 0) {
-            r.add("Documenti: ${c.n("doc_giu")} dal PC, ${c.n("doc_su")} al PC")
+            r.add("Documenti: ${c.n("doc_giu")} da Desktop, ${c.n("doc_su")} a Desktop")
         }
         if (c.n("conflitti") > 0) {
-            r.add("Conflitti: ${c.n("conflitti")} (ha vinto il PC, la copia del telefono è in sync_backup)")
+            r.add("Conflitti: ${c.n("conflitti")} (ha vinto Desktop, la copia del telefono è in sync_backup)")
         }
         if (c.n("saltati") > 0) {
             r.add("${c.n("saltati")} elementi modificati durante la sincronizzazione: riprova")
@@ -989,7 +989,7 @@ object Sync {
                         }
                         else -> {
                             val msg = rr.json?.optString("errore").orEmpty().ifBlank { "HTTP ${rr.codice}" }
-                            c.righe.add("$nome non accettato dal PC: $msg")
+                            c.righe.add("$nome non accettato da Desktop: $msg")
                         }
                     }
                 }
@@ -1182,7 +1182,7 @@ object Sync {
                             c.conflitti++
                         }
                         motivo == "conflitto" || motivo == "eliminata" -> c.conflitti++
-                        else -> c.righe.add("Movimento non accettato dal PC: $motivo")
+                        else -> c.righe.add("Movimento non accettato da Desktop: $motivo")
                     }
                 }
             }
