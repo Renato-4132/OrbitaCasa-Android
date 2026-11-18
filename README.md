@@ -48,12 +48,12 @@
 
 **🟢 Analisi e controllo**
 
-* **Grafici** — Andamento di entrate e uscite
+* **Grafici** — Andamento di entrate, uscite e saldo, spese per categoria e tabella per mese o per anno, anche per singolo conto, con l'opzione per includere i movimenti futuri
 * **Checkout** — Ti segnala le categorie in cui spendi di solito (almeno 4 volte negli ultimi 12 mesi) ma che questo mese non hai ancora registrato, con avviso di fine mese
 * **Previsione** — Fine mese e fine anno: per categoria speso, speso fino a oggi, previsione e budget
 * **Analisi Categorie** — Dettaglio, aggregazione, Time Machine, trend, budget superato e target
 * **Estratti** — Importa estratti conto e carte e li confronta con i movimenti, per metodo e per conto
-* **Chiedi al Database** — Domande in linguaggio naturale sui tuoi dati con Gemini (opzionale)
+* **Chiedi al Database** — Domande in linguaggio naturale sui tuoi dati con Gemini (opzionale). Puoi allegare fino a 4 PDF o foto, anche dall'archivio documenti dell'app, ad esempio due bollette da confrontare
 * **Barra 50/30/20 e target** — Nella scheda del mese della Home: ripartizione delle entrate e target di spesa di mese e anno
 
 **🔵 Finanze**
@@ -83,6 +83,8 @@
 **🟣 Strumenti**
 
 * **Importa / Esporta** — Zip di OrbitaCasa in entrambe le direzioni, con copia di sicurezza prima di sostituire i dati
+* **Copie di sicurezza** — Snapshot dei dati salvati prima di ogni import, sync, ripristino e azzeramento, più la copia manuale. Le ultime 5 per tipo si ripristinano con un tocco; i file dei documenti (PDF e foto) non sono inclusi
+* **Azzera dati** — Cancella solo gli ambiti che scegli (movimenti, conti, documenti, dieta, MyBusiness…) senza toccare il resto, con copia di sicurezza prima
 * **Sync PC** — Sincronizzazione diretta con OrbitaCasa desktop
 * **Scansiona PDF** — Scanner di documenti con la fotocamera: più pagine in un solo PDF da condividere o salvare
 * **Estrazione dati con Gemini (opzionale)** — Leggi un documento PDF o una foto e l'app compila i campi per te
@@ -121,7 +123,7 @@ Da **Home → Strumenti → 🔗 Sync PC** colleghi il telefono a OrbitaCasa acc
 
 * Connessione solo **HTTPS**, con il **certificato del PC fissato** al primo collegamento: se cambia, l'app si ferma e ti chiede di ricollegare.
 * Se lo stesso dato cambia su entrambi i lati, **vince il PC**; la copia del telefono resta in una cartella di sicurezza.
-* A ogni sincronizzazione l'app fa prima una copia di sicurezza dei dati.
+* Prima di ogni sincronizzazione che modifica i dati l'app salva una copia di sicurezza, ripristinabile da **Strumenti → Copie di sicurezza**.
 * **Scollega** cancella la configurazione e lo stato di sincronizzazione, non i tuoi dati.
 * Non è disponibile in modalità demo.
 

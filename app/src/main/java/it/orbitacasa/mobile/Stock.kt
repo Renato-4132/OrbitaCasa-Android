@@ -408,8 +408,6 @@ object Stock {
         return salva(dati)
     }
 
-    // categoria: null = non cambiare, "" = nessuna categoria. min/max: null = non cambiare (max 0 = nessun massimo).
-    // Controlla tutti gli articoli prima di scrivere: o cambiano tutti o nessuno.
     fun modificaMultipla(ids: Set<String>, categoria: String?, min: Double?, max: Double?): String? {
         if (ids.isEmpty()) return "Nessun articolo selezionato."
         if (categoria == null && min == null && max == null) return "Scegli almeno un campo da cambiare."

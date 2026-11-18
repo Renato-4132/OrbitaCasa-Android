@@ -1438,10 +1438,6 @@ object Repo {
         savePf()
     }
 
-    // ---- Risparmio automatico: stesso algoritmo del desktop (moduli/risparmio_auto.py) ----
-    // Ogni uscita di una categoria con classe Risparmio e un conto risparmio assegnato diventa un trasferimento
-    // (auto_risparmio + id_spesa); il conto della spesa passa al trasferimento. Si esegue a ogni salvataggio
-    // e all'avvio; se non c'è niente da cambiare non scrive nulla.
     private class EsitoRisp(var db: Boolean = false, var pf: Boolean = false)
 
     private var inRisparmio = false
@@ -1549,8 +1545,6 @@ object Repo {
             }
         }
 
-        // Trasferimenti rimasti senza la loro spesa. Prudenza: non si tocca niente se non ci sono spese
-        // (database vuoto o non letto) e si conservano quelli con più di un anno (storico già potato dal desktop).
         if (esistenti.isEmpty()) return
         val limite = LocalDate.now().minusDays(365)
         for ((idsp, t) in auto.entries.toList()) {
@@ -1765,6 +1759,164 @@ object Repo {
         return n
     }
 
+    class Snap(val nome: String, val quando: Long, val motivo: String, val dimensione: Long) {
+        val etichetta: String
+            get() = when (motivo) {
+                "import" -> "prima di un import"
+                "sync" -> "prima di una sync"
+                "ripristino" -> "prima di un ripristino"
+                "azzeramento" -> "prima di un azzeramento"
+                "manuale" -> "manuale"
+                else -> motivo
+            }
+    }
+
+    private const val SNAP_MAX = 5
+
+    private fun cartellaSnap(ctx: Context): File = File(ctx.filesDir, "snapshots").also { it.mkdirs() }
+
+    private fun motivoSnap(nome: String): String = nome.removeSuffix(".zip").split('_').drop(3).joinToString("_")
+
+    fun creaSnapshot(ctx: Context, motivo: String): File? {
+        val tmp = File(cartellaSnap(ctx), "snapshot.tmp")
+        return try {
+            val fmt = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.ROOT)
+            val f = File(cartellaSnap(ctx), "snapshot_" + fmt.format(java.util.Date()) + "_" + motivo + ".zip")
+            var n = 0
+            ZipOutputStream(tmp.outputStream().buffered()).use { zip ->
+                for (name in FILES + SETT) {
+                    val src = File(dir, name)
+                    if (!src.isFile) continue
+                    zip.putNextEntry(ZipEntry("db/$name"))
+                    src.inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                    n++
+                }
+            }
+            if (n == 0 || !tmp.renameTo(f)) {
+                tmp.delete()
+                return null
+            }
+            potaSnapshot(ctx, motivo)
+            f
+        } catch (_: Exception) {
+            tmp.delete()
+            null
+        }
+    }
+
+    private fun potaSnapshot(ctx: Context, motivo: String) {
+        try {
+            val tutti = cartellaSnap(ctx).listFiles { f -> f.name.endsWith(".zip") && motivoSnap(f.name) == motivo }
+                ?.sortedBy { it.name } ?: return
+            for (f in tutti.dropLast(SNAP_MAX)) f.delete()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun elencaSnapshot(ctx: Context): List<Snap> {
+        val fmt = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.ROOT)
+        return cartellaSnap(ctx).listFiles { f -> f.name.endsWith(".zip") && f.name.startsWith("snapshot_") }
+            ?.sortedByDescending { it.name }
+            ?.map { f ->
+                val parti = f.name.split('_')
+                val quando = try {
+                    fmt.parse(parti[1] + "_" + parti[2])?.time ?: f.lastModified()
+                } catch (_: Exception) {
+                    f.lastModified()
+                }
+                Snap(f.name, quando, motivoSnap(f.name), f.length())
+            } ?: emptyList()
+    }
+
+    fun ripristinaSnapshot(ctx: Context, nome: String): Int {
+        val f = File(cartellaSnap(ctx), nome)
+        if (!f.isFile || nome.contains('/') || nome.contains('\\')) throw IllegalStateException("Copia non trovata")
+        val letti = LinkedHashMap<String, ByteArray>()
+        f.inputStream().buffered().use { raw ->
+            ZipInputStream(raw).use { zip ->
+                var e: ZipEntry? = zip.nextEntry
+                while (e != null) {
+                    val base = e.name.substringAfterLast('/').substringAfterLast('\\')
+                    if (!e.isDirectory && (base in FILES || base == SETT) && base !in letti) letti[base] = zip.readBytes()
+                    zip.closeEntry()
+                    e = zip.nextEntry
+                }
+            }
+        }
+        if (letti.isEmpty()) throw IllegalStateException("La copia è vuota")
+        for ((n, b) in letti) {
+            try {
+                JSONTokener(b.toString(Charsets.UTF_8)).nextValue()
+            } catch (ex: Exception) {
+                throw IllegalStateException("$n non è valido: ${ex.message}")
+            }
+        }
+        creaSnapshot(ctx, "ripristino")
+        for ((n, b) in letti) File(dir, n).writeBytes(b)
+        for (n in FILES + SETT) if (n !in letti) File(dir, n).delete()
+        File(dir, "sync_stato.json").delete()
+        return letti.size
+    }
+
+    fun ricaricaDopoRipristino() = ricaricaDopoScambio()
+
+    class Ambito(val id: String, val nome: String, val file: List<String>, val cartelle: List<String> = emptyList())
+
+    val AMBITI = listOf(
+        Ambito("mov", "Movimenti, categorie e ricorrenze", listOf(MAIN)),
+        Ambito("conti", "Conti e trasferimenti", listOf(PF)),
+        Ambito("inv", "Portafoglio investimenti", listOf("portafoglio.json")),
+        Ambito("rubrica", "Rubrica contatti", listOf("rubrica.json")),
+        Ambito("utenze", "Utenze e bollette", listOf("utenze_db.json")),
+        Ambito("docidx", "Archivio documenti (indice)", listOf("documenti_archiviati.json")),
+        Ambito("docfile", "Documenti archiviati (file PDF e foto)", emptyList(), listOf("documenti")),
+        Ambito("docpers", "Documenti personali (file e schede)", emptyList(), listOf("documenti_personali")),
+        Ambito("super", "Prezzi supermercati", listOf("supermercati.json")),
+        Ambito("smartcat", "Memoria SmartCat", listOf("memoria_categorie.json")),
+        Ambito("prom", "Promemoria", listOf("promemoria.json")),
+        Ambito("fondo", "Fondo risparmio", listOf("fondo_risparmio.json")),
+        Ambito("pensione", "Fondo pensione", listOf("fondo_pensione.json")),
+        Ambito("pian", "Spese pianificate", listOf("spese_pianificate.json")),
+        Ambito("fin", "Finanziamenti", listOf("finanziamenti.json")),
+        Ambito("immo", "ImmoBil", listOf("immobil.json")),
+        Ambito("auto", "AutoPark", listOf("veicoli.json")),
+        Ambito("pet", "Pet Care", listOf("animali.json")),
+        Ambito("casa", "Casa Care", listOf("manutenzione_casa.json")),
+        Ambito("stock", "StockBox", listOf("magazzino.json")),
+        Ambito(
+            "dieta", "Dieta, peso e passi",
+            listOf("dieta_piano.json", "alimenti_custom.json", "peso_storico.json", "fabbisogno_dati.json", "pedometro.json")
+        ),
+        Ambito(
+            "studio", "MyBusiness",
+            listOf(
+                "studio_clienti.json", "studio_appuntamenti.json", "studio_prestazioni.json",
+                "studio_fatture.json", "studio_emittente.json", "studio_cassa.json", "studio_magazzino.json"
+            )
+        ),
+        Ambito("sett", "⚠ Impostazioni dell'app", listOf(SETT)),
+    )
+
+    fun azzera(ctx: Context, ids: Set<String>): Int {
+        if (demoAttiva) throw IllegalStateException("Non disponibile in modalità demo")
+        val scelti = AMBITI.filter { it.id in ids }
+        if (scelti.isEmpty()) throw IllegalStateException("Nessun ambito scelto")
+        val snap = creaSnapshot(ctx, "azzeramento")
+        if (snap == null && (FILES + SETT).any { File(dir, it).isFile }) {
+            throw IllegalStateException("Copia di sicurezza non riuscita: azzeramento annullato")
+        }
+        for (a in scelti) {
+            for (nome in a.file) {
+                File(dir, nome).delete()
+                File(dir, "$nome.bak").delete()
+            }
+            for (c in a.cartelle) File(dir, c).deleteRecursively()
+        }
+        File(dir, "sync_stato.json").delete()
+        return scelti.size
+    }
+
     fun importa(ctx: Context, uri: Uri): List<String> {
         val trovati = LinkedHashMap<String, ByteArray>()
         val stage = File(ctx.cacheDir, "doc_stage")
@@ -1810,6 +1962,7 @@ object Repo {
                     throw IllegalStateException("$nome non è valido: ${ex.message}")
                 }
             }
+            creaSnapshot(ctx, "import")
             val prev = File(ctx.filesDir, "db_prev").also { it.mkdirs() }
             for (name in FILES) {
                 val f = File(dir, name)

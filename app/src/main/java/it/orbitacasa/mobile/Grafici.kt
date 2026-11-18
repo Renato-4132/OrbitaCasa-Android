@@ -32,9 +32,9 @@ object Stat {
     fun anni(voci: List<Voce>, extra: Int): List<Int> =
         (voci.map { it.data.year } + LocalDate.now().year + extra).toSortedSet().toList()
         
-    fun mensile(voci: List<Voce>, anno: Int): Serie {
+    fun mensile(voci: List<Voce>, anno: Int, futuri: Boolean = false): Serie {
         val oggi = LocalDate.now()
-        val limite = if (anno == oggi.year) oggi.monthValue else 12
+        val limite = if (anno == oggi.year && !futuri) oggi.monthValue else 12
         val e = DoubleArray(12)
         val u = DoubleArray(12)
         for (v in voci) {

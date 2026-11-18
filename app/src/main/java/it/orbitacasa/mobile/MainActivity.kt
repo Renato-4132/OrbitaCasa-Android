@@ -130,6 +130,7 @@ class MainActivity : AppCompatActivity() {
     private var grafSempre = false
     private var grafAnno = LocalDate.now().year
     private var grafConto = ""
+    private var grafFuturi = false
     private var homeTab = "Movimenti"
     private var docAperto: String? = null
     private var utenzaAperta: String? = null
@@ -693,6 +694,8 @@ class MainActivity : AppCompatActivity() {
             cont, "Strumenti", "🛠️",
             listOf(
                 Tessera("🔀", "Importa / Esporta") { dialogImportaEsporta() },
+                Tessera("🗂️", "Copie di sicurezza") { dialogCopie() },
+                Tessera("🧹", "Azzera dati") { dialogAzzera() },
                 Tessera("📄", "Scansiona PDF") { scansionaPdf() },
                 Tessera("🔗" + if (Sync.configurato(this)) " " + Sync.ultima(this).let { if (it > 0) java.text.SimpleDateFormat("HH:mm", Locale.ITALY).format(java.util.Date(it)) else "--:--" } else "", "Sync") { dialogSync() },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
@@ -3519,7 +3522,7 @@ class MainActivity : AppCompatActivity() {
 
         val riga1 = LinearLayout(this)
         riga1.orientation = LinearLayout.HORIZONTAL
-        val nomiVista = listOf("📈 Andamento", if (grafSempre) "📊 Annuale" else "📊 Mensile", "🧾 Spese")
+        val nomiVista = listOf("📈 Andamento", if (grafSempre) "📊 Annuale" else "📊 Mensile", "🧾 Spese", "📋 Tabella")
         nomiVista.forEachIndexed { i, t ->
             val b = pulsanteSel(t, grafVista == i) { grafVista = i; renderGrafici() }
             b.maxLines = 1
@@ -3569,12 +3572,20 @@ class MainActivity : AppCompatActivity() {
         if (voci.isNotEmpty()) riga2.addView(nuovoMeteo(saldoPeriodo >= 0, (20 * dp).toInt()))
         cont.addView(riga2)
 
+        if (!grafSempre) {
+            val chkF = MaterialCheckBox(this)
+            chkF.text = "Includi movimenti futuri"
+            chkF.isChecked = grafFuturi
+            chkF.setOnCheckedChangeListener { _, ok -> grafFuturi = ok; renderGrafici() }
+            cont.addView(chkF)
+        }
+
         if (voci.isEmpty()) {
             vuoto(cont, "Nessuna operazione" + if (grafConto.isNotEmpty()) " su questo conto." else ".")
             return
         }
 
-        val serie = if (grafSempre) Stat.storico(voci) else Stat.mensile(voci, grafAnno)
+        val serie = if (grafSempre) Stat.storico(voci) else Stat.mensile(voci, grafAnno, grafFuturi)
 
         fun legenda(vararg voci: Pair<Int, String>) {
             val t = TextView(this)
@@ -3654,6 +3665,18 @@ class MainActivity : AppCompatActivity() {
             1 -> {
                 legenda(blu to "Entrate", arancio to "Uscite")
                 grafico(GraficoView.Modo.BARRE_DOPPIE, serie.e, serie.u, ::dett)
+            }
+            3 -> {
+                for (i in serie.lab.indices) {
+                    val e = serie.e.getOrNull(i) ?: continue
+                    val u = serie.u.getOrNull(i) ?: continue
+                    val etichetta = serie.lab[i] + if (grafSempre) "" else " $grafAnno"
+                    riga(cont, etichetta, "Entrate " + eur0(e) + " · Uscite " + eur0(u), eur0s(e - u), if (e - u < 0) rosso else verde, null)
+                }
+                riga(
+                    cont, "Totale", "Entrate " + eur0(serie.totE) + " · Uscite " + eur0(serie.totU),
+                    eur0s(serie.totE - serie.totU), if (serie.totE - serie.totU < 0) rosso else verde, null
+                )
             }
             else -> {
                 val righe = Stat.categorie(voci, if (grafSempre) null else grafAnno)
@@ -4495,7 +4518,7 @@ class MainActivity : AppCompatActivity() {
             cont,
             "Ogni domanda invia a Google Gemini un riepilogo dei tuoi dati: totali per periodo, categorie, conti, budget, " +
                 "finanziamenti e gli ultimi movimenti con la descrizione. Con 📎 puoi allegare PDF o foto (max 4, 12 MB in totale), " +
-                "ad esempio due bollette da confrontare: anche gli allegati vengono inviati a Gemini. Le risposte sono indicative.",
+                "ad esempio due bollette da confrontare, oppure scegli con 📚 documenti già archiviati nell'app: anche gli allegati vengono inviati a Gemini. Le risposte sono indicative.",
             colore = medio, size = 12f
         )
         val til = layoutInflater.inflate(R.layout.view_campo, cont, false) as TextInputLayout
@@ -4527,12 +4550,15 @@ class MainActivity : AppCompatActivity() {
             else apriAllegatiChiedi.launch(arrayOf("application/pdf", "image/*"))
         }
         clip.isEnabled = !chiediInCorso
+        val arch = pulsanteSel("📚", false) { dialogAllegaArchivio() }
+        arch.isEnabled = !chiediInCorso
         val rigaChiedi = LinearLayout(this)
         rigaChiedi.orientation = LinearLayout.HORIZONTAL
         rigaChiedi.addView(inv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val lpMic = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpMic.marginStart = (8 * resources.displayMetrics.density).toInt()
         rigaChiedi.addView(clip, LinearLayout.LayoutParams(lpMic))
+        rigaChiedi.addView(arch, LinearLayout.LayoutParams(lpMic))
         rigaChiedi.addView(mic, lpMic)
         cont.addView(rigaChiedi)
         for (a in chiediAllegati.toList()) {
@@ -11730,6 +11756,148 @@ class MainActivity : AppCompatActivity() {
                 else creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip")
             }
             .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun dialogCopie() {
+        if (Repo.demoAttiva) {
+            aviso("Non disponibile in modalità demo")
+            return
+        }
+        val elenco = Repo.elencaSnapshot(this)
+        val fmt = java.text.SimpleDateFormat("d MMM yyyy HH:mm", Locale.ITALY)
+        val voci = ArrayList<String>()
+        voci.add("➕  Crea copia ora")
+        for (c in elenco) {
+            voci.add(fmt.format(java.util.Date(c.quando)) + " · " + c.etichetta + " · " + maxOf(1L, c.dimensione / 1024) + " KB")
+        }
+        OcBuilder(this)
+            .setTitle("Copie di sicurezza")
+            .setItems(voci.toTypedArray()) { _, k ->
+                if (k == 0) {
+                    thread {
+                        val f = Repo.creaSnapshot(applicationContext, "manuale")
+                        runOnUiThread { aviso(if (f != null) "Copia creata" else "Copia non riuscita") }
+                    }
+                } else {
+                    confermaRipristino(elenco[k - 1])
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun confermaRipristino(c: Repo.Snap) {
+        val quando = java.text.SimpleDateFormat("d MMMM yyyy HH:mm", Locale.ITALY).format(java.util.Date(c.quando))
+        OcBuilder(this)
+            .setTitle("Ripristina copia")
+            .setMessage(
+                "Ripristinare la copia del $quando (${c.etichetta})? I dati attuali vengono sostituiti; " +
+                    "ne resta una copia. I documenti (PDF e foto) non sono nelle copie e restano come sono."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Ripristina") { _, _ ->
+                thread {
+                    try {
+                        val n = Repo.ripristinaSnapshot(applicationContext, c.nome)
+                        runOnUiThread {
+                            Repo.ricaricaDopoRipristino()
+                            Avvisi.pianifica(applicationContext)
+                            refresh()
+                            aviso("Ripristinati $n file")
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread { aviso("Ripristino non riuscito: " + e.message) }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun dialogAzzera() {
+        if (Repo.demoAttiva) {
+            aviso("Non disponibile in modalità demo")
+            return
+        }
+        val ambiti = Repo.AMBITI
+        val scelti = BooleanArray(ambiti.size)
+        OcBuilder(this)
+            .setTitle("Azzera dati")
+            .setMultiChoiceItems(ambiti.map { it.nome }.toTypedArray(), scelti) { _, k, ok -> scelti[k] = ok }
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Avanti") { _, _ ->
+                val ids = ambiti.filterIndexed { i, _ -> scelti[i] }.map { it.id }.toSet()
+                if (ids.isEmpty()) aviso("Nessun ambito scelto") else confermaAzzera(ids)
+            }
+            .show()
+    }
+
+    private fun confermaAzzera(ids: Set<String>) {
+        val sel = Repo.AMBITI.filter { it.id in ids }
+        val filePdf = sel.any { it.cartelle.isNotEmpty() }
+        OcBuilder(this)
+            .setTitle(if (sel.size == 1) "Azzerare 1 ambito?" else "Azzerare ${sel.size} ambiti?")
+            .setMessage(
+                sel.joinToString("\n") { "• " + it.nome } + "\n\n" +
+                    "I dati scelti vengono cancellati dal telefono; ne resta una copia in Copie di sicurezza." +
+                    (if (filePdf) " I file dei documenti (PDF e foto) non sono nelle copie e non si recuperano." else "") +
+                    " Se usi la Sync, il PC potrebbe rimandare i dati azzerati."
+            )
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Azzera") { _, _ ->
+                thread {
+                    try {
+                        val n = Repo.azzera(applicationContext, ids)
+                        runOnUiThread {
+                            Repo.ricaricaDopoRipristino()
+                            Avvisi.pianifica(applicationContext)
+                            refresh()
+                            aviso(if (n == 1) "Azzerato 1 ambito" else "Azzerati $n ambiti")
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread { aviso("Azzeramento non riuscito: " + e.message) }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun dialogAllegaArchivio() {
+        if (chiediAllegati.size >= 4) {
+            aviso("Massimo 4 allegati")
+            return
+        }
+        val lista = Doc.archiviati().filter { it.file?.isFile == true }.sortedByDescending { it.data?.toEpochDay() ?: 0L }
+        if (lista.isEmpty()) {
+            aviso("Nessun documento nell'archivio")
+            return
+        }
+        val nomi = lista.map { d -> d.titolo.ifBlank { d.nomeFile } + (d.data?.let { " · " + Doc.fmt(it) } ?: "") }.toTypedArray()
+        val sel = BooleanArray(lista.size)
+        OcBuilder(this)
+            .setTitle("Allega dall'archivio (max ${4 - chiediAllegati.size})")
+            .setMultiChoiceItems(nomi, sel) { _, k, ok -> sel[k] = ok }
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Allega") { _, _ ->
+                val dirC = java.io.File(cacheDir, "chiedi").also { it.mkdirs() }
+                for (i in lista.indices) {
+                    if (!sel[i]) continue
+                    if (chiediAllegati.size >= 4) {
+                        aviso("Massimo 4 allegati")
+                        break
+                    }
+                    try {
+                        val src = lista[i].file ?: continue
+                        val ext = src.extension.lowercase().ifBlank { "pdf" }
+                        val dest = java.io.File(dirC, "all_" + System.nanoTime() + "." + ext)
+                        src.copyTo(dest, overwrite = true)
+                        chiediAllegati.add(dest to lista[i].nomeFile.ifBlank { src.name })
+                    } catch (e: Exception) {
+                        aviso("File non leggibile: " + e.message)
+                    }
+                }
+                if (pagina == Pagina.CHIEDI) renderChiedi()
+            }
             .show()
     }
 

@@ -7,8 +7,6 @@ import java.time.format.DateTimeFormatter
 object FairSharePdf {
     private val FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
-    // Estratto Dare/Avere: stessa struttura del desktop (spese per persona, riepilogo, chi deve a chi),
-    // con i filtri attivi della pagina FairShare.
     fun estratto(
         act: Activity, r: FairShare.Riepilogo, anno: String, mese: String, parte: String, cat: String, stato: String,
     ): File {
