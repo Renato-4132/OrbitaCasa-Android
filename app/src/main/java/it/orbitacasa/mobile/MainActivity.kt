@@ -646,7 +646,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("📊", "Grafici") { mostra(Pagina.GRAFICI) },
                 Tessera("🔍", "Analisi Categorie") { mostra(Pagina.ANALISI) },
                 Tessera("🔁", "Checkout") { mostra(Pagina.CHECKOUT) },
-                Tessera("📉", "Proiezione Mese") { mostra(Pagina.PREVISIONE) },
+                Tessera("📉", "Previsione") { mostra(Pagina.PREVISIONE) },
                 Tessera("💳", "Estratti") { mostra(Pagina.ESTRATTI) },
                 Tessera("🤖", "Chiedi al Database") { mostra(Pagina.CHIEDI) },
             )
@@ -1328,7 +1328,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderPrevisione() {
-        intestaLista("📉 Previsione fine mese", "🏷️  Budget categorie")
+        intestaLista("📉 Previsione mese e anno", "🏷️  Budget categorie")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val oggi = LocalDate.now()
         val es = Previsione.calcola(Repo.voci(), oggi) { Repo.budgetMensile(it) }
