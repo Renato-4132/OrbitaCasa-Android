@@ -1,7 +1,14 @@
 package it.orbitacasa.mobile
 
 import android.app.Activity
+import android.content.ContentUris
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -45,6 +52,126 @@ object Aggiorna {
             return null
         } finally {
             c.disconnect()
+        }
+    }
+
+    // ---- Download dentro l'app (niente più copie nella cartella Download del browser) ----
+    // L'APK si scarica nella cache, si installa da lì e se ne tiene una sola copia in Documenti/OrbitaCasa/updates/.
+    // All'avvio successivo (a installazione fatta) si cancellano la cache e le copie non più nuove della versione installata.
+
+    private val RELATIVE = Environment.DIRECTORY_DOCUMENTS + "/OrbitaCasa/updates/"
+    private const val MIME_APK = "application/vnd.android.package-archive"
+
+    private fun collezione(): Uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+
+    private fun cartellaCache(ctx: Context): File = File(ctx.cacheDir, "apk")
+
+    private fun nomeFile(r: Release): String = "OrbitaCasa-" + r.tag.trim().let { if (it.startsWith("v")) it else "v$it" } + ".apk"
+
+    /** Scarica l'APK nella cache e controlla che sia davvero OrbitaCasa. [progresso] riceve la percentuale (0-100). */
+    fun scarica(ctx: Context, r: Release, progresso: (Int) -> Unit): File {
+        val dir = cartellaCache(ctx)
+        dir.mkdirs()
+        dir.listFiles()?.forEach { it.delete() }
+        val f = File(dir, nomeFile(r))
+        val c = URL(r.apkUrl).openConnection() as HttpURLConnection
+        c.connectTimeout = 15000
+        c.readTimeout = 30000
+        try {
+            if (c.responseCode != 200) throw IllegalStateException("GitHub ha risposto " + c.responseCode)
+            val tot = c.contentLengthLong
+            var letti = 0L
+            var ultimo = -1
+            c.inputStream.use { ins ->
+                f.outputStream().use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = ins.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                        letti += n
+                        if (tot > 0) {
+                            val p = (letti * 100 / tot).toInt()
+                            if (p != ultimo) {
+                                ultimo = p
+                                progresso(p)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            f.delete()
+            throw e
+        } finally {
+            c.disconnect()
+        }
+        val info = ctx.packageManager.getPackageArchiveInfo(f.path, 0)
+        if (info == null || info.packageName != ctx.packageName) {
+            f.delete()
+            throw IllegalStateException("il file scaricato non è un aggiornamento di OrbitaCasa")
+        }
+        return f
+    }
+
+    private class Voce(val nome: String, val uri: Uri)
+
+    private fun elenca(ctx: Context): List<Voce> {
+        val out = ArrayList<Voce>()
+        try {
+            val proj = arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME)
+            ctx.contentResolver.query(
+                collezione(), proj, MediaStore.Files.FileColumns.RELATIVE_PATH + " = ?", arrayOf(RELATIVE), null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val nome = c.getString(1) ?: continue
+                    out.add(Voce(nome, ContentUris.withAppendedId(collezione(), c.getLong(0))))
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return out
+    }
+
+    private fun eApkOrbita(nome: String) = nome.startsWith("OrbitaCasa-") && nome.endsWith(".apk")
+
+    /** Tiene in Documenti/OrbitaCasa/updates/ solo questa copia: le altre versioni scaricate vengono cancellate. */
+    fun archivia(ctx: Context, f: File, r: Release): Boolean {
+        val cr = ctx.contentResolver
+        return try {
+            val nome = nomeFile(r)
+            for (v in elenca(ctx)) if (eApkOrbita(v.nome)) runCatching { cr.delete(v.uri, null, null) }
+            val cv = ContentValues().apply {
+                put(MediaStore.Files.FileColumns.DISPLAY_NAME, nome)
+                put(MediaStore.Files.FileColumns.MIME_TYPE, MIME_APK)
+                put(MediaStore.Files.FileColumns.RELATIVE_PATH, RELATIVE)
+                put(MediaStore.Files.FileColumns.IS_PENDING, 1)
+            }
+            val uri = cr.insert(collezione(), cv) ?: return false
+            try {
+                val os = cr.openOutputStream(uri, "w") ?: throw IllegalStateException("flusso non disponibile")
+                os.use { o -> f.inputStream().use { it.copyTo(o) } }
+                cr.update(uri, ContentValues().apply { put(MediaStore.Files.FileColumns.IS_PENDING, 0) }, null, null)
+                true
+            } catch (e: Exception) {
+                runCatching { cr.delete(uri, null, null) }
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** All'avvio: svuota la cache e cancella dagli updates le versioni uguali o più vecchie di quella installata. */
+    fun pulisci(ctx: Context, installata: String) {
+        try {
+            cartellaCache(ctx).listFiles()?.forEach { it.delete() }
+            for (v in elenca(ctx)) {
+                if (eApkOrbita(v.nome) && !piuRecente(v.nome, installata)) {
+                    runCatching { ctx.contentResolver.delete(v.uri, null, null) }
+                }
+            }
+        } catch (_: Exception) {
         }
     }
 }

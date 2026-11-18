@@ -11313,7 +11313,7 @@ class MainActivity : AppCompatActivity() {
                         !Aggiorna.piuRecente(r.tag, attuale) -> aviso("Sei aggiornato (versione $attuale)")
                         else -> OcBuilder(this)
                             .setTitle("Nuova versione " + r.tag)
-                            .setMessage("Installata: $attuale. Scaricare l'aggiornamento dal browser?")
+                            .setMessage("Installata: $attuale. Scaricare e installare l'aggiornamento?")
                             .setNegativeButton("Più tardi", null)
                             .setPositiveButton("Aggiorna") { _, _ -> scaricaAggiornamento(r) }
                             .show()
@@ -11328,6 +11328,7 @@ class MainActivity : AppCompatActivity() {
     private fun controllaAggiornamentiAvvio() {
         Thread {
             try {
+                Aggiorna.pulisci(applicationContext, Aggiorna.versioneInstallata(this))
                 val r = Aggiorna.ultima() ?: return@Thread
                 val attuale = Aggiorna.versioneInstallata(this)
                 if (!Aggiorna.piuRecente(r.tag, attuale)) return@Thread
@@ -11337,7 +11338,7 @@ class MainActivity : AppCompatActivity() {
                     if (isFinishing || isDestroyed) return@runOnUiThread
                     OcBuilder(this)
                         .setTitle("Nuova versione " + r.tag)
-                        .setMessage("Installata: $attuale. Scaricare l'aggiornamento dal browser?")
+                        .setMessage("Installata: $attuale. Scaricare e installare l'aggiornamento?")
                         .setNegativeButton("Più tardi") { _, _ ->
                             prefs.edit().putString("rimandata", r.tag).apply()
                         }
@@ -11350,10 +11351,57 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun scaricaAggiornamento(r: Aggiorna.Release) {
-        try {
-            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(r.apkUrl)))
-        } catch (e: Exception) {
-            aviso("Nessun browser disponibile per scaricare l'aggiornamento")
+        if (!packageManager.canRequestPackageInstalls()) {
+            OcBuilder(this)
+                .setTitle("Permesso per installare")
+                .setMessage(
+                    "Per installare l'aggiornamento Android chiede di consentire a OrbitaCasa di installare app. " +
+                        "Concedi il permesso, torna indietro e tocca di nuovo Aggiorna."
+                )
+                .setNegativeButton("Annulla", null)
+                .setPositiveButton("Apri impostazioni") { _, _ ->
+                    try {
+                        startActivity(
+                            Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))
+                        )
+                    } catch (e: Exception) {
+                        aviso("Apri Impostazioni → App → OrbitaCasa → Installa app sconosciute")
+                    }
+                }
+                .show()
+            return
+        }
+        val dlg = OcBuilder(this)
+            .setTitle("Aggiornamento " + r.tag)
+            .setMessage("Scarico… 0%")
+            .setCancelable(false)
+            .show()
+        thread {
+            try {
+                val f = Aggiorna.scarica(applicationContext, r) { p ->
+                    runOnUiThread { dlg.setMessage("Scarico… $p%") }
+                }
+                val salvato = Aggiorna.archivia(applicationContext, f, r)
+                runOnUiThread {
+                    dlg.dismiss()
+                    if (!salvato) aviso("Copia in Documenti/OrbitaCasa/updates non riuscita, installo comunque")
+                    try {
+                        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
+                        startActivity(
+                            Intent(Intent.ACTION_VIEW)
+                                .setDataAndType(uri, "application/vnd.android.package-archive")
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        )
+                    } catch (e: Exception) {
+                        aviso("Non riesco ad avviare l'installazione: " + e.message)
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    dlg.dismiss()
+                    aviso("Download non riuscito: " + e.message)
+                }
+            }
         }
     }
 

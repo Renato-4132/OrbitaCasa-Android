@@ -90,7 +90,7 @@
 * **Estrazione dati con Gemini (opzionale)** — Leggi un documento PDF o una foto e l'app compila i campi per te
 * **Blocco app** con biometria o sblocco del dispositivo
 * **Barra di navigazione personalizzabile**
-* **Aggiornamenti** — Controlla se c'è una nuova versione su GitHub, anche all'avvio
+* **Aggiornamenti** — Controlla se c'è una nuova versione su GitHub, anche all'avvio; scarica e installa l'APK direttamente dall'app, tenendo una sola copia in Documenti/OrbitaCasa/updates
 * **Info e contatti** — Versione, supporto, siti ufficiali e manuali PDF
 * **Modalità demo** e **tema chiaro e scuro**
 
@@ -207,7 +207,7 @@ I tuoi dati **non escono dal telefono**, a meno che tu non attivi tu una funzion
 
 **🔄 Aggiornamenti**
 
-L'app controlla l'ultima release su GitHub all'avvio e, quando vuoi, da **Home → Strumenti → 🔄 Aggiornamenti**. Se c'è una versione più recente, ti porta al download dell'APK dal browser.
+L'app controlla l'ultima release su GitHub all'avvio e, quando vuoi, da **Home → Strumenti → 🔄 Aggiornamenti**. Se c'è una versione più recente, l'app scarica l'APK da sola (con la percentuale) e avvia l'installazione: la prima volta Android chiede di consentire a OrbitaCasa di installare app. L'APK resta in **Documenti/OrbitaCasa/updates** (una sola copia, la più recente) e viene cancellato al primo avvio dopo l'installazione, insieme ai file temporanei. Nessuna copia nella cartella Download.
 
 </details>
 
