@@ -11849,6 +11849,8 @@ class MainActivity : AppCompatActivity() {
         fun stileBtn(b: MaterialButton, colore: Int) {
             b.isAllCaps = false
             b.maxLines = 1
+            b.isSingleLine = true
+            b.ellipsize = android.text.TextUtils.TruncateAt.END
             b.insetTop = 0
             b.insetBottom = 0
             b.minHeight = (40 * dp).toInt()
@@ -11878,7 +11880,7 @@ class MainActivity : AppCompatActivity() {
 
         bBackup.setOnClickListener {
             bBackup.isEnabled = false
-            bBackup.text = "Backup in corso…"
+            bBackup.text = "In corso…"
             thread {
                 val f = Repo.creaSnapshot(applicationContext, "manuale")
                 runOnUiThread {
