@@ -400,6 +400,44 @@ object Stock {
         return salva(dati)
     }
 
+    fun eliminaMultiplo(ids: Set<String>): String? {
+        if (ids.isEmpty()) return "Nessun articolo selezionato."
+        val dati = carica()
+        if (err != null) return err
+        if (!dati.articoli.removeAll { s(it, "id") in ids }) return "Articoli non più presenti"
+        return salva(dati)
+    }
+
+    // categoria: null = non cambiare, "" = nessuna categoria. min/max: null = non cambiare (max 0 = nessun massimo).
+    // Controlla tutti gli articoli prima di scrivere: o cambiano tutti o nessuno.
+    fun modificaMultipla(ids: Set<String>, categoria: String?, min: Double?, max: Double?): String? {
+        if (ids.isEmpty()) return "Nessun articolo selezionato."
+        if (categoria == null && min == null && max == null) return "Scegli almeno un campo da cambiare."
+        if (categoria != null && categoria.length > MAX_CAT) return "La categoria può avere al massimo $MAX_CAT caratteri."
+        if ((min != null && (min < 0 || min > MAX_QTA)) || (max != null && (max < 0 || max > MAX_QTA))) {
+            return "Le scorte devono essere tra 0 e 900."
+        }
+        val dati = carica()
+        if (err != null) return err
+        val sel = dati.articoli.filter { s(it, "id") in ids }
+        if (sel.isEmpty()) return "Articoli non più presenti"
+        for (a in sel) {
+            val nMin = min ?: d(a, "qta_min")
+            val nMax = max ?: d(a, "qta_max")
+            if (nMax != 0.0 && nMax < nMin) {
+                return "Per «" + s(a, "nome") + "» il massimo sarebbe inferiore al minimo. Nessun articolo è stato modificato."
+            }
+        }
+        for (a in sel) {
+            if (categoria != null) a.put("categoria", categoria)
+            if (min != null) a.put("qta_min", min)
+            if (max != null) a.put("qta_max", max)
+            a.put("data", oggi())
+        }
+        if (!categoria.isNullOrEmpty()) aggiungiCat(dati, categoria)
+        return salva(dati)
+    }
+
     fun duplica(id: String): String? {
         val dati = carica()
         if (err != null) return err

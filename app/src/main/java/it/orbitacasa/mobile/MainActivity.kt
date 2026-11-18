@@ -566,6 +566,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mostra(p: Pagina) {
+        if (p != Pagina.STOCK) stkSel = null
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
@@ -5017,6 +5018,11 @@ class MainActivity : AppCompatActivity() {
 
         val r = FairShare.riepiloga(debiti, fsAnno, fsMese, fsParte, fsCat, fsStato)
 
+        riga(cont, "📄 Esporta estratto in PDF", "Dare e Avere con i filtri attivi", "PDF", oro) {
+            if (r.righe.isEmpty()) aviso("Nessuna spesa da esportare con questi filtri")
+            else stkPdf({ FairSharePdf.estratto(this, r, fsAnno, mesiN[fsMese], fsParte, fsCat, fsStato) }, "Estratto FairShare")
+        }
+
         if (debiti.isEmpty()) {
             vuoto(
                 cont,
@@ -7296,6 +7302,7 @@ class MainActivity : AppCompatActivity() {
     private var stkTesto = ""
     private var stkCat = Stock.TUTTE_CAT
     private var stkStato = Stock.STATI_FILTRO[0]
+    private var stkSel: MutableSet<String>? = null
 
     private fun renderStock() {
         intestaLista("📦 StockBox", "➕  Nuovo articolo", "🔀  Azioni")
@@ -7332,6 +7339,7 @@ class MainActivity : AppCompatActivity() {
             stuLp()
         )
         val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val oroSel = ContextCompat.getColor(this, R.color.oc_gold)
         lateinit var ris: LinearLayout
         fun aggiorna() {
             ris.removeAllViews()
@@ -7353,6 +7361,20 @@ class MainActivity : AppCompatActivity() {
                 ).joinToString(" · "),
                 Stock.eur(r.valore), null, null
             )
+            stkSel?.let { sel ->
+                riga(
+                    ris, "☑️ Selezionati: " + sel.size,
+                    "Tocca gli articoli per selezionarli, poi usa Azioni", "Azioni", oroSel
+                ) { stkAzioniMulti() }
+                riga(ris, "Seleziona tutti i mostrati", l.size.toString() + " articoli", "Tutti", null) {
+                    sel.addAll(l.map { Stock.s(it, "id") })
+                    aggiorna()
+                }
+                riga(ris, "Esci dalla selezione", "", "✖", null) {
+                    stkSel = null
+                    renderLista()
+                }
+            }
             if (l.isEmpty()) {
                 vuoto(ris, "Nessun articolo trovato.")
                 return
@@ -7379,11 +7401,25 @@ class MainActivity : AppCompatActivity() {
                     if (Stock.d(a, "prezzo") > 0) Stock.eur(Stock.d(a, "quantita") * Stock.d(a, "prezzo")) else null,
                 ).joinToString(" · ")
                 val critico = tag == "esaurito" || tag == "sotto" || tag == "scaduto"
+                val id = Stock.s(a, "id")
+                val spunta = stkSel?.let { if (id in it) "☑ " else "☐ " } ?: ""
                 riga(
-                    ris, ico + Stock.s(a, "nome"), sotto,
+                    ris, spunta + ico + Stock.s(a, "nome"), sotto,
                     Stock.q(Stock.d(a, "quantita")) + " " + Stock.s(a, "unita"),
                     if (critico) rosso else null
-                ) { stkMenuArticolo(a) }
+                ) {
+                    val corrente = stkSel
+                    if (corrente == null) stkMenuArticolo(a) else {
+                        if (!corrente.add(id)) corrente.remove(id)
+                        aggiorna()
+                    }
+                }
+                ris.getChildAt(ris.childCount - 1).setOnLongClickListener {
+                    val corrente = stkSel ?: mutableSetOf<String>().also { stkSel = it }
+                    corrente.add(id)
+                    aggiorna()
+                    true
+                }
             }
             if (l.size > 300) vuoto(ris, "Mostrati i primi 300: affina la ricerca.")
         }
@@ -7392,6 +7428,63 @@ class MainActivity : AppCompatActivity() {
             aggiorna()
         }
         aggiorna()
+    }
+
+    private fun stkAzioniMulti() {
+        val sel = stkSel ?: return
+        if (sel.isEmpty()) {
+            aviso("Seleziona almeno un articolo")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Azioni su " + sel.size + " articoli")
+            .setItems(arrayOf("✏️  Cambia categoria e scorte", "🗑️  Elimina selezionati")) { _, k ->
+                if (k == 0) stkModificaMulti(sel.toSet()) else stuConferma(
+                    "Eliminare gli articoli?", sel.size.toString() + " articoli verranno eliminati dal magazzino.", "Elimina"
+                ) {
+                    val e = Stock.eliminaMultiplo(sel.toSet())
+                    if (e != null) aviso(e) else {
+                        aviso("Articoli eliminati")
+                        stkSel = null
+                        renderLista()
+                    }
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun stkModificaMulti(ids: Set<String>) {
+        val nonCambiare = "— non cambiare —"
+        val nessuna = "— nessuna categoria —"
+        val cats = listOf(nonCambiare, nessuna) + Stock.carica().tutteCategorie()
+        val (view, corpo) = corpoDialogo()
+        var scelta = nonCambiare
+        campoMenu(corpo, "Categoria", cats, nonCambiare) { scelta = cats[it] }
+        val etMin = campoTesto(corpo, "Scorta minima (vuoto = non cambiare)", "", TIPO_DECIMALE)
+        val etMax = campoTesto(corpo, "Scorta massima (vuoto = non cambiare, 0 = nessun massimo)", "", TIPO_DECIMALE)
+        OcBuilder(this)
+            .setTitle("Modifica " + ids.size + " articoli")
+            .setView(view)
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Applica") { _, _ ->
+                val tMin = etMin.text.toString().trim()
+                val tMax = etMax.text.toString().trim()
+                val mn = if (tMin.isEmpty()) null else Stock.numOrNull(tMin)
+                val mx = if (tMax.isEmpty()) null else Stock.numOrNull(tMax)
+                if ((tMin.isNotEmpty() && mn == null) || (tMax.isNotEmpty() && mx == null)) {
+                    aviso("Numero non valido nelle scorte")
+                    return@setPositiveButton
+                }
+                val cat = when (scelta) { nonCambiare -> null; nessuna -> ""; else -> scelta }
+                val e = Stock.modificaMultipla(ids, cat, mn, mx)
+                if (e != null) aviso(e) else {
+                    aviso(ids.size.toString() + " articoli modificati")
+                    stkSel = null
+                    renderLista()
+                }
+            }
+            .show()
     }
 
     private fun stkScansiona() {
@@ -7707,6 +7800,10 @@ class MainActivity : AppCompatActivity() {
             az.add(f)
         }
         add("📷  Scansiona codice a barre") { stkScansiona() }
+        add("☑️  Modifica multipla") {
+            stkSel = mutableSetOf()
+            renderLista()
+        }
         add("🧾  Lista riordino") { stkRiordino() }
         add("🛒  Riordino → lista spesa") { stkInListaSpesa() }
         add("📥  Carica tutto il riordino") { stkCaricaTutto() }

@@ -44,7 +44,7 @@
 * **Notifiche** — Le spese lette dalle notifiche, con la coda "Da confermare" e le regole di lettura
 * **Cerca operazioni** — Filtri avanzati (anche per tag) e condivisione dei risultati
 * **Supermercati** — Catalogo prezzi e promo per supermercato, confronto e lista spesa ottimizzata, condivisibile in PDF
-* **StockBox** — Magazzino con scorte minime e massime, scadenze, carico/scarico, riordino, lettura del codice a barre e PDF; il riordino si può mandare alla lista spesa di Supermercati
+* **StockBox** — Magazzino con scorte minime e massime, scadenze, carico/scarico, riordino, lettura del codice a barre e PDF; il riordino si può mandare alla lista spesa di Supermercati; modifica multipla (tieni premuto un articolo per selezionare, poi cambia categoria e scorte o elimina)
 
 **🟢 Analisi e controllo**
 
@@ -74,7 +74,7 @@
 * **Documenti contabili** — Fatture e bollette archiviate, collegate ai movimenti
 * **Documenti personali** — Per profilo, con categorie e scadenze
 * **Utenze** — Letture e consumi di luce, gas e acqua su 12 mesi
-* **FairShare** — Spese divise tra più persone, con le quote
+* **FairShare** — Spese divise tra più persone, con le quote; estratto Dare/Avere in PDF con i filtri attivi
 * **AutoPark** — Veicoli, scadenze, spese
 * **ImmoBil** — Immobili, entrate e uscite
 * **Pet Care** — Schede degli animali
