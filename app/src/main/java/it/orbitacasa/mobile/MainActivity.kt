@@ -11805,14 +11805,25 @@ class MainActivity : AppCompatActivity() {
             visibili = tutte.filter {
                 (!chk.isChecked || it.nome.endsWith(Backup.SUFFISSO_SNAP)) && (d == "Tutte" || Backup.data(it) == d)
             }
-            lista.adapter = ArrayAdapter(
-                this,
-                android.R.layout.simple_list_item_multiple_choice,
-                visibili.map {
-                    val dim = if (it.dimensione < 1048576) "${maxOf(1L, it.dimensione / 1024)} KB" else "%.1f MB".format(it.dimensione / 1048576.0)
-                    Backup.data(it) + " · " + Backup.tipo(it.nome) + " · " + dim
+            val testi = visibili.map {
+                val dim = if (it.dimensione < 1048576) "${maxOf(1L, it.dimensione / 1024)} KB" else "%.1f MB".format(it.dimensione / 1048576.0)
+                Backup.tipo(it.nome) + "\n" + Backup.data(it) + " · " + dim
+            }
+            lista.adapter = object : ArrayAdapter<String>(this@MainActivity, android.R.layout.simple_list_item_multiple_choice, testi) {
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    val v = super.getView(position, convertView, parent)
+                    (v as? android.widget.CheckedTextView)?.apply {
+                        isSingleLine = false
+                        maxLines = 4
+                        ellipsize = null
+                        textSize = 14f
+                        minHeight = 0
+                        minimumHeight = 0
+                        setPadding(paddingLeft, (10 * dp).toInt(), paddingRight, (10 * dp).toInt())
+                    }
+                    return v
                 }
-            )
+            }
         }
         spin.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = ricarica()
@@ -11841,7 +11852,7 @@ class MainActivity : AppCompatActivity() {
             thread {
                 val f = Repo.creaSnapshot(applicationContext, "manuale")
                 runOnUiThread {
-                    aviso(if (f != null) "Backup creato" else "Backup non riuscito")
+                    aviso(if (f != null) "Backup creato: " + Backup.rapporto else "Backup non riuscito")
                     dlg?.dismiss()
                     dialogCopie(chk.isChecked)
                 }

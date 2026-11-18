@@ -33,6 +33,10 @@ object Backup {
 
     private val RELATIVE = Environment.DIRECTORY_DOCUMENTS + "/OrbitaCasa/backup/"
 
+    /** Esito leggibile dell'ultimo backup (mostrato nel messaggio di "Backup ora"). */
+    @Volatile
+    var rapporto: String = ""
+
     class Voce(val nome: String, val modificato: Long, val dimensione: Long, val uri: Uri)
 
     private fun collezione(): Uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -184,20 +188,24 @@ object Backup {
         return m
     }
 
-    private fun zipDocumenti(ctx: Context, dir: File, prefisso: String, files: List<String>, cartelle: List<String>) {
+    private fun zipDocumenti(ctx: Context, dir: File, prefisso: String, files: List<String>, cartelle: List<String>): String {
         val ultimaDoc = ultimaModifica(dir, files, cartelle)
-        if (ultimaDoc == 0L) return
+        if (ultimaDoc == 0L) return "nessun file da salvare"
         val ultimo = elenca(ctx).filter { it.nome.startsWith(prefisso) && it.nome.endsWith(".zip") }.maxByOrNull { it.modificato }
-        if (ultimo != null && ultimaDoc <= ultimo.modificato) return
+        if (ultimo != null && ultimaDoc <= ultimo.modificato) return "nessuna modifica, saltato"
         val tmp = File(ctx.cacheDir, "backup_doc.tmp")
         try {
             val n = comprimi(dir, files, cartelle, "", tmp)
-            if (n == 0) return
+            if (n == 0) return "nessun file da salvare"
             val sep = if (prefisso == PREF_CONTABILI) "-" else "_"
-            if (salva(ctx, prefisso + sep + adesso() + ".zip", "application/zip", tmp)) {
+            return if (salva(ctx, prefisso + sep + adesso() + ".zip", "application/zip", tmp)) {
                 pota(ctx, MAX_DOC) { it.startsWith(prefisso) && it.endsWith(".zip") }
+                "creato ($n file)"
+            } else {
+                "scrittura non riuscita"
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            return "errore: " + e.message
         } finally {
             tmp.delete()
         }
@@ -222,18 +230,25 @@ object Backup {
         }
         pota(ctx, MAX_SNAP) { it.endsWith(SUFFISSO_SNAP) }
 
+        var okFile = 0
+        var totFile = 0
         for (nome in files) {
             val f = File(dir, nome)
             if (!f.isFile) continue
+            totFile++
             if (salva(ctx, oggi() + "-" + nome, "application/json", f)) {
+                okFile++
                 pota(ctx, MAX_FILE) { Regex("^\\d{2}-\\d{2}-\\d{4}-(.+)$").matchEntire(it)?.groupValues?.get(1) == nome }
             }
         }
+        var r = "snapshot ok, file $okFile/$totFile"
 
         if (conDocumenti) {
-            zipDocumenti(ctx, dir, PREF_CONTABILI, listOf("documenti_archiviati.json"), listOf("documenti"))
-            zipDocumenti(ctx, dir, PREF_PERSONALI, emptyList(), listOf("documenti_personali"))
+            val c = zipDocumenti(ctx, dir, PREF_CONTABILI, listOf("documenti_archiviati.json"), listOf("documenti"))
+            val p = zipDocumenti(ctx, dir, PREF_PERSONALI, emptyList(), listOf("documenti_personali"))
+            r += ". Doc contabili: $c. Doc personali: $p"
         }
+        rapporto = r
         return nomeSnap
     }
 
