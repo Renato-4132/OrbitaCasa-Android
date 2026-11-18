@@ -11,8 +11,8 @@ android {
         applicationId = "it.orbitacasa.mobile"
         minSdk = 26
         targetSdk = 34
-        versionCode = 242
-        versionName = "1.0.149"
+        versionCode = 243
+        versionName = "1.0.150"
     }
 
     val ksFile = System.getenv("KEYSTORE_FILE")
@@ -59,4 +59,5 @@ dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.work:work-runtime:2.9.1")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
 }

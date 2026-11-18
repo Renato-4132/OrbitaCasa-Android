@@ -43,12 +43,18 @@
 * **Promemoria** — Agenda con avvisi all'ora, anticipo configurabile e riepilogo del giorno (di default alle 08:00)
 * **Notifiche** — Le spese lette dalle notifiche, con la coda "Da confermare" e le regole di lettura
 * **Cerca operazioni** — Filtri avanzati (anche per tag) e condivisione dei risultati
+* **Supermercati** — Catalogo prezzi e promo per supermercato, confronto e lista spesa ottimizzata, condivisibile in PDF
+* **StockBox** — Magazzino con scorte minime e massime, scadenze, carico/scarico, riordino, lettura del codice a barre e PDF; il riordino si può mandare alla lista spesa di Supermercati
 
 **🟢 Analisi e controllo**
 
 * **Grafici** — Andamento di entrate e uscite
 * **Checkout** — Ti segnala le categorie in cui spendi di solito (almeno 4 volte negli ultimi 12 mesi) ma che questo mese non hai ancora registrato, con avviso di fine mese
-* **Proiezione mese** — Per categoria: speso, speso fino a oggi, previsione e budget
+* **Previsione** — Fine mese e fine anno: per categoria speso, speso fino a oggi, previsione e budget
+* **Analisi Categorie** — Dettaglio, aggregazione, Time Machine, trend, budget superato e target
+* **Estratti** — Importa estratti conto e carte e li confronta con i movimenti, per metodo e per conto
+* **Chiedi al Database** — Domande in linguaggio naturale sui tuoi dati con Gemini (opzionale)
+* **Barra 50/30/20 e target** — Nella scheda del mese della Home: ripartizione delle entrate e target di spesa di mese e anno
 
 **🔵 Finanze**
 
@@ -57,7 +63,10 @@
 * **Categorie e Target** — Budget mensile e annuale per categoria, con classe 50/30/20 (Bisogni, Desideri, Risparmio), più target di spesa mensile e annuale
 * **Ricorrenze** — Affitto, abbonamenti, stipendio: inseriti una volta
 * **Finanziamenti** — Rate e piano di ammortamento dei prestiti
-* **Fondo Risparmio** — Obiettivo annuale, fondo attuale e obiettivi
+* **Fondo Risparmio** — Obiettivo annuale, fondo attuale e obiettivi, con il simulatore: in quanto tempo arrivi a un obiettivo o quanto versare al mese
+* **Fondo Pensione** — Piano, versamenti, valorizzazioni e proiezione a scadenza
+* **Inflazione** — Tasso reale calcolato sul tuo storico
+* **MyBusiness** — Gestione dell'attività, con PDF
 * **SmartCat** — Suggerisce la categoria in base allo storico (si attiva e disattiva da Strumenti)
 
 **🟡 Casa e beni**
@@ -69,11 +78,13 @@
 * **AutoPark** — Veicoli, scadenze, spese
 * **ImmoBil** — Immobili, entrate e uscite
 * **Pet Care** — Schede degli animali
+* **Dieta** — Pasti, macronutrienti e peso, con PDF
 
 **🟣 Strumenti**
 
 * **Importa / Esporta** — Zip di OrbitaCasa in entrambe le direzioni, con copia di sicurezza prima di sostituire i dati
 * **Sync PC** — Sincronizzazione diretta con OrbitaCasa desktop
+* **Scansiona PDF** — Scanner di documenti con la fotocamera: più pagine in un solo PDF da condividere o salvare
 * **Estrazione dati con Gemini (opzionale)** — Leggi un documento PDF o una foto e l'app compila i campi per te
 * **Blocco app** con biometria o sblocco del dispositivo
 * **Barra di navigazione personalizzabile**

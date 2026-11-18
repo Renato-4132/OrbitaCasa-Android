@@ -180,4 +180,31 @@ object Fondo {
             mediaU * 3, mediaU * 6, mediaU * 12, rata, mediaR - rata, pctObj, stati,
         )
     }
+
+    class Simulazione(val mesi: Int?, val capitale: Double, val versato: Double)
+
+    private const val MAX_MESI_SIM = 1200
+
+    private fun tassoMensile(rendAnnuo: Double): Double =
+        Math.pow(1 + rendAnnuo.coerceAtLeast(-99.0) / 100.0, 1.0 / 12.0) - 1
+
+    fun simula(obiettivo: Double, iniziale: Double, mensile: Double, rendAnnuo: Double): Simulazione {
+        val rm = tassoMensile(rendAnnuo)
+        var cap = iniziale
+        var m = 0
+        while (cap < obiettivo && m < MAX_MESI_SIM) {
+            cap = cap * (1 + rm) + mensile
+            m++
+        }
+        return Simulazione(if (cap >= obiettivo) m else null, cap, iniziale + mensile * m)
+    }
+
+    fun versamentoNecessario(obiettivo: Double, iniziale: Double, mesi: Int, rendAnnuo: Double): Double {
+        if (mesi <= 0) return 0.0
+        val rm = tassoMensile(rendAnnuo)
+        val crescita = Math.pow(1 + rm, mesi.toDouble())
+        val mancante = obiettivo - iniziale * crescita
+        if (mancante <= 0) return 0.0
+        return if (Math.abs(rm) < 1e-12) mancante / mesi else mancante * rm / (crescita - 1)
+    }
 }

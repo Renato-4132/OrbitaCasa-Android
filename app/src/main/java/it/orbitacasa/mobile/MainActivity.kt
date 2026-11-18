@@ -227,6 +227,15 @@ class MainActivity : AppCompatActivity() {
             if (uri != null) esportaZip(uri)
         }
 
+    private val scanPdf =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
+            if (r.resultCode == RESULT_OK) {
+                val uri = com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+                    .fromActivityResultIntent(r.data)?.pdf?.uri
+                if (uri != null) salvaScansione(uri) else aviso("Nessun documento acquisito")
+            }
+        }
+
     private fun <T : View> vista(id: Int): T = findViewById(id)
 
     private fun aviso(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
@@ -683,6 +692,7 @@ class MainActivity : AppCompatActivity() {
             cont, "Strumenti", "🛠️",
             listOf(
                 Tessera("🔀", "Importa / Esporta") { dialogImportaEsporta() },
+                Tessera("📄", "Scansiona PDF") { scansionaPdf() },
                 Tessera("🔗" + if (Sync.configurato(this)) " " + Sync.ultima(this).let { if (it > 0) java.text.SimpleDateFormat("HH:mm", Locale.ITALY).format(java.util.Date(it)) else "--:--" } else "", "Sync") { dialogSync() },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
                 Tessera("🎭", if (Repo.demoAttiva) "Esci dalla demo" else "Modalità demo") {
@@ -5435,6 +5445,89 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun dialogSimulatore() {
+        val (view, corpo) = corpoDialogo()
+        fun num0(x: Double) = if (x > 0) String.format(Locale.ITALY, "%.2f", x) else ""
+        val etOb = campoTesto(corpo, "Obiettivo da raggiungere (€)", num0(Fondo.obiettivoAnnuale()), TIPO_DECIMALE, 12)
+        val etIn = campoTesto(corpo, "Capitale di partenza (€)", num0(Fondo.fondoAttuale()), TIPO_DECIMALE, 12)
+        val etMe = campoTesto(corpo, "Versamento mensile (€)", "", TIPO_DECIMALE, 12)
+        val etRe = campoTesto(corpo, "Rendimento annuo % (facoltativo)", num0(Fondo.tassoAnnuo()), TIPO_DECIMALE_NEG, 7)
+        val etMesi = campoTesto(corpo, "Tempo in mesi (per sapere quanto versare)", "", InputType.TYPE_CLASS_NUMBER, 4)
+        val tvRis = TextView(this)
+        tvRis.setPadding(4, 16, 4, 0)
+        tvRis.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        corpo.addView(tvRis)
+        val dlg = OcBuilder(this)
+            .setTitle("Simulatore risparmio")
+            .setView(view)
+            .setPositiveButton("Calcola", null)
+            .setNegativeButton("Chiudi", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val ob = importoOk(etOb.text.toString())
+            val ini = importoOk(etIn.text.toString(), ammettiZero = true)
+            val me = importoOk(etMe.text.toString(), ammettiZero = true)
+            val re = importoOk(etRe.text.toString(), ammettiZero = true, negativo = true)
+            val mesi = etMesi.text.toString().trim().toIntOrNull() ?: 0
+            if (ob == null) { etOb.error = "Importo non valido"; return@setOnClickListener }
+            if (ini == null) { etIn.error = "Importo non valido"; return@setOnClickListener }
+            if (me == null) { etMe.error = "Importo non valido"; return@setOnClickListener }
+            if (re == null) { etRe.error = "Valore non valido"; return@setOnClickListener }
+            if (me <= 0 && mesi <= 0) {
+                tvRis.text = "Inserisci il versamento mensile, oppure il tempo in mesi."
+                return@setOnClickListener
+            }
+            val righe = ArrayList<String>()
+            if (ini >= ob) righe.add("Hai già raggiunto l'obiettivo con il capitale di partenza.")
+            else if (me > 0) {
+                val s = Fondo.simula(ob, ini, me, re)
+                if (s.mesi == null) {
+                    righe.add("Con " + euro(me) + " al mese non arrivi all'obiettivo entro 100 anni.")
+                } else {
+                    val quando = YearMonth.now().plusMonths(s.mesi.toLong())
+                    righe.add(
+                        "Con " + euro(me) + " al mese arrivi a " + euro(ob) + " in " + s.mesi + " mesi (" +
+                            (s.mesi / 12) + " anni e " + (s.mesi % 12) + " mesi), cioè a " +
+                            maiuscola(quando.format(FMT_MESE)) + ".\nVersato: " + euro(s.versato) +
+                            " · rendimento: " + euro(s.capitale - s.versato)
+                    )
+                }
+            }
+            if (mesi > 0 && ini < ob) {
+                val v = Fondo.versamentoNecessario(ob, ini, mesi, re)
+                righe.add("Per arrivarci in " + mesi + " mesi servono " + euro(v) + " al mese.")
+            }
+            tvRis.text = righe.joinToString("\n\n")
+        }
+    }
+
+    private fun scansionaPdf() {
+        val opz = com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.Builder()
+            .setGalleryImportAllowed(true)
+            .setPageLimit(20)
+            .setResultFormats(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
+            .setScannerMode(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+            .build()
+        com.google.mlkit.vision.documentscanner.GmsDocumentScanning.getClient(opz)
+            .getStartScanIntent(this)
+            .addOnSuccessListener { sender ->
+                scanPdf.launch(androidx.activity.result.IntentSenderRequest.Builder(sender).build())
+            }
+            .addOnFailureListener { e -> aviso("Scanner non disponibile: " + (e.message ?: "errore")) }
+    }
+
+    private fun salvaScansione(uri: android.net.Uri) {
+        try {
+            val dir = java.io.File(cacheDir, "pdf").apply { mkdirs() }
+            val f = java.io.File(dir, "scansione_" + java.text.SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ITALY).format(java.util.Date()) + ".pdf")
+            contentResolver.openInputStream(uri)?.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+            PensionePdf.condividi(this, f, "Documento scansionato")
+        } catch (e: Exception) {
+            aviso("Impossibile salvare il PDF: " + (e.message ?: "errore"))
+        }
+    }
+
     private fun renderFondo() {
         intestaLista("💰 Fondo Risparmio", "➕  Nuovo obiettivo", "✏️  Imposta fondo")
         val cont = vista<LinearLayout>(R.id.listaGen)
@@ -5448,6 +5541,7 @@ class MainActivity : AppCompatActivity() {
         val a = Fondo.analizza(Repo.voci(), annuale, Fondo.obiettivi())
         if (Fondo.errore != null && cont.childCount == 0) vuoto(cont, "⚠️ " + Fondo.errore)
 
+        riga(cont, "🧮 Simulatore risparmio", "In quanto tempo arrivi a un obiettivo, o quanto versare al mese", "›", null) { dialogSimulatore() }
         sezione(cont, "ULTIMI 365 GIORNI")
         riga(cont, "Entrate", "media " + euro(a.mediaE) + "/mese", euro(a.entrate365), verde, null)
         riga(cont, "Uscite", "media " + euro(a.mediaU) + "/mese", euro(a.uscite365), rosso, null)
@@ -7497,6 +7591,23 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun stkInListaSpesa() {
+        val r = Stock.righeRiordino(Stock.carica())
+        if (r.isEmpty()) {
+            aviso("Nessun articolo da riordinare")
+            return
+        }
+        stuConferma(
+            "Lista spesa",
+            "Aggiungere alla lista spesa di Supermercati i " + r.size + " articoli da riordinare? " +
+                "Quelli che trovo nel catalogo usano l'offerta migliore, gli altri vanno sotto «" + Market.DA_ASSEGNARE + "».",
+            "Aggiungi",
+        ) {
+            val (nelCatalogo, senza, errore) = Market.aggiungiRiordino(r, LocalDate.now())
+            if (errore != null) aviso(errore) else aviso("Aggiunti $nelCatalogo dal catalogo e $senza da assegnare")
+        }
+    }
+
     private fun stkCaricaTutto() {
         val dati = Stock.carica()
         val r = Stock.righeRiordino(dati)
@@ -7597,6 +7708,7 @@ class MainActivity : AppCompatActivity() {
         }
         add("📷  Scansiona codice a barre") { stkScansiona() }
         add("🧾  Lista riordino") { stkRiordino() }
+        add("🛒  Riordino → lista spesa") { stkInListaSpesa() }
         add("📥  Carica tutto il riordino") { stkCaricaTutto() }
         add("📈  Scorta minima suggerita") { stkScorte() }
         add("🏷️  Categorie") { stkCategorie() }

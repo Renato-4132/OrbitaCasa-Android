@@ -425,5 +425,29 @@ object Market {
         return salvaLista(l)
     }
 
+    const val DA_ASSEGNARE = "Da assegnare"
+
+    fun aggiungiRiordino(righe: List<Pair<JSONObject, Double>>, oggi: LocalDate): Triple<Int, Int, String?> {
+        val db = carica()
+        val l = leggiLista().toMutableList()
+        var trovati = 0
+        var senza = 0
+        for ((a, ord) in righe) {
+            val nomeStock = Stock.s(a, "nome")
+            val qta = Math.ceil(ord - 1e-9).toInt().coerceAtLeast(1)
+            val o = migliore(db, nomeStock, oggi)
+            val nome = o?.nome ?: nomeStock
+            val sm = o?.supermercato ?: DA_ASSEGNARE
+            val r = l.firstOrNull { it.nome.equals(nome, true) && it.supermercato == sm }
+            if (r != null) {
+                r.qta += qta
+            } else {
+                l.add(Riga(nome, sm, o?.quantita ?: Stock.s(a, "unita"), qta, o?.prezzo ?: Stock.d(a, "prezzo")))
+            }
+            if (o != null) trovati++ else senza++
+        }
+        return Triple(trovati, senza, salvaLista(l))
+    }
+
     fun totaleLista(l: List<Riga>): Double = l.sumOf { it.totale }
 }
