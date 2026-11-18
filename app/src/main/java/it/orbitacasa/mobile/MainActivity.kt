@@ -2503,7 +2503,7 @@ class MainActivity : AppCompatActivity() {
         val totE = elenco.sumOf { it.second.e }
         val totN = elenco.sumOf { it.second.n }
         val nome = if (anCat == AN_TUTTE) "tutte le categorie" else anCat
-        sezione(cont, "DISTRIBUZIONE PER " + anDist.uppercase() + " · " + nome.uppercase())
+        sezione(cont, "DISTRIBUZIONE PER " + anDist.uppercase() + "\n" + nome.uppercase())
         if (totN == 0) {
             anTesto(cont, "Nessun movimento nel periodo.", colore = medio)
             return
@@ -4885,7 +4885,7 @@ class MainActivity : AppCompatActivity() {
 
         when (ckVista) {
             0 -> {
-                sezione(cont, "CATEGORIE ABITUALI NON ANCORA REGISTRATE QUESTO MESE")
+                sezione(cont, "CATEGORIE ABITUALI NON ANCORA REGISTRATE")
                 val man = Checkout.mancanti(voci)
                 if (man.isEmpty()) {
                     vuoto(cont, "Nessuna categoria mancante: compaiono quando sono state registrate in almeno 4 giorni diversi degli ultimi 12 mesi e non ancora in questo mese.")
