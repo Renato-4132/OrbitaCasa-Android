@@ -1072,7 +1072,9 @@ object Sync {
                     }
                 }
             } else if (s != null) {
-                if (st == null) scarica.add(id)
+                if (Repo.retentionEsclude(id, s.data)) {
+                    // fuori dalla finestra di retention: resta sul desktop, non si scarica
+                } else if (st == null) scarica.add(id)
                 else if (st.optString("h") == s.h) elimina[id] = s.h
                 else scarica.add(id)
             } else if (l != null) {

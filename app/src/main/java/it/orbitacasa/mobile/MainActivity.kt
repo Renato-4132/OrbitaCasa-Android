@@ -722,6 +722,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🔀", "Importa / Esporta") { dialogImportaEsporta() },
                 Tessera("🗂️", "Copie di sicurezza") { dialogCopie() },
                 Tessera("🧹", "Azzera dati") { dialogAzzera() },
+                Tessera("🗄️", "Storico: " + if (Repo.retentionOn) "${Repo.retentionAnni} anni" else "tutto") { dialogRetention() },
                 Tessera("📄", "Scansiona PDF") { scansionaPdf() },
                 Tessera("🔗" + if (Sync.configurato(this)) " " + Sync.ultima(this).let { if (it > 0) java.text.SimpleDateFormat("HH:mm", Locale.ITALY).format(java.util.Date(it)) else "--:--" } else "", "Sync") { dialogSync() },
                 Tessera("🤖", "Chiave Gemini: " + if (Gemini.chiave(this).isEmpty()) "no" else "ok") { dialogChiaveGemini { refresh() } },
@@ -12953,6 +12954,59 @@ class MainActivity : AppCompatActivity() {
                         dopo()
                     }
                 }
+            }
+            .show()
+    }
+
+    private fun dialogRetention() {
+        if (Repo.demoAttiva) {
+            aviso("Non disponibile in modalità demo")
+            return
+        }
+        val (view, corpo) = corpoDialogo()
+        val chk = MaterialCheckBox(this)
+        chk.text = "Elimina i movimenti più vecchi"
+        chk.isChecked = Repo.retentionOn
+        corpo.addView(chk)
+        val et = campoTesto(corpo, "Anni da tenere (1-10)", Repo.retentionAnni.toString(), InputType.TYPE_CLASS_NUMBER, 2)
+        OcBuilder(this)
+            .setTitle("Storico dati")
+            .setMessage(
+                "Quando è attivo, a ogni salvataggio i movimenti più vecchi degli anni scelti vengono tolti dal telefono. " +
+                    "Prima si crea una copia in Copie di sicurezza. Con la Sync restano sul Desktop. " +
+                    "Spegnendolo, i movimenti già tolti non tornano da soli: servono le Copie di sicurezza."
+            )
+            .setView(view)
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Salva") { _, _ ->
+                val anni = (et.text.toString().toIntOrNull() ?: 10).coerceIn(1, 10)
+                if (!chk.isChecked) {
+                    Repo.setRetention(false, anni)
+                    renderHome()
+                    return@setPositiveButton
+                }
+                val n = Repo.retentionDaRimuovere(anni)
+                if (n == 0) {
+                    Repo.setRetention(true, anni)
+                    renderHome()
+                    aviso("Storico attivo: $anni anni")
+                    return@setPositiveButton
+                }
+                OcBuilder(this)
+                    .setTitle("Eliminare $n movimenti?")
+                    .setMessage("Ci sono $n movimenti più vecchi di $anni anni. Verranno tolti dal telefono, con una copia in Copie di sicurezza.")
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Elimina") { _, _ ->
+                        Repo.setRetention(true, anni)
+                        thread {
+                            val r = Repo.retentionApplicaOra()
+                            runOnUiThread {
+                                refresh()
+                                aviso(if (r > 0) "Tolti $r movimenti" else "Storico attivo: $anni anni")
+                            }
+                        }
+                    }
+                    .show()
             }
             .show()
     }

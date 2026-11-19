@@ -161,6 +161,12 @@ object Repo {
         private set
     var fmDismiss: LocalDate? = null
         private set
+    var retentionOn = false
+        private set
+    var retentionAnni = 10
+        private set
+    private val retIds = LinkedHashSet<String>()
+    private lateinit var appCtx: Context
     val BARRA_DEFAULT = listOf("MOVIMENTI", "CALENDARIO", "GRAFICI", "CONTI")
     var barra: List<String> = BARRA_DEFAULT
         private set
@@ -173,6 +179,7 @@ object Repo {
 
     fun init(ctx: Context) {
         if (::dir.isInitialized) return
+        appCtx = ctx.applicationContext
         dir = File(ctx.filesDir, "db").also { it.mkdirs() }
         Fin.init(dir)
         Park.init(dir)
@@ -209,6 +216,12 @@ object Repo {
                 checkMese = o.optBoolean("check_mese", true)
                 sogliaGiorniRic = o.optInt("soglia_giorni_ricorrenti", 5).coerceIn(0, 28)
                 fmDismiss = runCatching { LocalDate.parse(o.optString("fm_dismiss", "")) }.getOrNull()
+                retentionOn = o.optBoolean("retention_on", false)
+                retentionAnni = o.optInt("retention_anni", 10).coerceIn(1, 10)
+                o.optJSONArray("retention_ids")?.let { a ->
+                    retIds.clear()
+                    for (i in 0 until a.length()) a.optString(i).takeIf { it.isNotBlank() }?.let { retIds.add(it) }
+                }
                 o.optJSONArray("barra")?.let { a ->
                     val l = (0 until a.length()).map { a.optString(it) }
                     if (l.size == 4) barra = l
@@ -249,6 +262,71 @@ object Repo {
         salvaImpostazioni()
     }
 
+    fun setRetention(on: Boolean, anni: Int) {
+        retentionOn = on
+        retentionAnni = anni.coerceIn(1, 10)
+        salvaImpostazioni()
+    }
+
+    private fun limiteRetention(anni: Int): LocalDate = LocalDate.now().minusDays(365L * anni)
+
+    fun retentionDaRimuovere(anni: Int): Int {
+        val sp = db.optJSONArray("spese") ?: return 0
+        val limite = limiteRetention(anni)
+        var n = 0
+        for (i in 0 until sp.length()) {
+            val day = sp.optJSONObject(i) ?: continue
+            val d = parseData(day.optString("date")) ?: continue
+            if (d.isBefore(limite)) n += day.optJSONArray("entries")?.length() ?: 0
+        }
+        return n
+    }
+
+    fun retentionApplicaOra(): Int {
+        val n = retentionDaRimuovere(retentionAnni)
+        if (n > 0) save()
+        return n
+    }
+
+    fun retentionEsclude(id: String, data: String): Boolean {
+        if (id in retIds) return true
+        if (!retentionOn) return false
+        val d = parseData(data) ?: return false
+        return d.isBefore(limiteRetention(retentionAnni))
+    }
+
+    private fun applicaRetention() {
+        if (!retentionOn || !::appCtx.isInitialized || demoAttiva) return
+        val sp = db.optJSONArray("spese") ?: return
+        val limite = limiteRetention(retentionAnni)
+        var vecchi = false
+        for (i in 0 until sp.length()) {
+            val d = parseData(sp.optJSONObject(i)?.optString("date") ?: "") ?: continue
+            if (d.isBefore(limite)) { vecchi = true; break }
+        }
+        if (!vecchi) return
+        val copia = try {
+            Backup.esegui(appCtx, dir, FILES + SETT, false)
+        } catch (_: Exception) {
+            null
+        }
+        if (copia == null) return
+        val nuovo = JSONArray()
+        for (i in 0 until sp.length()) {
+            val day = sp.optJSONObject(i) ?: continue
+            val d = parseData(day.optString("date"))
+            if (d != null && d.isBefore(limite)) {
+                val en = day.optJSONArray("entries") ?: continue
+                for (j in 0 until en.length()) {
+                    val id = en.optJSONObject(j)?.let { str(it, "id_spesa") } ?: ""
+                    if (id.isNotBlank()) retIds.add(id)
+                }
+            } else nuovo.put(day)
+        }
+        db.put("spese", nuovo)
+        salvaImpostazioni()
+    }
+
     private fun salvaImpostazioni() {
         try {
             File(dir, SETT).writeText(
@@ -261,6 +339,9 @@ object Repo {
                     .put("check_mese", checkMese)
                     .put("soglia_giorni_ricorrenti", sogliaGiorniRic)
                     .put("fm_dismiss", fmDismiss?.toString() ?: "")
+                    .put("retention_on", retentionOn)
+                    .put("retention_anni", retentionAnni)
+                    .put("retention_ids", JSONArray(retIds.toList()))
                     .put("barra", JSONArray(barra))
                     .toString(2),
                 Charsets.UTF_8
@@ -387,6 +468,7 @@ object Repo {
     }
 
     private fun save() {
+        applicaRetention()
         val es = risparmioAuto()
         scriviDb()
         if (es.pf) scriviPf()
