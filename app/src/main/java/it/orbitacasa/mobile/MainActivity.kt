@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MAIL_SUPPORTO = "helporbitacasa@gmail.com"
 
-    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, POOL, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, STOCK, INFO, ESTRATTI, CHIEDI }
+    private enum class Pagina { HOME, MOVIMENTI, CONTI, CATEGORIE, ANALISI, TARGET, RICORRENZE, CALENDARIO, FINANZIAMENTI, AUTOPARK, IMMOBIL, PET, FONDO, GRAFICI, PIANIFICA, DOCUMENTI, DOCPERS, UTENZE, FAIRSHARE, POOL, CHECKOUT, RICERCA, PREVISIONE, PROMEMORIA, NOTIFICHE, CASACARE, PENSIONE, DIETA, STUDIO, INFLAZIONE, MARKET, STOCK, INFO, ESTRATTI, CHIEDI, INVEST }
 
     private class Tessera(val ico: String, val lbl: String, val azione: () -> Unit)
 
@@ -99,6 +99,9 @@ class MainActivity : AppCompatActivity() {
     private var casaCat = "Tutte"
     private var casaStato = "Tutti"
     private var penVista = 0
+    private var invVista = 0
+    private var invFiltro = ""
+    private var invInCorso = false
     private var dietVista = 0
     private var dietSett = 0
     private var dietPassiMese = 0
@@ -218,6 +221,10 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importaPensione(uri)
         }
+    private val apriJsonInvest =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) importaInvestJson(uri)
+        }
     private val apriDocumento =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@registerForActivityResult
@@ -267,6 +274,7 @@ class MainActivity : AppCompatActivity() {
                 Pagina.FONDO -> dialogObiettivoFondo()
                 Pagina.CASACARE -> dialogCasaCare(null)
                 Pagina.PENSIONE -> penAggiungi()
+                Pagina.INVEST -> invAggiungi()
                 Pagina.DIETA -> menuDieta()
                 Pagina.STUDIO -> stuNuovo()
                 Pagina.MARKET -> mkNuovo()
@@ -311,6 +319,8 @@ class MainActivity : AppCompatActivity() {
                 dialogFiltriCasa()
             } else if (pagina == Pagina.PENSIONE) {
                 menuPdfPensione()
+            } else if (pagina == Pagina.INVEST) {
+                menuInvest()
             } else if (pagina == Pagina.DIETA) {
                 menuDieta()
             } else if (pagina == Pagina.STUDIO) {
@@ -581,7 +591,7 @@ class MainActivity : AppCompatActivity() {
         pagina = p
         vista<View>(R.id.pageHome).visibility = if (p == Pagina.HOME) View.VISIBLE else View.GONE
         vista<View>(R.id.pageMovimenti).visibility = if (p == Pagina.MOVIMENTI) View.VISIBLE else View.GONE
-        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.POOL || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.STOCK || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI
+        val lista = p == Pagina.CONTI || p == Pagina.CATEGORIE || p == Pagina.ANALISI || p == Pagina.TARGET || p == Pagina.RICORRENZE || p == Pagina.CALENDARIO || p == Pagina.FINANZIAMENTI || p == Pagina.AUTOPARK || p == Pagina.IMMOBIL || p == Pagina.PET || p == Pagina.FONDO || p == Pagina.GRAFICI || p == Pagina.PIANIFICA || p == Pagina.DOCUMENTI || p == Pagina.DOCPERS || p == Pagina.UTENZE || p == Pagina.FAIRSHARE || p == Pagina.POOL || p == Pagina.CHECKOUT || p == Pagina.RICERCA || p == Pagina.PREVISIONE || p == Pagina.PROMEMORIA || p == Pagina.NOTIFICHE || p == Pagina.CASACARE || p == Pagina.PENSIONE || p == Pagina.DIETA || p == Pagina.STUDIO || p == Pagina.INFLAZIONE || p == Pagina.MARKET || p == Pagina.STOCK || p == Pagina.INFO || p == Pagina.ESTRATTI || p == Pagina.CHIEDI || p == Pagina.INVEST
         vista<View>(R.id.pageLista).visibility = if (lista) View.VISIBLE else View.GONE
         when (p) {
             Pagina.HOME -> renderHome()
@@ -686,6 +696,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("💶", "Finanziamenti") { mostra(Pagina.FINANZIAMENTI) },
                 Tessera("💰", "Fondo Risparmio") { mostra(Pagina.FONDO) },
                 Tessera("🏖️", "Fondo Pensione") { mostra(Pagina.PENSIONE) },
+                Tessera("💹", "Investimenti") { mostra(Pagina.INVEST) },
                 Tessera("💼", "MyBusiness") { mostra(Pagina.STUDIO) },
                 Tessera("📈", "Inflazione") { mostra(Pagina.INFLAZIONE) },
             )
@@ -857,6 +868,7 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.FINANZIAMENTI, "💶", "Finanz."),
         Dest(Pagina.FONDO, "💰", "Fondo"),
         Dest(Pagina.PENSIONE, "🏖️", "Pensione"),
+        Dest(Pagina.INVEST, "💹", "Investimenti"),
         Dest(Pagina.DIETA, "🥗", "Dieta"),
         Dest(Pagina.STUDIO, "💼", "MyBusiness"),
         Dest(Pagina.INFLAZIONE, "📈", "Inflazione"),
@@ -1491,6 +1503,7 @@ class MainActivity : AppCompatActivity() {
             Pagina.FONDO -> renderFondo()
             Pagina.CASACARE -> renderCasaCare()
             Pagina.PENSIONE -> renderPensione()
+            Pagina.INVEST -> renderInvest()
             Pagina.DIETA -> renderDieta()
             Pagina.STUDIO -> renderStudio()
             Pagina.INFLAZIONE -> renderInflazione()
@@ -6369,6 +6382,623 @@ class MainActivity : AppCompatActivity() {
             refresh()
             aviso("Voce salvata")
         }
+    }
+
+    private val INV_SEZ = listOf("Dashboard", "Portafoglio", "Movimenti", "Dividendi", "Grafici")
+
+    private fun invNum(x: Double, dec: Int = 4): String = String.format(Locale.ITALY, "%." + dec + "f", x)
+
+    private fun invPct(x: Double): String = String.format(Locale.ITALY, "%+.2f", x) + "%"
+
+    private fun invCampo(x: Double): String {
+        if (x == Math.rint(x) && Math.abs(x) < 1e12) return x.toLong().toString()
+        return String.format(Locale.ITALY, "%.6f", x).trimEnd('0').trimEnd(',')
+    }
+
+    private fun invAggiungi() {
+        when (invVista) {
+            2 -> dialogMovInvest(null, null)
+            3 -> dialogDivInvest(null, null)
+            else -> dialogTitoloInvest(null)
+        }
+    }
+
+    private fun renderInvest() {
+        intestaLista("💹 Investimenti", "", "🔀  Azioni")
+        val cont = vista<LinearLayout>(R.id.listaGen)
+        val d = Invest.dati()
+        Invest.errore?.let { vuoto(cont, "⚠️ $it") }
+
+        val scelta = pulsanteSel("Vista:  " + INV_SEZ[invVista] + "   ▾", true) {
+            OcBuilder(this)
+                .setTitle("Scegli la vista")
+                .setItems(INV_SEZ.mapIndexed { i, t -> (if (i == invVista) "● " else "○ ") + t }.toTypedArray()) { _, i ->
+                    invVista = i
+                    renderInvest()
+                }
+                .setNegativeButton("Chiudi", null)
+                .show()
+        }
+        cont.addView(scelta, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        when (invVista) {
+            0 -> invDashboard(cont, d)
+            1 -> invTitoli(cont, d)
+            2 -> invMovimenti(cont, d)
+            3 -> invDividendi(cont, d)
+            else -> invGrafici(cont, d)
+        }
+    }
+
+    private fun invSenzaPrezzo(cont: LinearLayout, t: Invest.Totali) {
+        if (t.calcoli.any { it.quantita > 0 && it.prezzo <= 0.0 }) {
+            vuoto(cont, "Alcuni titoli non hanno un prezzo: usa Azioni → Aggiorna prezzi.")
+        }
+    }
+
+    private fun invDashboard(cont: LinearLayout, d: Invest.Dati) {
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        if (d.titoli.isEmpty()) {
+            vuoto(cont, "Nessun titolo: aggiungine uno dal menu Azioni, oppure sincronizza col desktop.")
+            return
+        }
+        val t = Invest.totali(d)
+        invSenzaPrezzo(cont, t)
+        sezione(cont, "SITUAZIONE")
+        riga(cont, "Investito", "", euro(t.investito), null, null)
+        riga(cont, "Valore attuale", "", euro(t.attuale), null, null)
+        riga(cont, "P&L", invPct(t.plPct), segnoEuro(t.pl), if (t.pl >= 0) verde else rosso, null)
+        riga(cont, "Dividendi incassati", "", euro(t.dividendi), null, null)
+        riga(cont, "Rendimento reale", "P&L + dividendi", segnoEuro(t.rendReale), if (t.rendReale >= 0) verde else rosso, null)
+
+        sezione(cont, "ALLOCAZIONE E RIBILANCIAMENTO")
+        riga(cont, "Soglia di ribilanciamento", "", "±" + String.format(Locale.ITALY, "%.1f", d.soglia) + "%", null, null)
+        for (c in t.calcoli) {
+            val att = Invest.allocazione(c, t.attuale)
+            val st = Invest.stato(att, c.target, d.soglia)
+            val emo = when (st) { 1 -> "🟢"; 2 -> "🟡"; 3 -> "🔴"; else -> "⚪" }
+            val colore: Int? = when (st) { 1 -> verde; 2 -> arancio; 3 -> rosso; else -> null }
+            val sotto = "Attuale " + String.format(Locale.ITALY, "%.2f", att) + "%" +
+                (if (c.target != 0.0) " · Target " + String.format(Locale.ITALY, "%.1f", c.target) + "%" else "")
+            val valore = if (c.target != 0.0) String.format(Locale.ITALY, "%+.2f", att - c.target) + "%" else "—"
+            riga(cont, emo + " " + c.ticker, sotto, valore, colore, null)
+        }
+    }
+
+    private fun invTitoli(cont: LinearLayout, d: Invest.Dati) {
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        if (d.titoli.isEmpty()) {
+            vuoto(cont, "Nessun titolo: aggiungine uno dal menu Azioni, oppure sincronizza col desktop.")
+            return
+        }
+        val t = Invest.totali(d)
+        invSenzaPrezzo(cont, t)
+        sezione(cont, "TITOLI · " + t.calcoli.size)
+        for (c in t.calcoli) {
+            val tit = c.ticker + (if (c.descrizione.isNotBlank()) " · " + c.descrizione else "")
+            val sotto = c.assetClass + " · Qtà " + invNum(c.quantita) + " · PMC " + invNum(c.pmc) + " · Prezzo " + invNum(c.prezzo) +
+                "\nInvestito " + euro(c.investito) + " · P&L " + segnoEuro(c.plEur) + " (" + invPct(c.plPct) + ")"
+            riga(cont, tit, sotto, euro(c.valore), if (c.plEur >= 0) verde else rosso) { menuTitoloInvest(c.ticker) }
+        }
+        riga(
+            cont, "TOTALE", "Investito " + euro(t.investito) + " · P&L " + segnoEuro(t.pl) + " (" + invPct(t.plPct) + ")",
+            euro(t.attuale), if (t.pl >= 0) verde else rosso, null
+        )
+    }
+
+    private fun menuTitoloInvest(ticker: String) {
+        OcBuilder(this)
+            .setTitle(ticker)
+            .setItems(arrayOf("➕  Nuovo movimento", "💶  Nuovo dividendo", "✏️  Modifica titolo", "🗑️  Rimuovi titolo")) { _, k ->
+                when (k) {
+                    0 -> dialogMovInvest(ticker, null)
+                    1 -> dialogDivInvest(ticker, null)
+                    2 -> dialogTitoloInvest(ticker)
+                    else -> OcBuilder(this)
+                        .setTitle("Rimuovere il titolo?")
+                        .setMessage("Rimuovere $ticker con tutti i suoi movimenti e dividendi?")
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Rimuovi") { _, _ ->
+                            val err = Invest.rimuoviTitolo(ticker)
+                            if (err != null) aviso(err) else { refresh(); aviso("Titolo rimosso") }
+                        }
+                        .show()
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun invMovimenti(cont: LinearLayout, d: Invest.Dati) {
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val tickers = d.titoli.map { it.ticker }
+        if (invFiltro.isNotEmpty() && invFiltro !in tickers) invFiltro = ""
+        cont.addView(
+            pulsanteSel("Titolo:  " + invFiltro.ifEmpty { "Tutti" } + "   ▾", true) {
+                val voci = listOf("Tutti") + tickers
+                OcBuilder(this)
+                    .setTitle("Titolo")
+                    .setItems(voci.toTypedArray()) { _, i ->
+                        invFiltro = if (i == 0) "" else voci[i]
+                        renderLista()
+                    }
+                    .setNegativeButton("Chiudi", null)
+                    .show()
+            },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        )
+        val l = Invest.ordinaMov(
+            d.titoli.filter { invFiltro.isEmpty() || it.ticker == invFiltro }.flatMap { tt -> tt.mov.map { tt.ticker to it } }
+        )
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessun movimento. Usa il menu Azioni per aggiungerne uno.")
+            return
+        }
+        for ((tk, m) in l) {
+            val sotto = m.tipo.replaceFirstChar { it.uppercase() } + " · Qtà " + invNum(m.quantita) + " · Prezzo " + invNum(m.prezzo) +
+                " · Comm. " + euro(m.commissioni) + (if (m.note.isNotBlank()) "\n" + m.note else "")
+            riga(cont, m.data + " · " + tk, sotto, euro(m.totale), if (m.tipo == "acquisto") verde else rosso) { menuMovInvest(tk, m) }
+        }
+    }
+
+    private fun menuMovInvest(ticker: String, m: Invest.Mov) {
+        OcBuilder(this)
+            .setTitle(m.data + " · " + ticker)
+            .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                if (k == 0) dialogMovInvest(ticker, m) else OcBuilder(this)
+                    .setTitle("Eliminare il movimento?")
+                    .setMessage(m.data + " · " + ticker + " · " + euro(m.totale))
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Elimina") { _, _ ->
+                        val err = Invest.eliminaMov(ticker, m.id)
+                        if (err != null) aviso(err) else { refresh(); aviso("Movimento eliminato") }
+                    }
+                    .show()
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun invDividendi(cont: LinearLayout, d: Invest.Dati) {
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val l = Invest.ordinaDiv(d.titoli.flatMap { tt -> tt.div.map { tt.ticker to it } })
+        if (l.isEmpty()) {
+            vuoto(cont, "Nessun dividendo. Usa il menu Azioni per aggiungerne uno.")
+            return
+        }
+        riga(cont, l.size.toString() + " dividendi", "netto incassato", euro(l.sumOf { it.second.netto }), null, null)
+        for ((tk, x) in l) {
+            riga(cont, x.data + " · " + tk, "Lordo " + euro(x.lordo) + " · Ritenuta " + euro(x.ritenuta), euro(x.netto), verde) {
+                menuDivInvest(tk, x)
+            }
+        }
+    }
+
+    private fun menuDivInvest(ticker: String, x: Invest.Div) {
+        OcBuilder(this)
+            .setTitle(x.data + " · " + ticker)
+            .setItems(arrayOf("✏️  Modifica", "🗑️  Elimina")) { _, k ->
+                if (k == 0) dialogDivInvest(ticker, x) else OcBuilder(this)
+                    .setTitle("Eliminare il dividendo?")
+                    .setMessage(x.data + " · " + ticker + " · " + euro(x.netto))
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Elimina") { _, _ ->
+                        val err = Invest.eliminaDiv(ticker, x.indice)
+                        if (err != null) aviso(err) else { refresh(); aviso("Dividendo eliminato") }
+                    }
+                    .show()
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun invGrafici(cont: LinearLayout, d: Invest.Dati) {
+        val s = Invest.serie(d)
+        if (s == null) {
+            vuoto(cont, "Nessun dato da visualizzare.")
+            return
+        }
+        val blu = ContextCompat.getColor(this, R.color.oc_blue)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val etich = s.date.map { String.format(Locale.ITALY, "%02d/%02d/%02d", it.dayOfMonth, it.monthValue, it.year % 100) }
+        invGrafico(cont, "INVESTITO E DIVIDENDI CUMULATI", "Investito", "Dividendi", etich, s.investito, s.dividendi, blu, verde)
+        invGrafico(cont, "P&L ATTUALE RISPETTO ALL'INVESTITO CUMULATO", "P&L", null, etich, s.pl, emptyList(), blu, verde)
+    }
+
+    private fun invGrafico(
+        cont: LinearLayout, titolo: String, nomeA: String, nomeB: String?, etich: List<String>,
+        a: List<Double>, b: List<Double>, colA: Int, colB: Int,
+    ) {
+        val dp = resources.displayMetrics.density
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        sezione(cont, titolo)
+        val leg = "■ $nomeA" + (if (nomeB != null) "     ■ $nomeB" else "")
+        val sp = android.text.SpannableString(leg)
+        sp.setSpan(android.text.style.ForegroundColorSpan(colA), 0, 1, 0)
+        if (nomeB != null) {
+            val k2 = leg.lastIndexOf('■')
+            sp.setSpan(android.text.style.ForegroundColorSpan(colB), k2, k2 + 1, 0)
+        }
+        val tl = TextView(this)
+        tl.text = sp
+        tl.textSize = 12f
+        tl.setPadding(4, (4 * dp).toInt(), 4, (4 * dp).toInt())
+        cont.addView(tl)
+        val g = GraficoView(this)
+        g.imposta(
+            GraficoView.Modo.LINEA, etich, a, if (nomeB != null) b else emptyList(), colA, colB, grigio,
+            ContextCompat.getColor(this, R.color.oc_border), grigio, ContextCompat.getColor(this, R.color.oc_surface),
+        )
+        val det = TextView(this)
+        det.textSize = 13f
+        det.setPadding(8, (6 * dp).toInt(), 8, (6 * dp).toInt())
+        det.text = "Tocca il grafico per vedere i dettagli."
+        det.setTextColor(grigio)
+        det.minLines = 2
+        g.alSelezionare = { i ->
+            det.text = etich[i] + "\n" + nomeA + " " + euro(a[i]) + (if (nomeB != null) " · " + nomeB + " " + euro(b[i]) else "")
+            det.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+        }
+        cont.addView(g, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (190 * dp).toInt()))
+        cont.addView(det)
+    }
+
+    private fun dialogTitoloInvest(ticker: String?) {
+        val t = ticker?.let { tk -> Invest.dati().titoli.firstOrNull { it.ticker == tk } }
+        if (ticker != null && t == null) {
+            aviso("Titolo non trovato")
+            return
+        }
+        val (view, corpo) = corpoDialogo()
+        val cap = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        val maiusc = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        val etTk = if (t == null) campoTesto(corpo, "Ticker (es. VWCE.AS)", "", maiusc, 20) else null
+        val etDesc = campoTesto(corpo, "Descrizione", t?.descrizione ?: "", cap, 60)
+        val etIsin = campoTesto(corpo, "ISIN (opzionale)", t?.isin ?: "", maiusc, 12)
+        val etAsset = campoTesto(corpo, "Asset class", t?.assetClass?.takeIf { it != "-" } ?: "", cap, 30)
+        val etTarget = campoTesto(
+            corpo, "Target % (es. 55)", if (t != null && t.target != 0.0) invCampo(t.target) else "", TIPO_DECIMALE, 6
+        )
+        val dlg = OcBuilder(this)
+            .setTitle(if (t == null) "Nuovo titolo" else "Modifica " + t.ticker)
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val tgTxt = etTarget.text.toString().trim()
+            val tg = if (tgTxt.isEmpty()) 0.0 else importoOk(tgTxt, true)
+            if (tg == null || tg > 100.0) {
+                etTarget.error = "Valore non valido"
+                return@setOnClickListener
+            }
+            val err = Invest.salvaTitolo(
+                t?.ticker ?: (etTk?.text?.toString() ?: ""), t == null, etDesc.text.toString(),
+                etIsin.text.toString(), etAsset.text.toString(), tg
+            )
+            if (err != null) {
+                if (etTk != null) etTk.error = err else aviso(err)
+                return@setOnClickListener
+            }
+            dlg.dismiss()
+            refresh()
+            aviso("Titolo salvato")
+        }
+    }
+
+    private fun dialogMovInvest(ticker: String?, m: Invest.Mov?) {
+        val tickers = Invest.dati().titoli.map { it.ticker }
+        if (tickers.isEmpty()) {
+            aviso("Aggiungi prima un titolo")
+            return
+        }
+        var tk = ticker ?: invFiltro.takeIf { it in tickers } ?: tickers[0]
+        val (view, corpo) = corpoDialogo()
+        if (ticker == null) campoMenu(corpo, "Titolo", tickers, tk) { tk = tickers[it] }
+        var dt: LocalDate? = m?.let { Invest.data(it.data) } ?: LocalDate.now()
+        bottoneData(corpo, "Data", dt, false) { dt = it }
+        var tipo = m?.tipo?.takeIf { it in Invest.TIPI_MOV } ?: "acquisto"
+        campoMenu(corpo, "Tipo", Invest.TIPI_MOV, tipo) { tipo = Invest.TIPI_MOV[it] }
+        val etQ = campoTesto(corpo, "Quantità", if (m != null) invCampo(m.quantita) else "", TIPO_DECIMALE, 16)
+        val etP = campoTesto(corpo, "Prezzo (€)", if (m != null) invCampo(m.prezzo) else "", TIPO_DECIMALE, 16)
+        val etC = campoTesto(
+            corpo, "Commissioni (€)", if (m != null && m.commissioni != 0.0) invCampo(m.commissioni) else "", TIPO_DECIMALE, 12
+        )
+        val etN = campoTesto(corpo, "Note", m?.note ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 60)
+        val dlg = OcBuilder(this)
+            .setTitle(if (m == null) "Nuovo movimento" + (ticker?.let { " · $it" } ?: "") else "Modifica movimento · $tk")
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val q = importoOk(etQ.text.toString())
+            if (q == null) { etQ.error = "Quantità non valida"; return@setOnClickListener }
+            val p = if (etP.text.toString().isBlank()) null else importoOk(etP.text.toString(), true)
+            if (p == null) { etP.error = "Prezzo non valido"; return@setOnClickListener }
+            val cTxt = etC.text.toString().trim()
+            val c = if (cTxt.isEmpty()) 0.0 else importoOk(cTxt, true)
+            if (c == null) { etC.error = "Commissioni non valide"; return@setOnClickListener }
+            val err = Invest.salvaMov(tk, m?.id, dt, tipo, q, p, c, etN.text.toString())
+            if (err != null) { aviso(err); return@setOnClickListener }
+            dlg.dismiss()
+            refresh()
+            aviso("Movimento salvato")
+        }
+    }
+
+    private fun dialogDivInvest(ticker: String?, x: Invest.Div?) {
+        val tickers = Invest.dati().titoli.map { it.ticker }
+        if (tickers.isEmpty()) {
+            aviso("Aggiungi prima un titolo")
+            return
+        }
+        var tk = ticker ?: invFiltro.takeIf { it in tickers } ?: tickers[0]
+        val (view, corpo) = corpoDialogo()
+        if (ticker == null) campoMenu(corpo, "Titolo", tickers, tk) { tk = tickers[it] }
+        var dt: LocalDate? = x?.let { Invest.data(it.data) } ?: LocalDate.now()
+        bottoneData(corpo, "Data", dt, false) { dt = it }
+        val etLordo = campoTesto(corpo, "Importo lordo (€)", if (x != null) invCampo(x.lordo) else "", TIPO_DECIMALE, 14)
+        val etRit = campoTesto(corpo, "Ritenuta (€)", if (x != null && x.ritenuta != 0.0) invCampo(x.ritenuta) else "", TIPO_DECIMALE, 14)
+        val etNetto = campoTesto(corpo, "Importo netto (€)", if (x != null) invCampo(x.netto) else "", TIPO_DECIMALE, 14)
+        fun ricalcola() {
+            val l = num(etLordo.text.toString()) ?: 0.0
+            val r = num(etRit.text.toString()) ?: 0.0
+            etNetto.setText(String.format(Locale.ITALY, "%.2f", maxOf(l - r, 0.0)))
+        }
+        etLordo.doAfterTextChanged { ricalcola() }
+        etRit.doAfterTextChanged { ricalcola() }
+        val dlg = OcBuilder(this)
+            .setTitle(if (x == null) "Nuovo dividendo" + (ticker?.let { " · $it" } ?: "") else "Modifica dividendo · $tk")
+            .setView(view)
+            .setPositiveButton("Salva", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val lordo = if (etLordo.text.toString().isBlank()) null else importoOk(etLordo.text.toString(), true)
+            if (lordo == null) { etLordo.error = "Importo non valido"; return@setOnClickListener }
+            val rTxt = etRit.text.toString().trim()
+            val rit = if (rTxt.isEmpty()) 0.0 else importoOk(rTxt, true)
+            if (rit == null) { etRit.error = "Ritenuta non valida"; return@setOnClickListener }
+            val netto = if (etNetto.text.toString().isBlank()) null else importoOk(etNetto.text.toString(), true)
+            if (netto == null) { etNetto.error = "Importo non valido"; return@setOnClickListener }
+            val err = Invest.salvaDiv(tk, x?.indice, dt, lordo, rit, netto)
+            if (err != null) { aviso(err); return@setOnClickListener }
+            dlg.dismiss()
+            refresh()
+            aviso("Dividendo salvato")
+        }
+    }
+
+    private fun menuInvest() {
+        val voci = ArrayList<String>()
+        val azioni = ArrayList<() -> Unit>()
+        fun v(t: String, a: () -> Unit) {
+            voci.add(t)
+            azioni.add(a)
+        }
+        v("➕  Nuovo titolo") { dialogTitoloInvest(null) }
+        v("➕  Nuovo movimento") { dialogMovInvest(null, null) }
+        v("➕  Nuovo dividendo") { dialogDivInvest(null, null) }
+        v("🔄  Aggiorna prezzi") { invAggiornaPrezzi() }
+        v("🤖  Analisi AI") { menuAiInvest() }
+        v("📄  Esporta PDF") { invEsportaPdf() }
+        v("📤  Esporta JSON") { invEsportaJson() }
+        v("📥  Importa JSON") { apriJsonInvest.launch(arrayOf("*/*")) }
+        v("🗑️  Azzera portafoglio") { invAzzera() }
+        OcBuilder(this)
+            .setTitle("Investimenti")
+            .setItems(voci.toTypedArray()) { _, i -> azioni[i]() }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun invAggiornaPrezzi() {
+        if (invInCorso) {
+            aviso("Aggiornamento già in corso…")
+            return
+        }
+        if (Invest.dati().titoli.isEmpty()) {
+            aviso("Nessun titolo da aggiornare")
+            return
+        }
+        invInCorso = true
+        aviso("Download prezzi da Yahoo Finance…")
+        Thread {
+            val r = try {
+                Invest.aggiornaPrezzi()
+            } catch (e: Exception) {
+                null
+            }
+            runOnUiThread {
+                invInCorso = false
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (r == null) {
+                    aviso("Aggiornamento prezzi non riuscito")
+                    return@runOnUiThread
+                }
+                if (r.nonTrovati.isNotEmpty()) {
+                    OcBuilder(this)
+                        .setTitle("Prezzi non trovati")
+                        .setMessage(
+                            "Nessun prezzo live trovato per:\n\n" + r.nonTrovati.joinToString("\n") { "  • $it" } +
+                                "\n\nVerifica che il ticker sia corretto (es. VWCE.AS, AAPL) e che ci sia connessione a internet."
+                        )
+                        .setPositiveButton("Chiudi", null)
+                        .show()
+                } else {
+                    aviso("Prezzi aggiornati")
+                }
+                if (pagina == Pagina.INVEST) renderLista()
+            }
+        }.start()
+    }
+
+    private fun menuAiInvest() {
+        OcBuilder(this)
+            .setTitle("Analisi AI")
+            .setItems(
+                arrayOf("📊  Analizza il portafoglio", "📈  Commenta il P&L", "🔍  Cerca un ETF o titolo", "💬  Fai una domanda")
+            ) { _, i ->
+                when (i) {
+                    0 -> invAi("🤖 Analisi portafoglio", true) { Invest.promptPortafoglio(it) }
+                    1 -> invAi("🤖 Commento P&L", true) { Invest.promptPl(it) }
+                    2 -> invChiediTesto("Cerca un ETF o titolo", "Descrizione (es. ETF azionario mondiale)") { s ->
+                        invAi("🤖 Ticker suggeriti", false) { Invest.promptTicker(s) }
+                    }
+                    else -> invChiediTesto("Fai una domanda", "Domanda sul tuo portafoglio") { s ->
+                        invAi("🤖 Risposta", true) { Invest.promptDomanda(it, s) }
+                    }
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun invChiediTesto(titolo: String, hint: String, ok: (String) -> Unit) {
+        val (view, corpo) = corpoDialogo()
+        val et = campoTesto(
+            corpo, hint, "",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE, 300
+        )
+        val dlg = OcBuilder(this)
+            .setTitle(titolo)
+            .setView(view)
+            .setPositiveButton("Invia", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val s = et.text.toString().trim()
+            if (s.isEmpty()) {
+                et.error = "Scrivi qualcosa"
+                return@setOnClickListener
+            }
+            dlg.dismiss()
+            ok(s)
+        }
+    }
+
+    private fun invAi(titolo: String, serveTitoli: Boolean, prompt: (Invest.Dati) -> String) {
+        if (Gemini.chiave(this).isEmpty()) {
+            dialogChiaveGemini { invAi(titolo, serveTitoli, prompt) }
+            return
+        }
+        val d = Invest.dati()
+        if (serveTitoli && d.titoli.isEmpty()) {
+            aviso("Nessun titolo in portafoglio")
+            return
+        }
+        val p = prompt(d)
+        aviso("Analisi in corso…")
+        val app = applicationContext
+        Thread {
+            var testo: String? = null
+            var err: String? = null
+            try {
+                testo = Gemini.chiediTesto(app, p)
+            } catch (e: Exception) {
+                err = Gemini.messaggio(e)
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val t = testo
+                if (t != null) dietDialogTesto(titolo, t) else aviso(err ?: "Errore sconosciuto")
+            }
+        }.start()
+    }
+
+    private fun invEsportaPdf() {
+        val f = try {
+            InvestPdf.crea(this, Invest.dati())
+        } catch (e: Exception) {
+            aviso("Errore nella creazione del PDF: " + e.message)
+            return
+        }
+        InvestPdf.condividi(this, f, "Portafoglio investimenti")
+    }
+
+    private fun invEsportaJson() {
+        val testo = Invest.esportaTesto()
+        if (testo == null) {
+            aviso("Impossibile leggere il portafoglio")
+            return
+        }
+        val dir = java.io.File(cacheDir, "pdf").apply { mkdirs() }
+        val f = java.io.File(dir, "portafoglio_" + LocalDate.now() + ".json")
+        try {
+            f.writeText(testo, Charsets.UTF_8)
+        } catch (e: Exception) {
+            aviso("Impossibile esportare: " + e.message)
+            return
+        }
+        InvestPdf.condividi(this, f, "Portafoglio investimenti")
+    }
+
+    private fun invCopiaSicurezza(motivo: String): Boolean {
+        val snap = Repo.creaSnapshot(this, motivo)
+        if (snap == null && Invest.dati().titoli.isNotEmpty()) {
+            aviso("Copia di sicurezza non riuscita: operazione annullata")
+            return false
+        }
+        return true
+    }
+
+    private fun invAzzera() {
+        OcBuilder(this)
+            .setTitle("Azzera portafoglio")
+            .setMessage("Azzerare completamente il portafoglio investimenti? Prima viene creata una copia di sicurezza.")
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Azzera") { _, _ ->
+                if (!invCopiaSicurezza("azzeramento")) return@setPositiveButton
+                val err = Invest.reset()
+                if (err != null) aviso(err) else {
+                    refresh()
+                    aviso("Portafoglio azzerato")
+                }
+            }
+            .show()
+    }
+
+    private fun importaInvestJson(uri: android.net.Uri) {
+        val testo = try {
+            contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+        } catch (e: Exception) {
+            null
+        }
+        if (testo == null) {
+            aviso("File non leggibile")
+            return
+        }
+        val valido = try {
+            JSONObject(testo).optJSONArray("titoli") != null
+        } catch (e: Exception) {
+            false
+        }
+        if (!valido) {
+            aviso("File non valido")
+            return
+        }
+        OcBuilder(this)
+            .setTitle("Importa portafoglio")
+            .setMessage("Sovrascrivere il portafoglio attuale con il file importato? Prima viene creata una copia di sicurezza.")
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Importa") { _, _ ->
+                if (!invCopiaSicurezza("import investimenti")) return@setPositiveButton
+                val err = Invest.importaTesto(testo)
+                if (err != null) aviso(err) else {
+                    refresh()
+                    aviso("Portafoglio importato")
+                }
+            }
+            .show()
     }
 
     private val DIET_SEZ = listOf("Piano settimanale", "Confronto settimane", "Peso", "Fabbisogno calorico", "Passi", "Alimenti personalizzati")

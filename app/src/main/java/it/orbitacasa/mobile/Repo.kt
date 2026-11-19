@@ -181,6 +181,7 @@ object Repo {
         Fondo.init(dir)
         Casa.init(dir)
         Pensione.init(dir)
+        Invest.init(dir)
         Studio.init(dir)
         Market.init(dir)
         Stock.init(dir)

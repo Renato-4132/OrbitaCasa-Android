@@ -65,6 +65,7 @@
 * **Finanziamenti** — Rate e piano di ammortamento dei prestiti
 * **Fondo Risparmio** — Obiettivo annuale, fondo attuale e obiettivi, con il simulatore: in quanto tempo arrivi a un obiettivo o quanto versare al mese
 * **Fondo Pensione** — Piano, versamenti, valorizzazioni e proiezione a scadenza
+* **Investimenti** — Titoli, movimenti e dividendi, P&L, ribilanciamento, grafici e prezzi aggiornati
 * **Inflazione** — Tasso reale calcolato sul tuo storico
 * **MyBusiness** — Gestione dell'attività, con PDF
 * **SmartCat** — Suggerisce la categoria in base allo storico (si attiva e disattiva da Strumenti)
@@ -181,7 +182,7 @@ I tuoi dati **non escono dal telefono**, a meno che tu non attivi tu una funzion
 | Notifiche | Avvisi dei promemoria e delle spese lette |
 | Avvio del dispositivo | Riprogrammare gli avvisi dopo un riavvio o un aggiornamento |
 | Accesso alle notifiche | Solo per **Notifiche → spese** (opzionale, lo concedi tu dalle impostazioni di Android) |
-| Internet | **Sync con il tuo PC** (rete di casa), **estrazione con Gemini** (se inserisci la tua chiave) e **ricerca aggiornamenti** su GitHub |
+| Internet | **Sync con il tuo PC** (rete di casa), **estrazione con Gemini** (se inserisci la tua chiave), **prezzi dei titoli** da Yahoo Finance (solo i ticker, quando premi «Aggiorna prezzi») e **ricerca aggiornamenti** su GitHub |
 
 * La **chiave API di Gemini** resta solo sul telefono, nelle impostazioni private dell'app.
 * La **sync** parla solo con il tuo PC, via HTTPS con certificato fissato: nessun server di terzi.
