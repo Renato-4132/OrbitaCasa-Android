@@ -13835,9 +13835,14 @@ class MainActivity : AppCompatActivity() {
         val etTag = campoTesto(corpo, "Tag", Notif.tagPredefiniti(p).joinToString(" "), InputType.TYPE_CLASS_TEXT, 60)
 
         val originale = (p.titolo + "\n" + p.testo).trim().take(300)
+        val tvOrig = TextView(this)
+        tvOrig.text = originale
+        tvOrig.maxLines = 4
+        tvOrig.ellipsize = android.text.TextUtils.TruncateAt.END
+        tvOrig.setPadding(0, 0, 0, (8 * resources.displayMetrics.density).toInt())
+        corpo.addView(tvOrig, 0)
         val dlg = OcBuilder(this)
             .setTitle("Conferma la spesa")
-            .setMessage(originale)
             .setView(view)
             .setPositiveButton("Registra", null)
             .setNegativeButton("Annulla", null)

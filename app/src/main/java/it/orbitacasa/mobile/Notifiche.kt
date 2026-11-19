@@ -453,8 +453,10 @@ object Notif {
         p.auto == AUTO_TUTTO || (p.auto == AUTO_REGOLE && p.fonte == "regole")
 
     fun registraAuto(p: Proposta): Boolean {
-        val cat = categoriaSuggerita(p)
-        if (cat.isEmpty() || cat.equals("Generica", true) || cat !in Repo.categorie()) return false
+        val cats = Repo.categorie()
+        var cat = categoriaSuggerita(p)
+        if (cat.isEmpty() || cat !in cats) cat = if ("Generica" in cats) "Generica" else (cats.firstOrNull() ?: "")
+        if (cat.isEmpty()) return false
         return registra(
             p, cat, p.desc, p.importo, p.tipo,
             contoPredefinito(p), metodoPredefinito(p), tagPredefiniti(p), false,
