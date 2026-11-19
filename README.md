@@ -75,6 +75,7 @@
 * **Documenti personali** — Per profilo, con categorie e scadenze
 * **Utenze** — Letture e consumi di luce, gas e acqua su 12 mesi
 * **FairShare** — Spese divise tra più persone, con le quote; estratto Dare/Avere in PDF con i filtri attivi
+* **CommunityPool** — Divide le spese tra i profili di OrbitaCasa Desktop, con i saldi per profilo e le proposte da confermare
 * **AutoPark** — Veicoli, scadenze, spese
 * **ImmoBil** — Immobili, entrate e uscite
 * **Pet Care** — Schede degli animali
