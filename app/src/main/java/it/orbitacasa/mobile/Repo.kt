@@ -663,11 +663,14 @@ object Repo {
         e.put("tipo", tipo)
         setOpt(e, "metodo_pagamento", metodo)
         setOpt(e, "conto", conto)
-        if (hashtag.isEmpty()) e.remove("hashtag") else e.put("hashtag", JSONArray(hashtag))
+        if (hashtag.isEmpty()) e.remove("hashtag") else e.put("hashtag", JSONArray(conCancelletto(hashtag)))
 
         inserisciEntry(data, e)
         save()
     }
+
+    private fun conCancelletto(l: List<String>): List<String> =
+        l.map { it.trim().trimStart('#') }.filter { it.isNotEmpty() }.map { "#$it" }
 
     class NuovaVoce(
         val data: LocalDate,
@@ -691,7 +694,7 @@ object Repo {
             e.put("tipo", n.tipo)
             setOpt(e, "metodo_pagamento", n.metodo)
             setOpt(e, "conto", n.conto)
-            if (n.hashtag.isNotEmpty()) e.put("hashtag", JSONArray(n.hashtag))
+            if (n.hashtag.isNotEmpty()) e.put("hashtag", JSONArray(conCancelletto(n.hashtag)))
             inserisciEntry(n.data, e)
         }
         save()
@@ -897,7 +900,7 @@ object Repo {
                 .put("ora", ora)
             setOpt(e, "metodo_pagamento", metodo)
             setOpt(e, "conto", conto)
-            if (hashtag.isNotEmpty()) e.put("hashtag", JSONArray(hashtag))
+            if (hashtag.isNotEmpty()) e.put("hashtag", JSONArray(conCancelletto(hashtag)))
             inserisciEntry(dt, e)
         }
         val lista = JSONArray()

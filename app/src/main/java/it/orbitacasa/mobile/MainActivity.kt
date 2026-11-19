@@ -1128,7 +1128,7 @@ class MainActivity : AppCompatActivity() {
                     v.ora.takeIf { it.isNotBlank() },
                     v.metodo.takeIf { it.isNotBlank() }?.let { Repo.metodoConEmoji(it) },
                     v.conto.takeIf { it.isNotBlank() }?.let { "🏦 $it" },
-                    v.hashtag.takeIf { it.isNotEmpty() }?.joinToString(" ") { "#$it" },
+                    v.hashtag.takeIf { it.isNotEmpty() }?.joinToString(" ") { "#" + it.trimStart('#') },
                     if (v.ricorrente) "ricorrente" else null,
                     if (v.data.isAfter(oggi)) "futura" else null,
                 ).joinToString(" · ")
@@ -4523,7 +4523,7 @@ class MainActivity : AppCompatActivity() {
         val gruppi = LinkedHashMap<String, ArrayList<EstrattiPdf.Riga>>()
         for (v in voci) {
             val k = if (perConto) v.conto.trim() else v.metodo.trim()
-            val tag = if (v.hashtag.isNotEmpty()) v.hashtag.joinToString(" ") { "#$it" } else ""
+            val tag = if (v.hashtag.isNotEmpty()) v.hashtag.joinToString(" ") { "#" + it.trimStart('#') } else ""
             gruppi.getOrPut(k) { ArrayList() }.add(
                 EstrattiPdf.Riga(
                     v.data, v.categoria, (v.descrizione + " " + tag).trim(),
@@ -4799,7 +4799,7 @@ class MainActivity : AppCompatActivity() {
                 dettaglio.add(v.categoria)
                 if (v.conto.isNotBlank()) dettaglio.add(v.conto)
                 if (v.metodo.isNotBlank()) dettaglio.add(Repo.metodoConEmoji(v.metodo))
-                if (v.hashtag.isNotEmpty()) dettaglio.add(v.hashtag.joinToString(" ") { "#$it" })
+                if (v.hashtag.isNotEmpty()) dettaglio.add(v.hashtag.joinToString(" ") { "#" + it.trimStart('#') })
                 if (futuro) dettaglio.add("futura")
                 riga(
                     boxRis, (if (sforato) "⚠️ " else "") + v.descrizione.ifBlank { v.categoria }, dettaglio.joinToString(" · "),
@@ -11812,7 +11812,7 @@ class MainActivity : AppCompatActivity() {
                     v.ora.takeIf { it.isNotBlank() },
                     v.metodo.takeIf { it.isNotBlank() }?.let { Repo.metodoConEmoji(it) },
                     v.conto.takeIf { it.isNotBlank() }?.let { "🏦 $it" },
-                    v.hashtag.takeIf { it.isNotEmpty() }?.joinToString(" ") { "#$it" },
+                    v.hashtag.takeIf { it.isNotEmpty() }?.joinToString(" ") { "#" + it.trimStart('#') },
                     if (v.ricorrente) "🔁 ricorrenza" else null,
                     if (v.data.isAfter(oggi)) "futura" else null,
                 ).joinToString(" · ")

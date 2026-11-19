@@ -91,7 +91,7 @@ object RicercaPdf {
 
         nuova()
         for (v in ris) {
-            val tag = if (v.hashtag.isNotEmpty()) v.hashtag.joinToString(" ") { "#$it" } else ""
+            val tag = if (v.hashtag.isNotEmpty()) v.hashtag.joinToString(" ") { "#" + it.trimStart('#') } else ""
             val desc = (v.descrizione + " " + tag).trim()
             val c1 = righe(v.categoria, pn, 90f)
             val c2 = righe(desc, pn, 204f)
