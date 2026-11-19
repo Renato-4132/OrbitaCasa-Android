@@ -3886,7 +3886,7 @@ class MainActivity : AppCompatActivity() {
     private fun menuImportaEstratto() {
         OcBuilder(this)
             .setTitle("Estratto conto")
-            .setItems(arrayOf("📥  Importa movimenti (con revisione)", "🔎  Controlla estratto (riconcilia)")) { _, i ->
+            .setItems(arrayOf("📥  Importa estratto (con revisione)", "🔎  Controlla estratto (riconcilia)")) { _, i ->
                 avviaEstratto(i == 1)
             }
             .setNegativeButton("Chiudi", null)

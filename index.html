@@ -234,15 +234,17 @@ footer a{color:#818cf8}
 <div class="group g2"><h3>Analisi e controllo</h3><ul>
 <li><b>Grafici</b> di entrate, uscite e saldo, con tabella per mese o per anno</li>
 <li><b>Analisi per categoria</b> con filtri per giorno, mese e conto</li><li><b>Checkout:</b> le categorie abituali che questo mese mancano</li><li><b>Proiezione mese</b> per categoria, con budget</li>
-<li><b>Estratti</b> per metodo e conto, con il controllo dell'estratto conto</li>
+<li><b>Estratti</b> per metodo e conto: importi i movimenti dall'estratto, con revisione, e riconcili l'estratto conto con l'app</li>
 <li><b>Chiedi al Database:</b> domande sui tuoi dati, con Gemini; puoi allegare PDF o foto, anche dall'archivio documenti</li></ul></div>
 <div class="group g3"><h3>Finanze</h3><ul>
-<li><b>Conti:</b> fino a 10, con saldo iniziale e IBAN, e trasferimenti</li><li><b>Categorie e Target</b> con classi 50/30/20</li><li><b>Ricorrenze</b> come affitto e abbonamenti</li><li><b>Finanziamenti</b> con piano di ammortamento</li><li><b>Fondo Risparmio</b> e obiettivi</li><li><b>Fondo Pensione:</b> versamenti, controvalore e rendimento, con la proiezione a scadenza</li><li><b>SmartCat:</b> suggerisce la categoria dallo storico</li></ul></div>
+<li><b>Conti:</b> fino a 10, con saldo iniziale e IBAN, e trasferimenti</li><li><b>Categorie e Target</b> con classi 50/30/20</li><li><b>Ricorrenze</b> come affitto e abbonamenti</li><li><b>Finanziamenti</b> con piano di ammortamento</li><li><b>Fondo Risparmio</b> e obiettivi</li><li><b>Fondo Pensione:</b> versamenti, controvalore e rendimento, con la proiezione a scadenza</li><li><b>Inflazione ISTAT:</b> quanto vale oggi una cifra di anni fa, con il potere d'acquisto perso</li><li><b>SmartCat:</b> suggerisce la categoria dallo storico</li></ul></div>
 <div class="group g4"><h3>Casa e beni</h3><ul>
 <li><b>Documenti contabili</b> collegati ai movimenti</li><li><b>Documenti personali</b> con scadenze</li><li><b>Utenze:</b> letture e consumi su 12 mesi</li>
-<li><b>CasaCare:</b> le manutenzioni della casa</li><li><b>FairShare:</b> spese divise tra più persone</li><li><b>AutoPark</b> e <b>ImmoBil</b></li><li><b>Pet Care</b></li></ul></div>
+<li><b>CasaCare:</b> le manutenzioni della casa</li><li><b>FairShare:</b> spese divise tra più persone</li><li><b>AutoPark</b> e <b>ImmoBil</b></li><li><b>Pet Care</b></li><li><b>StockBox:</b> il magazzino di casa, con scorte, scadenze e codice a barre</li><li><b>Dieta:</b> calorie e macro per settimana, con il confronto tra settimane</li><li><b>CommunityPool:</b> le spese condivise con gli altri profili di Desktop</li></ul></div>
 <div class="group g5"><h3>Strumenti</h3><ul>
-<li><b>Importa / Esporta</b> lo zip di OrbitaCasa</li><li><b>Copie di sicurezza:</b> snapshot dei dati prima di import, sync e azzeramenti, da ripristinare con un tocco</li><li><b>Azzera dati:</b> cancelli solo gli ambiti che scegli, con copia di sicurezza prima</li><li><b>Sync PC</b> con scansione dei QR</li><li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave (anche con QR)</li><li><b>Modalità demo:</b> dati di esempio da provare, con uscita quando vuoi e i tuoi dati al sicuro</li><li><b>Barra di navigazione</b> personalizzabile e <b>tema</b> chiaro e scuro</li><li><b>Info e contatti:</b> supporto, siti e manuali PDF</li></ul></div>
+<li><b>Importa / Esporta</b> lo zip di OrbitaCasa</li><li><b>Copie di sicurezza:</b> snapshot di dati e documenti prima di import, sync e azzeramenti, salvati in Documenti/OrbitaCasa/backup, con file singoli e zip dei documenti; scegli tu cosa ripristinare</li><li><b>Azzera dati:</b> cancelli solo gli ambiti che scegli, con copia di sicurezza prima</li><li><b>Sync PC</b> con scansione dei QR</li><li><b>Estrazione con Gemini</b> da PDF o foto, se inserisci la tua chiave (anche con QR)</li><li><b>Modalità demo:</b> dati di esempio da provare, con uscita quando vuoi e i tuoi dati al sicuro</li><li><b>Scansione documenti</b> con la fotocamera, manuale o a scatto multiplo</li><li><b>Calcolatrice</b> nel campo importo</li><li><b>Barra di navigazione</b> personalizzabile e <b>tema</b> chiaro e scuro</li><li><b>Info e contatti:</b> supporto, siti e manuali PDF</li></ul></div>
+<div class="group g6"><h3>MyBusiness</h3><ul>
+<li><b>Dashboard:</b> fatturato, da incassare, saldo cassa e soglia del regime forfettario</li><li><b>Clienti</b> con contatti e partita IVA</li><li><b>Agenda</b> con appuntamenti e scadenze fiscali</li><li><b>Prestazioni:</b> il listino con durata, IVA e prezzo</li><li><b>Fatture e preventivi</b> con stato e scadenza</li><li><b>Cassa</b> e <b>magazzino</b> dell'attività</li><li><b>Emittente:</b> i dati che compaiono su ogni documento</li></ul></div>
 </div>
 </div></section>
 
@@ -313,7 +315,7 @@ var S=[
 ['02-home-analisi','Home: Analisi','Il menu Analisi: Grafici, Analisi Categorie, Checkout, Proiezione Mese, Estratti e Chiedi al Database.'],
 ['03-home-finanze','Home: Finanze','Il menu Finanze: Conti, Categorie, Target, Ricorrenze, Finanziamenti, Fondo Risparmio e Fondo Pensione.'],
 ['04-home-casa-e-beni','Home: Casa e beni','Il menu Casa e beni: Documenti contabili e personali, Utenze, CasaCare, FairShare, AutoPark, ImmoBil e Pet Care.'],
-['05-nuova-operazione','Nuova operazione','Registri un\'uscita o un\'entrata in pochi tocchi. SmartCat propone la categoria dallo storico.'],
+['05-nuova-operazione','Operazione','Registri o modifichi un\'uscita o un\'entrata in pochi tocchi, con la calcolatrice nell\'importo. SmartCat propone la categoria dallo storico.'],
 ['06-movimenti','Movimenti del mese','Entrate, uscite e saldo del mese, con ricerca e navigazione tra i mesi.'],
 ['07-calendario','Calendario','Ogni giorno con i suoi movimenti: tocca una data per vedere il dettaglio.'],
 ['08-pianifica','Pianifica','Dilaziona una spesa in quote mensili e vedi quanto accantonare e quanto hai già messo da parte.'],
@@ -322,15 +324,15 @@ var S=[
 ['11-notifiche','Notifiche → spese','Le notifiche di banche e carte diventano movimenti, con regole per app e prova del testo.'],
 ['12-ricerca','Cerca operazioni','Ricerca per testo e filtri avanzati, anche per tag, con totali e condivisione dei risultati.'],
 ['13-grafici','Grafici e statistiche','Andamento di entrate e uscite, in vista annuale, mensile, per spese e in tabella.'],
-['14-analisi-categorie','Analisi per categoria','La spesa distribuita per giorno della settimana, con filtri per mese, anno, categoria e conto.'],
+['14-analisi-categorie','Analisi per categoria','La spesa per categoria in più viste (distribuzione, trend e target), con filtri per mese, anno, categoria e conto.'],
 ['15-checkout','Checkout','Le categorie in cui spendi di solito ma che questo mese non hai ancora registrato.'],
 ['16-previsione','Proiezione mese','Per categoria: speso finora, previsione a fine mese e budget.'],
-['17-estratti','Estratti per metodo e conto','Entrate e uscite divise per metodo di pagamento o per conto, con filtro per anno e mese.'],
+['17-estratti','Estratti per metodo e conto','Entrate e uscite divise per metodo di pagamento o per conto, con filtro per anno e mese. Dal menu importi i movimenti dall\'estratto, con revisione, o riconcili l\'estratto con l\'app.'],
 ['18-estratti-controllo-1','Controllo estratto conto','Confronta un estratto con i movimenti dell\'app e segnala le righe mancanti e quelle in più, con tolleranza sui giorni.'],
 ['19-estratti-controllo-2','Righe mancanti','Le righe dell\'estratto che nell\'app non ci sono: le importi in un tocco o esporti l\'elenco.'],
 ['20-chiedi-database','Chiedi al Database','Fai una domanda sui tuoi dati e Gemini risponde con totali, confronti e consigli. Puoi allegare PDF o foto.'],
 ['21-conti','Conti','Fino a 10 conti con saldo e tipo, e trasferimenti tra un conto e l\'altro.'],
-['22-categorie','Categorie','Le spese del mese per categoria, con budget e classe 50/30/20.'],
+['22-categorie','Categorie','Le spese del mese per categoria, con budget e classe 50/30/20. Aggiungi una categoria con budget mensile e annuale.'],
 ['23-target','Target','Target di spesa mensile e annuale e budget per categoria, con barre di avanzamento.'],
 ['24-ricorrenze','Ricorrenze','Affitto, abbonamenti, stipendio: li inserisci una volta sola.'],
 ['25-finanziamenti','Finanziamenti','Rate e piano di ammortamento, con calcolatori: simulazione, rata sostenibile, estinzione anticipata.'],
@@ -348,6 +350,31 @@ var S=[
 ['37-petcare','Pet Care','Gli animali con vaccinazioni, antiparassitari e spese del veterinario.'],
 ['38-strumenti','Strumenti','Importa ed esporta lo zip, sync con il PC, chiave Gemini, aggiornamenti e modalità demo.'],
 ['39-app-bloccata','App bloccata','Alla riapertura l\'app chiede lo sblocco con impronta, volto o codice del dispositivo.'],
+['40-stockbox','StockBox','Il magazzino di casa: articoli con scorte minime e massime, scadenze, valore in magazzino e scansione del codice a barre.'],
+['41-ricorrenze-elimina','Ricorrenze: elimina','Prima di eliminare una ricorrenza l\'app avvisa che si tolgono anche tutte le sue operazioni, comprese quelle già registrate.'],
+['42-fondo-obiettivi','Fondo Risparmio: obiettivi','Gli obiettivi di risparmio con rata mensile e tempo stimato, e la proiezione dell\'anno mese per mese.'],
+['43-fondo-pensione-versamenti','Fondo Pensione: versamenti','Tutti i versamenti con data, tipo (TFR, lavoratore, datore di lavoro, volontario) e origine, anche da PDF.'],
+['44-fondo-pensione-valorizzazioni','Fondo Pensione: valorizzazioni','Il controvalore del fondo a ogni estratto trimestrale.'],
+['45-fondo-pensione-riscatti','Fondo Pensione: riscatti','Riscatti e anticipazioni con data, motivo e importo.'],
+['46-mybusiness','MyBusiness','Il gestionale della tua attività: fatturato, da incassare, saldo cassa, appuntamenti, magazzino e soglia del regime forfettario.'],
+['47-mybusiness-clienti','MyBusiness: clienti','L\'anagrafica dei clienti con contatti, partita IVA e note.'],
+['48-mybusiness-agenda','MyBusiness: agenda','Appuntamenti e scadenze fiscali in un calendario mensile.'],
+['49-mybusiness-prestazioni','MyBusiness: prestazioni','Il listino delle prestazioni con durata, aliquota IVA e prezzo.'],
+['50-mybusiness-fatture','MyBusiness: fatture','Fatture e preventivi con stato (bozza, emessa, pagata), scadenza e importo.'],
+['51-mybusiness-cassa','MyBusiness: cassa','Entrate e uscite dell\'attività con il saldo cassa, filtrabili per tipo.'],
+['52-mybusiness-magazzino','MyBusiness: magazzino','Gli articoli con giacenza, soglia minima e valore, con quelli sotto soglia in evidenza.'],
+['53-mybusiness-emittente','MyBusiness: emittente','I dati che compaiono su ogni fattura e preventivo: ragione sociale, indirizzo, partita IVA e contatti.'],
+['54-inflazione','Inflazione ISTAT','Quanto vale oggi una cifra di anni fa, con i dati ISTAT NIC: valore rivalutato e potere d\'acquisto perso.'],
+['55-inflazione-grafico','Inflazione: andamento','L\'andamento del valore tra l\'anno di partenza e quello di arrivo, con inflazione totale e media annua.'],
+['56-doc-contabili-dettaglio','Documento contabile','Categoria, data, importo, file, conto e spesa collegata, con Condividi, Modifica e Apri.'],
+['57-doc-personali-dettaglio','Documento personale','Categoria, data, scadenza, note e file del documento, con Condividi, Modifica e Apri.'],
+['58-utenze-anagrafica','Utenze: anagrafica','L\'anagrafica della fornitura: ragione sociale, contatti, numero contratto, codice cliente e POD o PDR.'],
+['59-utenze-gas','Utenze: consumi','I consumi dell\'anno mese per mese, con media, picchi, stima del costo e confronto con l\'anno precedente.'],
+['60-communitypool','CommunityPool','Le spese condivise con gli altri profili di OrbitaCasa Desktop, con saldi per profilo e proposte da confermare.'],
+['61-dieta','Dieta','Le medie giornaliere di calorie e macro per settimana, con il confronto tra una settimana e l\'altra.'],
+['62-scansione-documenti','Scansione documenti','Fotografi uno o più documenti con la fotocamera, in modalità manuale o a scatto multiplo.'],
+['63-home-personalizza-barra','Personalizza la barra','Scegli le pagine della barra in basso: la Home resta sempre la prima, le altre le cambi con un tocco.'],
+['64-calcolatrice','Calcolatrice','Una calcolatrice nel campo importo: fai i conti e usi il totale.'],
 ];
 var INTERVAL=6000,cur=0,timer=null;
 var track=document.getElementById('shotsTrack'),dots=document.getElementById('shotsDots'),prog=document.getElementById('shotsProg');
