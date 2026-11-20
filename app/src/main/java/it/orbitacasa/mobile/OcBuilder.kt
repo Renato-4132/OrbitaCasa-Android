@@ -5,11 +5,46 @@ import android.text.TextUtils
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class OcBuilder(private val ctx: Context) : MaterialAlertDialogBuilder(ctx) {
+    private var msg: CharSequence? = null
+    private var vista: View? = null
+
+    override fun setMessage(message: CharSequence?): MaterialAlertDialogBuilder {
+        msg = message
+        return this
+    }
+
+    override fun setMessage(messageId: Int): MaterialAlertDialogBuilder {
+        msg = ctx.getString(messageId)
+        return this
+    }
+
+    override fun setView(view: View?): MaterialAlertDialogBuilder {
+        vista = view
+        return super.setView(view)
+    }
+
     override fun create(): AlertDialog {
+        val m = msg
+        if (m != null) {
+            val corpo = vista?.findViewById<LinearLayout>(R.id.corpoDialogo)
+            if (corpo != null) {
+                val dp = ctx.resources.displayMetrics.density
+                val tv = TextView(ctx)
+                tv.text = m
+                tv.textSize = 16f
+                tv.setTextColor(ContextCompat.getColor(ctx, R.color.oc_text_mid))
+                tv.setPadding(0, (8 * dp).toInt(), 0, (16 * dp).toInt())
+                corpo.addView(tv, 0)
+            } else {
+                super.setMessage(m)
+            }
+        }
         val dlg = super.create()
         dlg.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         dlg.setOnShowListener { tasti(dlg) }
