@@ -1764,14 +1764,19 @@ class MainActivity : AppCompatActivity() {
                 .distinct().sortedBy { it.lowercase() }
         }
         val sep = Regex("[\\s,;]+")
-        val pop = android.widget.ListPopupWindow(this)
-        pop.setAnchorView(et)
-        pop.setModal(false)
-        pop.setInputMethodMode(android.widget.ListPopupWindow.INPUT_METHOD_NEEDED)
-        et.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: android.view.View) {}
-            override fun onViewDetachedFromWindow(v: android.view.View) { pop.dismiss() }
-        })
+        val dp = resources.displayMetrics.density
+        var til: android.view.View = et
+        while (til !is com.google.android.material.textfield.TextInputLayout) {
+            til = (til.parent as? android.view.View) ?: break
+        }
+        val contenitore = til.parent as? android.view.ViewGroup ?: return
+        val scroll = android.widget.HorizontalScrollView(et.context)
+        scroll.isHorizontalScrollBarEnabled = false
+        scroll.visibility = android.view.View.GONE
+        val riga = LinearLayout(et.context)
+        riga.orientation = LinearLayout.HORIZONTAL
+        scroll.addView(riga)
+        contenitore.addView(scroll, contenitore.indexOfChild(til) + 1)
         et.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -1779,18 +1784,26 @@ class MainActivity : AppCompatActivity() {
                 val t = s?.toString() ?: ""
                 val parola = t.split(sep).lastOrNull() ?: ""
                 val ult = parola.trimStart('#')
-                if (ult.isEmpty() || !et.isAttachedToWindow || !et.hasFocus()) { pop.dismiss(); return }
-                val sug = tutti.filter { it.startsWith(ult, true) && !it.equals(ult, true) }.take(5)
-                if (sug.isEmpty()) { pop.dismiss(); return }
-                pop.setAdapter(ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, sug.map { "#$it" }))
-                pop.setOnItemClickListener { _, _, pos, _ ->
-                    val base = t.substring(0, t.length - parola.length)
-                    et.setText(base + "#" + sug[pos] + " ")
-                    et.setSelection(et.text?.length ?: 0)
-                    pop.dismiss()
+                riga.removeAllViews()
+                val sug = if (ult.isEmpty() || !et.hasFocus()) emptyList()
+                else tutti.filter { it.startsWith(ult, true) && !it.equals(ult, true) }.take(8)
+                if (sug.isEmpty()) {
+                    scroll.visibility = android.view.View.GONE
+                    return
                 }
-                pop.setWidth(et.width)
-                pop.show()
+                for (x in sug) {
+                    val chip = com.google.android.material.chip.Chip(et.context)
+                    chip.text = "#" + x
+                    chip.setOnClickListener {
+                        val base = t.substring(0, t.length - parola.length)
+                        et.setText(base + "#" + x + " ")
+                        et.setSelection(et.text?.length ?: 0)
+                    }
+                    val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    lp.marginEnd = (6 * dp).toInt()
+                    riga.addView(chip, lp)
+                }
+                scroll.visibility = android.view.View.VISIBLE
             }
         })
     }

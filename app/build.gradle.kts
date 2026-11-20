@@ -11,8 +11,8 @@ android {
         applicationId = "it.orbitacasa.mobile"
         minSdk = 29
         targetSdk = 34
-        versionCode = 280
-        versionName = "1.0.187"
+        versionCode = 281
+        versionName = "1.0.188"
     }
 
     val ksFile = System.getenv("KEYSTORE_FILE")
