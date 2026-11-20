@@ -150,8 +150,8 @@ object Repo {
     var targetAnno = 0.0
         private set
     var smartCatOn = true
-    var checkDoppi = false
         private set
+    var checkDoppi = false
         private set
     var smartCatToll = 15.0
         private set
