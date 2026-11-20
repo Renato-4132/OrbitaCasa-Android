@@ -2066,7 +2066,7 @@ class MainActivity : AppCompatActivity() {
 
     private val AN_SCHEDE = listOf(
         "🔍 Dettaglio", "Σ Aggrega", "⏳ Time Machine", "📈 Trend",
-        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20", "🏷️ Per tag"
+        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20", "🏷️ Per tag", "🆚 Confronto periodi"
     )
     private val MESI_IT: List<String> by lazy {
         (1..12).map { maiuscola(java.time.Month.of(it).getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALIAN)) }
@@ -2125,7 +2125,8 @@ class MainActivity : AppCompatActivity() {
             5 -> tabBudgetSuperato(cont)
             6 -> tabTarget(cont)
             7 -> tab503020(cont)
-            else -> tabTag(cont)
+            8 -> tabTag(cont)
+            else -> tabConfronto(cont)
         }
     }
 
@@ -2419,6 +2420,222 @@ class MainActivity : AppCompatActivity() {
             ) { dialogVoce(v) }
         }
         if (sel.size > 150) anTesto(cont, "… altri " + (sel.size - 150) + " movimenti non mostrati", colore = medio, size = 12f)
+    }
+
+    private var cfAnno = false
+    private var cfFuturi = true
+    private var cfM1 = LocalDate.now().monthValue
+    private var cfA1 = LocalDate.now().year
+    private var cfM2 = LocalDate.now().monthValue
+    private var cfA2 = LocalDate.now().year
+    private var cfCat = AN_TUTTE
+    private var cfGrafico = false
+
+    private class CfTot(var n: Int = 0, var ent: Double = 0.0, var usc: Double = 0.0)
+
+    private fun cfEtichetta(m: Int, a: Int) = if (cfAnno) a.toString() else String.format(Locale.ITALY, "%02d/%d", m, a)
+
+    private fun cfVoci(m: Int, a: Int): List<Voce> {
+        val oggi = LocalDate.now()
+        return anMovs().filter { v ->
+            v.data.year == a && (cfAnno || v.data.monthValue == m) && (cfFuturi || !v.data.isAfter(oggi))
+        }
+    }
+
+    private fun cfPerCat(voci: List<Voce>): Map<String, CfTot> {
+        val r = HashMap<String, CfTot>()
+        for (v in voci) {
+            val t = r.getOrPut(v.categoria) { CfTot() }
+            t.n++
+            if (anEntrata(v)) t.ent += v.importo else if (anUscita(v)) t.usc += v.importo
+        }
+        return r
+    }
+
+    private fun tabConfronto(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val blu = ContextCompat.getColor(this, R.color.oc_blue)
+        val arancio = ContextCompat.getColor(this, R.color.oc_orange)
+        val anni = (anAnni() + (oggi.year - 1) + (oggi.year + 1)).distinct().sortedDescending()
+        val nomiAnni = anni.map { it.toString() }
+
+        anMenu(cont, "Modalità confronto", listOf("Mese", "Anno"), if (cfAnno) "Anno" else "Mese") { cfAnno = it == 1 }
+        anContoFuturi(cont, false)
+        val chk = MaterialCheckBox(this)
+        chk.text = "Includi movimenti futuri nei totali"
+        chk.isChecked = cfFuturi
+        chk.setOnCheckedChangeListener { _, on -> cfFuturi = on; renderAnalisi() }
+        cont.addView(chk)
+        anRiga(cont) { r ->
+            if (!cfAnno) anMenu(r, "Mese 1", MESI_IT, MESI_IT[cfM1 - 1]) { cfM1 = it + 1 }
+            anMenu(r, "Anno 1", nomiAnni, cfA1.toString()) { cfA1 = anni[it] }
+        }
+        anRiga(cont) { r ->
+            if (!cfAnno) anMenu(r, "Mese 2", MESI_IT, MESI_IT[cfM2 - 1]) { cfM2 = it + 1 }
+            anMenu(r, "Anno 2", nomiAnni, cfA2.toString()) { cfA2 = anni[it] }
+        }
+
+        val v1 = cfVoci(cfM1, cfA1)
+        val v2 = cfVoci(cfM2, cfA2)
+        val c1 = cfPerCat(v1)
+        val c2 = cfPerCat(v2)
+        val l1 = cfEtichetta(cfM1, cfA1)
+        val l2 = cfEtichetta(cfM2, cfA2)
+        val e1 = c1.values.sumOf { it.ent }
+        val u1 = c1.values.sumOf { it.usc }
+        val e2 = c2.values.sumOf { it.ent }
+        val u2 = c2.values.sumOf { it.usc }
+
+        anTesto(
+            cont, "P1 · " + l1 + "\nEntrate " + euro(e1) + " · Uscite " + euro(u1) + "\nSaldo " + anSaldo(e1 - u1),
+            grassetto = true, colore = blu
+        )
+        anTesto(
+            cont, "P2 · " + l2 + "\nEntrate " + euro(e2) + " · Uscite " + euro(u2) + "\nSaldo " + anSaldo(e2 - u2),
+            grassetto = true, colore = arancio
+        )
+        val dS = (e2 - u2) - (e1 - u1)
+        anTesto(
+            cont, "Variazione saldo (P2 vs P1): " + anSaldo(dS),
+            grassetto = true, colore = if (dS > 0.004) verde else if (dS < -0.004) rosso else medio
+        )
+
+        val rb = LinearLayout(this)
+        rb.orientation = LinearLayout.HORIZONTAL
+        val lpB = { LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        rb.addView(pulsanteSel(if (cfGrafico) "📋 Tabella" else "📊 Grafico", false) { cfGrafico = !cfGrafico; renderAnalisi() }, lpB())
+        rb.addView(pulsanteSel("📤 Condividi", false) { condividiConfronto(l1, l2, c1, c2) }, lpB())
+        rb.addView(pulsanteSel("↺ Reset", false) {
+            val t = LocalDate.now()
+            cfM1 = t.monthValue; cfA1 = t.year; cfM2 = t.monthValue; cfA2 = t.year; cfCat = AN_TUTTE
+            renderAnalisi()
+        }, lpB())
+        cont.addView(rb)
+
+        if (cfGrafico) {
+            val nomiCat = listOf(AN_TUTTE) + Repo.categorie().sortedBy { it.lowercase() }
+            anMenu(cont, "Filtra categoria", nomiCat, if (cfCat in nomiCat) cfCat else AN_TUTTE) { cfCat = nomiCat[it] }
+            val f1 = v1.filter { cfCat == AN_TUTTE || it.categoria == cfCat }
+            val f2 = v2.filter { cfCat == AN_TUTTE || it.categoria == cfCat }
+            fun serie(l: List<Voce>): Map<Int, Double> =
+                l.groupBy { if (cfAnno) it.data.monthValue else it.data.dayOfMonth }.mapValues { (_, g) ->
+                    g.filter { anEntrata(it) }.sumOf { it.importo } - g.filter { !anEntrata(it) }.sumOf { it.importo }
+                }
+            val s1 = serie(f1)
+            val s2 = serie(f2)
+            val chiavi = (s1.keys + s2.keys).toSortedSet().toList()
+            if (chiavi.isEmpty()) {
+                anTesto(cont, "Nessun movimento nei due periodi.", colore = medio)
+                return
+            }
+            anTesto(cont, "Andamento saldo netto (" + (if (cfAnno) "mensile" else "giornaliero") + ")", grassetto = true)
+            anTesto(cont, "■ P1: " + l1, colore = blu, size = 12f)
+            anTesto(cont, "■ P2: " + l2, colore = arancio, size = 12f)
+            anGrafico(
+                cont,
+                chiavi.map { if (cfAnno) MESI_IT[it - 1].take(3) else it.toString() },
+                chiavi.map { s1[it] ?: 0.0 }, chiavi.map { s2[it] ?: 0.0 },
+                blu, arancio
+            ) { i ->
+                val k = chiavi[i]
+                val x1 = s1[k] ?: 0.0
+                val x2 = s2[k] ?: 0.0
+                (if (cfAnno) MESI_IT[k - 1] else "Giorno " + k) +
+                    "\nP1 (" + l1 + "): " + anSaldo(x1) + "\nP2 (" + l2 + "): " + anSaldo(x2) +
+                    "\nΔ P2 vs P1: " + anSaldo(x2 - x1)
+            }
+            return
+        }
+
+        val cats = (c1.keys + c2.keys).sortedBy { it.lowercase() }
+        if (cats.isEmpty()) {
+            anTesto(cont, "Nessun movimento nei due periodi.", colore = medio)
+            return
+        }
+        sezione(cont, "PER CATEGORIA · tocca per i movimenti")
+        for (c in cats) {
+            val t1 = c1[c] ?: CfTot()
+            val t2 = c2[c] ?: CfTot()
+            fun parte(l: String, t: CfTot): String {
+                val p = listOfNotNull(
+                    if (t.ent > 0) "entrate " + euro(t.ent) else null,
+                    if (t.usc > 0) "uscite " + euro(t.usc) else null,
+                )
+                return l + " (" + t.n + "): " + (if (p.isEmpty()) "—" else p.joinToString(" · "))
+            }
+            val righe = ArrayList<String>()
+            righe.add(parte(l1, t1))
+            righe.add(parte(l2, t2))
+            if (t1.ent > 0 || t2.ent > 0) righe.add("Δ entrate " + anSaldo(t2.ent - t1.ent))
+            if (t1.usc > 0 || t2.usc > 0) righe.add("Δ uscite " + anSaldo(t2.usc - t1.usc))
+            val bud = Repo.budgetMensile(c)
+            if (!cfAnno && bud > 0 && (t1.usc > 0 || t2.usc > 0)) {
+                righe.add(
+                    "Budget mese " + euro(bud) + " · " + l1 + " " + Math.round(t1.usc / bud * 100) +
+                        "% · " + l2 + " " + Math.round(t2.usc / bud * 100) + "%"
+                )
+            }
+            val usc = t1.usc > 0 || t2.usc > 0
+            val d = if (usc) t2.usc - t1.usc else t2.ent - t1.ent
+            val col = when {
+                abs(d) < 0.005 -> medio
+                usc -> if (d > 0) rosso else verde
+                else -> if (d > 0) verde else rosso
+            }
+            riga(
+                cont, c.ifBlank { "Senza categoria" }, righe.joinToString("\n"),
+                (if (d >= 0) "+" else "−") + euro(abs(d)), col
+            ) { dialogConfrontoCat(c, v1, v2, l1, l2) }
+        }
+    }
+
+    private fun dialogConfrontoCat(cat: String, v1: List<Voce>, v2: List<Voce>, l1: String, l2: String) {
+        val ord = compareBy<Voce> { it.data }.thenBy { it.ora }
+        val tutte = v1.filter { it.categoria == cat }.sortedWith(ord).map { "P1" to it } +
+            v2.filter { it.categoria == cat }.sortedWith(ord).map { "P2" to it }
+        if (tutte.isEmpty()) return
+        val righe = tutte.map { (p, v) ->
+            p + " · " + v.data.format(FMT_DATA) + " · " + v.descrizione.ifBlank { v.categoria.ifBlank { "Senza categoria" } } +
+                " · " + (if (anEntrata(v)) "+" else "−") + euro(v.importo)
+        }
+        OcBuilder(this)
+            .setTitle(cat.ifBlank { "Senza categoria" } + " · " + l1 + " / " + l2)
+            .setItems(righe.toTypedArray()) { _, i -> dialogVoce(tutte[i].second) }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun condividiConfronto(l1: String, l2: String, c1: Map<String, CfTot>, c2: Map<String, CfTot>) {
+        val cats = (c1.keys + c2.keys).sortedBy { it.lowercase() }
+        if (cats.isEmpty()) { aviso("Nessun movimento da condividere"); return }
+        val sb = StringBuilder()
+        sb.append("Confronto tra ").append(l1).append(" e ").append(l2).append("\n\n")
+        for (c in cats) {
+            val t1 = c1[c] ?: CfTot()
+            val t2 = c2[c] ?: CfTot()
+            sb.append(c.ifBlank { "Senza categoria" }).append('\n')
+            sb.append("  ").append(l1).append(": entrate ").append(euro(t1.ent)).append(" · uscite ").append(euro(t1.usc)).append('\n')
+            sb.append("  ").append(l2).append(": entrate ").append(euro(t2.ent)).append(" · uscite ").append(euro(t2.usc)).append('\n')
+            sb.append("  Δ entrate ").append(anSaldo(t2.ent - t1.ent)).append(" · Δ uscite ").append(anSaldo(t2.usc - t1.usc)).append("\n\n")
+        }
+        val e1 = c1.values.sumOf { it.ent }
+        val u1 = c1.values.sumOf { it.usc }
+        val e2 = c2.values.sumOf { it.ent }
+        val u2 = c2.values.sumOf { it.usc }
+        sb.append("TOTALI\n")
+        sb.append("  ").append(l1).append(": entrate ").append(euro(e1)).append(" · uscite ").append(euro(u1)).append('\n')
+        sb.append("  ").append(l2).append(": entrate ").append(euro(e2)).append(" · uscite ").append(euro(u2)).append('\n')
+        sb.append("RISPARMIO NETTO\n")
+        sb.append("  ").append(l1).append(": ").append(anSaldo(e1 - u1)).append('\n')
+        sb.append("  ").append(l2).append(": ").append(anSaldo(e2 - u2)).append('\n')
+        val i = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, sb.toString())
+            .putExtra(Intent.EXTRA_SUBJECT, "Confronto " + l1 + " / " + l2)
+        startActivity(Intent.createChooser(i, "Condividi confronto"))
     }
 
     private class AnAgg(var num: Int = 0, var usc: Double = 0.0, var ent: Double = 0.0, var max: Double = 0.0) {
