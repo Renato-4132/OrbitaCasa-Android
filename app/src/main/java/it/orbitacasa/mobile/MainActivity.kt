@@ -118,8 +118,8 @@ class MainActivity : AppCompatActivity() {
     private var catCerca = ""
     private var catOrdine = "Nome"
     private var catSoloVuote = false
-    private var catUsciteAperte = false
-    private var catEntrateAperte = false
+    private var catUsciteAperte = true
+    private var catEntrateAperte = true
     private var meseProm: YearMonth = YearMonth.now()
     private var giornoProm: LocalDate? = LocalDate.now()
     private var giornoCal: LocalDate? = LocalDate.now()
@@ -1646,7 +1646,7 @@ class MainActivity : AppCompatActivity() {
         cont.addView(t)
     }
 
-    private fun sezioneForte(cont: LinearLayout, testo: String, sotto: String? = null) {
+    private fun sezioneForte(cont: LinearLayout, testo: String, sotto: String? = null, click: (() -> Unit)? = null) {
         val dp = resources.displayMetrics.density
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
@@ -1675,6 +1675,7 @@ class MainActivity : AppCompatActivity() {
             s.setPadding((12 * dp).toInt(), (2 * dp).toInt(), 0, 0)
             col.addView(s)
         }
+        if (click != null) col.setOnClickListener { click() }
         cont.addView(col)
     }
 
@@ -2101,9 +2102,15 @@ class MainActivity : AppCompatActivity() {
         val scelta = pulsanteSel("Vista:  " + AN_SCHEDE[catTab] + "   ▾", true) {
             OcBuilder(this)
                 .setTitle("Scegli la vista")
-                .setItems(AN_SCHEDE.mapIndexed { i, t -> (if (i == catTab) "● " else "○ ") + t }.toTypedArray()) { _, i ->
-                    catTab = i
-                    renderAnalisi()
+                .setItems(
+                    (AN_SCHEDE.mapIndexed { i, t -> (if (i == catTab) "● " else "○ ") + t } + "🗂️ Gestione categorie").toTypedArray()
+                ) { _, i ->
+                    if (i >= AN_SCHEDE.size) {
+                        mostra(Pagina.CATEGORIE)
+                    } else {
+                        catTab = i
+                        renderAnalisi()
+                    }
                 }
                 .setNegativeButton("Chiudi", null)
                 .show()
@@ -3159,8 +3166,6 @@ class MainActivity : AppCompatActivity() {
         val totali = voci.filter { YearMonth.from(it.data) == ym }.groupBy { it.categoria }
             .mapValues { e -> e.value.sumOf { it.importo } }
         val conteggi = voci.groupingBy { it.categoria }.eachCount()
-        val rosso = ContextCompat.getColor(this, R.color.oc_red)
-        val verde = ContextCompat.getColor(this, R.color.oc_green)
         val conti = Repo.conti().associate { it.id to it.nome }
         val tutte = Repo.categorie()
         val senzaOp = tutte.count { (conteggi[it] ?: 0) == 0 }
@@ -3185,9 +3190,10 @@ class MainActivity : AppCompatActivity() {
         for ((titolo, tipo) in listOf("USCITE" to "Uscita", "ENTRATE" to "Entrata")) {
             val gruppo = filtrate.filter { Repo.tipoCategoria(it) == tipo }.sortedWith(ordine)
             val aperto = if (tipo == "Uscita") catUsciteAperte else catEntrateAperte
-            riga(
-                cont, (if (aperto) "▼ " else "▶ ") + titolo + " · " + maiuscola(ym.format(FMT_MESE)) + " (" + gruppo.size + ")",
-                "", "", null
+            sezioneForte(
+                cont, titolo,
+                gruppo.size.toString() + (if (gruppo.size == 1) " categoria" else " categorie") +
+                    (if (aperto) " · tocca per chiudere" else " · tocca per aprire")
             ) {
                 if (tipo == "Uscita") catUsciteAperte = !catUsciteAperte else catEntrateAperte = !catEntrateAperte
                 renderCategorie()
@@ -3200,17 +3206,14 @@ class MainActivity : AppCompatActivity() {
                 val classe = Repo.classe(cat)
                 val nOp = conteggi[cat] ?: 0
                 val sotto = listOfNotNull(
-                    if (nOp == 0) "nessuna operazione" else "$nOp operazioni",
+                    classe.takeIf { it.isNotBlank() } ?: "senza classe",
+                    if (classe == "Risparmio") conti[Repo.contoRisparmio(cat)]?.let { "→ $it" } else null,
                     if (bm > 0) "Budget " + euro(bm) + "/mese" else null,
                     if (ba > 0) euro(ba) + "/anno" else null,
-                    classe.takeIf { it.isNotBlank() },
-                    if (classe == "Risparmio") conti[Repo.contoRisparmio(cat)]?.let { "→ $it" } else null,
+                    if (bm <= 0 && ba <= 0) "senza budget" else null,
+                    if (nOp == 0) "nessuna operazione" else null,
                 ).joinToString(" · ")
-                val tot = totali[cat] ?: 0.0
-                riga(
-                    cont, cat, sotto, if (tot > 0) euro(tot) else "",
-                    if (tipo == "Entrata") verde else rosso
-                ) { dialogCategoria(cat) }
+                riga(cont, cat, sotto, "", null) { dialogCategoria(cat) }
             }
         }
     }
@@ -3220,20 +3223,123 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Strumenti categorie")
             .setItems(
                 arrayOf(
-                    "➕  Nuova categoria", "🔎  Cerca, ordina e filtra", "🔀  Sposta o unisci categorie",
-                    "🗑️  Elimina categorie vuote", "🔍  Apri Analisi categorie"
+                    "➕  Nuova categoria", "📚  Aggiungi categorie suggerite", "🔎  Cerca, ordina e filtra",
+                    "🔀  Sposta o unisci categorie", "🗑️  Elimina categorie vuote", "🔍  Apri Analisi categorie"
                 )
             ) { _, k ->
                 when (k) {
                     0 -> dialogCategoria(null)
-                    1 -> dialogCercaCategorie()
-                    2 -> dialogSpostaCategorie()
-                    3 -> dialogEliminaVuote()
+                    1 -> dialogCategorieSuggerite()
+                    2 -> dialogCercaCategorie()
+                    3 -> dialogSpostaCategorie()
+                    4 -> dialogEliminaVuote()
                     else -> mostra(Pagina.ANALISI)
                 }
             }
             .setNegativeButton("Chiudi", null)
             .show()
+    }
+
+    private val categorieSuggerite = listOf(
+        "Abbigliamento",
+        "Abbonamenti digitali",
+        "Affitto Immobile",
+        "Alimentari & Consumi",
+        "Animali Domestici",
+        "Arredamento",
+        "Asporto / Fast food",
+        "Assicurazione Immobile",
+        "Assicurazione Veicoli",
+        "Bollette & Abbonamenti",
+        "Bollo Auto",
+        "Caldaia",
+        "Carburante",
+        "Casa",
+        "Cinema / Eventi",
+        "Colazioni / Caffè fuori",
+        "Commercialista",
+        "Computer",
+        "Conto Corrente",
+        "Corsi / Formazione",
+        "Dentista",
+        "Emergenze",
+        "Entrate Extra",
+        "Farmaci",
+        "Finanza & Risparmio",
+        "Istruzione & Lavoro",
+        "Libri / Materiali",
+        "Manutenzione Auto",
+        "Manutenzione casa",
+        "Mutuo Immobile",
+        "Palestra / Fitness",
+        "Parrucchiere / Estetica",
+        "Pellet",
+        "Pensione",
+        "Pranzi / Ristoranti",
+        "Pulizie Domestiche",
+        "Rate / Finanziamenti",
+        "Regali",
+        "Riparazioni Impreviste",
+        "Salute & Benessere",
+        "Servizi Cloud / Backup",
+        "Software",
+        "Spesa Discount",
+        "Spesa supermercato",
+        "Spese non Ricorrenti",
+        "Stipendio",
+        "Streaming (Netflix, Prime...)",
+        "Tabacchi",
+        "Tassa Rifiuti",
+        "Taxi / Car sharing",
+        "Telefonia / Cellulari",
+        "Telefonia / Internet",
+        "Tempo libero & Spese personali",
+        "Trasporti pubblici",
+        "Uscite Straordinarie",
+        "Utenze (Acqua)",
+        "Utenze (Gas)",
+        "Utenze (Luce)",
+        "Utenze professionali / Partita IVA",
+        "Veicoli & Trasporti",
+        "Videogiochi",
+        "Visite Mediche",
+        "Wellness / Spa"
+    )
+
+    private fun dialogCategorieSuggerite() {
+        val presenti = Repo.categorie().map { it.lowercase() }.toSet()
+        val mancanti = categorieSuggerite.filter { it.lowercase() !in presenti }
+        if (mancanti.isEmpty()) {
+            aviso("Hai già tutte le categorie suggerite")
+            return
+        }
+        val tipoDi = { n: String -> if (listOf("Stipendio", "Pensione", "Extra").any { n.contains(it) }) "Entrata" else "Uscita" }
+        val etichette = mancanti.map { it + "  (" + tipoDi(it) + ")" }.toTypedArray()
+        val sel = BooleanArray(mancanti.size)
+        val dlg = OcBuilder(this)
+            .setTitle("Categorie suggerite")
+            .setMultiChoiceItems(etichette, sel) { _, i, on -> sel[i] = on }
+            .setNegativeButton("Annulla", null)
+            .setNeutralButton("Tutte", null)
+            .setPositiveButton("Aggiungi selezionate") { _, _ ->
+                val scelte = mancanti.filterIndexed { i, _ -> sel[i] }
+                if (scelte.isEmpty()) {
+                    aviso("Seleziona almeno una categoria")
+                } else {
+                    val n = scelte.count { Repo.aggiungiCategoria(it, tipoDi(it)) }
+                    refresh()
+                    aviso("Aggiunte $n categorie")
+                }
+            }
+            .create()
+        dlg.show()
+        dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            val tutte = sel.any { !it }
+            for (i in sel.indices) {
+                sel[i] = tutte
+                dlg.listView.setItemChecked(i, tutte)
+            }
+        }
     }
 
     private fun dialogCercaCategorie() {
