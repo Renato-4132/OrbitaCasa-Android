@@ -737,7 +737,7 @@ class MainActivity : AppCompatActivity() {
                     Repo.setSmartCat(!Repo.smartCatOn)
                     renderHome()
                 },
-                Tessera("🔁", "Controllo duplicati: " + if (Repo.checkDoppi) "attivo" else "no") {
+                Tessera("🔁", "Duplicati: " + if (Repo.checkDoppi) "attivo" else "no") {
                     Repo.setCheckDoppi(!Repo.checkDoppi)
                     renderHome()
                 },
@@ -4996,6 +4996,7 @@ class MainActivity : AppCompatActivity() {
         if (contiL.size > 1) campoMenu(corpo, "Conto", contiL, cur(contiL, conto)) { conto = if (it == 0) "" else contiL[it] }
         campoMenu(corpo, "Metodo di pagamento", metodiL, if (metodo.isEmpty()) tutti else metodo) { metodo = if (it == 0) "" else metodiL[it] }
         val etTag = campoTesto(corpo, "Tag (separati da spazio)", rc.tag)
+        suggerimentiTag(etTag)
         val etTesto = campoTesto(corpo, "Descrizione contiene", rc.testo)
         val etDa = campoTesto(corpo, "Importo da (€)", rc.impDa, InputType.TYPE_CLASS_TEXT, 14)
         val etA = campoTesto(corpo, "Importo a (€)", rc.impA, InputType.TYPE_CLASS_TEXT, 14)
