@@ -1163,6 +1163,7 @@ class MainActivity : AppCompatActivity() {
         val etDescr = view.findViewById<TextInputEditText>(R.id.etDescr)
         val acMet = view.findViewById<MaterialAutoCompleteTextView>(R.id.acMet)
         val etTag = view.findViewById<TextInputEditText>(R.id.etTag)
+        suggerimentiTag(etTag)
         val tilConto = view.findViewById<View>(R.id.tilConto)
         val acConto = view.findViewById<MaterialAutoCompleteTextView>(R.id.acConto)
         val tilPart = view.findViewById<View>(R.id.tilPart)
@@ -1757,6 +1758,43 @@ class MainActivity : AppCompatActivity() {
         return v to v.findViewById<LinearLayout>(R.id.corpoDialogo)
     }
 
+    private fun suggerimentiTag(et: EditText) {
+        val tutti by lazy {
+            Repo.voci().flatMap { it.hashtag }.map { it.trimStart('#') }.filter { it.isNotEmpty() }
+                .distinct().sortedBy { it.lowercase() }
+        }
+        val sep = Regex("[\\s,;]+")
+        val pop = android.widget.ListPopupWindow(this)
+        pop.setAnchorView(et)
+        pop.setModal(false)
+        pop.setInputMethodMode(android.widget.ListPopupWindow.INPUT_METHOD_NEEDED)
+        et.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: android.view.View) {}
+            override fun onViewDetachedFromWindow(v: android.view.View) { pop.dismiss() }
+        })
+        et.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val t = s?.toString() ?: ""
+                val parola = t.split(sep).lastOrNull() ?: ""
+                val ult = parola.trimStart('#')
+                if (ult.isEmpty() || !et.isAttachedToWindow || !et.hasFocus()) { pop.dismiss(); return }
+                val sug = tutti.filter { it.startsWith(ult, true) && !it.equals(ult, true) }.take(5)
+                if (sug.isEmpty()) { pop.dismiss(); return }
+                pop.setAdapter(ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, sug.map { "#$it" }))
+                pop.setOnItemClickListener { _, _, pos, _ ->
+                    val base = t.substring(0, t.length - parola.length)
+                    et.setText(base + "#" + sug[pos] + " ")
+                    et.setSelection(et.text?.length ?: 0)
+                    pop.dismiss()
+                }
+                pop.setWidth(et.width)
+                pop.show()
+            }
+        })
+    }
+
     private fun campoTesto(
         cont: LinearLayout, hint: String, testo: String = "",
         tipo: Int = InputType.TYPE_CLASS_TEXT, max: Int = 0,
@@ -1989,7 +2027,7 @@ class MainActivity : AppCompatActivity() {
 
     private val AN_SCHEDE = listOf(
         "🔍 Dettaglio", "Σ Aggrega", "⏳ Time Machine", "📈 Trend",
-        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20"
+        "🕒 Distribuzione", "⚠️ Budget superato", "🎯 Target", "⚖️ 50/30/20", "🏷️ Per tag"
     )
     private val MESI_IT: List<String> by lazy {
         (1..12).map { maiuscola(java.time.Month.of(it).getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALIAN)) }
@@ -2041,7 +2079,8 @@ class MainActivity : AppCompatActivity() {
             4 -> tabDistribuzione(cont)
             5 -> tabBudgetSuperato(cont)
             6 -> tabTarget(cont)
-            else -> tab503020(cont)
+            7 -> tab503020(cont)
+            else -> tabTag(cont)
         }
     }
 
@@ -2194,6 +2233,78 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Chiudi", null)
         if (neutro != null) b.setNeutralButton(neutro.first) { _, _ -> neutro.second() }
         b.show()
+    }
+
+    private fun tabTag(cont: LinearLayout) {
+        val oggi = LocalDate.now()
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val medio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        val modi = listOf("Giorno", "Mese", "Anno", "Periodo")
+        val mesi = (0 until 36).map { YearMonth.from(oggi).minusMonths(it.toLong()) }
+        val anni = anAnni()
+        val annoD = anAnno.toIntOrNull() ?: oggi.year
+        anRiga(cont) { r ->
+            anMenu(r, "Modalità", modi, anModo) { anModo = modi[it] }
+            when (anModo) {
+                "Giorno" -> anCampoData(r, "Giorno", anGiorno) { anGiorno = it }
+                "Mese" -> anMenu(r, "Mese", mesi.map { maiuscola(it.format(FMT_MESE)) }, maiuscola(anMese.format(FMT_MESE))) { anMese = mesi[it] }
+                "Anno" -> anMenu(r, "Anno", anni.map { it.toString() }, annoD.toString()) { anAnno = anni[it].toString() }
+            }
+        }
+        if (anModo == "Periodo") anRiga(cont) { r ->
+            anCampoData(r, "Dal", anDal) { anDal = it }
+            anCampoData(r, "Al", anAl) { anAl = it }
+        }
+        anContoFuturi(cont)
+
+        val (da, a) = when (anModo) {
+            "Giorno" -> anGiorno to anGiorno
+            "Mese" -> anMese.atDay(1) to anMese.atEndOfMonth()
+            "Anno" -> LocalDate.of(annoD, 1, 1) to LocalDate.of(annoD, 12, 31)
+            else -> if (anDal.isAfter(anAl)) anAl to anDal else anDal to anAl
+        }
+        val taggate = anMovs().filter { v ->
+            !v.data.isBefore(da) && !v.data.isAfter(a) && (anFuturi || !v.data.isAfter(oggi)) &&
+                v.hashtag.any { it.trimStart('#').isNotEmpty() }
+        }
+        val perTag = LinkedHashMap<String, ArrayList<Voce>>()
+        for (v in taggate) {
+            for (t in v.hashtag.map { it.trimStart('#') }.filter { it.isNotEmpty() }.distinct()) {
+                perTag.getOrPut(t.lowercase()) { ArrayList() }.add(v)
+            }
+        }
+        if (perTag.isEmpty()) {
+            anTesto(cont, "Nessun movimento con tag nel periodo.", colore = medio)
+            return
+        }
+        val ordine = perTag.entries.sortedWith(compareByDescending<Map.Entry<String, ArrayList<Voce>>> { it.value.size }.thenBy { it.key })
+        val top = ordine.first()
+        anTesto(
+            cont,
+            "Voci taggate: " + taggate.size + " · Tag unici: " + perTag.size +
+                "\nTag più usato: #" + top.key + " (" + top.value.size + ")" +
+                "\nTotale importi: " + euro(taggate.sumOf { it.importo }),
+            grassetto = true
+        )
+        sezione(cont, "PER TAG")
+        for ((t, l) in ordine) {
+            val ent = l.filter { anEntrata(it) }.sumOf { it.importo }
+            val usc = l.filter { !anEntrata(it) }.sumOf { it.importo }
+            riga(
+                cont, "#" + t,
+                l.size.toString() + (if (l.size == 1) " movimento" else " movimenti") + " · Entrate " + euro(ent) + " · Uscite " + euro(usc),
+                anSaldo(ent - usc), if (ent - usc >= 0) verde else rosso
+            ) {
+                rc.azzera()
+                rc.tag = t
+                rc.dal = da.format(FMT_DATA)
+                rc.al = a.format(FMT_DATA)
+                rcTesto = ""
+                rcFuturi = anFuturi
+                mostra(Pagina.RICERCA)
+            }
+        }
     }
 
     private fun tabDettaglio(cont: LinearLayout) {
@@ -3528,6 +3639,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else conto = ""
         val etTag = campoTesto(corpo, "Tag (separati da spazio)", "", InputType.TYPE_CLASS_TEXT)
+        suggerimentiTag(etTag)
 
         val dlg = OcBuilder(this)
             .setTitle("Nuova ricorrenza")
@@ -10556,6 +10668,7 @@ class MainActivity : AppCompatActivity() {
             etTag = campoTesto(
                 corpo, "Tag (separati da spazio)", sp0?.hashtag?.joinToString(" ") ?: "", InputType.TYPE_CLASS_TEXT
             )
+            etTag?.let { suggerimentiTag(it) }
         }
         val b = OcBuilder(this)
             .setTitle(if (d == null) "Nuovo documento contabile" else "Modifica documento")
@@ -13862,6 +13975,7 @@ class MainActivity : AppCompatActivity() {
         campoMenu(corpo, "Conto", nomiConti, if (conto.isNotEmpty()) conto else nomiConti[0]) { conto = if (it == 0) "" else nomiConti[it] }
         campoMenu(corpo, "Metodo di pagamento", nomiMetodi, if (metodo.isNotEmpty()) metodo else nomiMetodi[0]) { metodo = if (it == 0) "" else nomiMetodi[it] }
         val etTag = campoTesto(corpo, "Tag", Notif.tagPredefiniti(p).joinToString(" "), InputType.TYPE_CLASS_TEXT, 60)
+        suggerimentiTag(etTag)
 
         val originale = (p.titolo + "\n" + p.testo).trim().take(300)
         val tvOrig = TextView(this)
