@@ -1800,6 +1800,8 @@ class MainActivity : AppCompatActivity() {
                     tv.textSize = 16f
                     tv.setTextColor(ContextCompat.getColor(et.context, R.color.oc_text))
                     tv.setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+                    tv.minHeight = (48 * dp).toInt()
+                    tv.gravity = android.view.Gravity.CENTER_VERTICAL
                     tv.setOnClickListener {
                         val base = t.substring(0, t.length - parola.length)
                         et.setText(base + "#" + x + " ")
@@ -1818,8 +1820,11 @@ class MainActivity : AppCompatActivity() {
                 pop.dismiss()
                 pop.contentView = box
                 pop.width = w
-                pop.height = h
+                pop.height = ViewGroup.LayoutParams.WRAP_CONTENT
                 pop.showAtLocation(et, android.view.Gravity.NO_GRAVITY, pos[0], (pos[1] - h).coerceAtLeast(0))
+                box.post {
+                    if (pop.isShowing) pop.update(pos[0], (pos[1] - box.height).coerceAtLeast(0), -1, -1)
+                }
             }
         })
     }
