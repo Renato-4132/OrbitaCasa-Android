@@ -147,6 +147,8 @@ object Repo {
         private set
     var lockSec = 30
         private set
+    var privacy = false
+        private set
     var targetMese = 0.0
         private set
     var targetAnno = 0.0
@@ -204,6 +206,7 @@ object Repo {
         prefs = ctx.getSharedPreferences("orbita", Context.MODE_PRIVATE)
         lockOn = prefs.getBoolean("lock", false)
         lockSec = prefs.getInt("lock_sec", 30)
+        privacy = prefs.getBoolean("privacy", false)
         load()
         caricaImpostazioni()
     }
@@ -365,6 +368,11 @@ object Repo {
     fun setLock(on: Boolean) {
         lockOn = on
         prefs.edit().putBoolean("lock", on).apply()
+    }
+
+    fun setPrivacy(on: Boolean) {
+        privacy = on
+        prefs.edit().putBoolean("privacy", on).apply()
     }
 
     fun setLockSec(sec: Int) {

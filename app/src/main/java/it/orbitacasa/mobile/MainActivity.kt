@@ -686,6 +686,7 @@ class MainActivity : AppCompatActivity() {
         tvSaldo.setTextColor(ContextCompat.getColor(this, if (saldo >= 0) R.color.oc_green else R.color.oc_red))
 
         riepilogoHome()
+        preparaPrivacy()
         val cont = vista<LinearLayout>(R.id.groups)
         cont.removeAllViews()
         homeGruppi.clear()
@@ -780,6 +781,39 @@ class MainActivity : AppCompatActivity() {
             )
         )
         tabsHome(cont)
+    }
+
+    private val gestoPrivacy by lazy {
+        android.view.GestureDetector(this, object : android.view.GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: android.view.MotionEvent): Boolean {
+                Repo.setPrivacy(!Repo.privacy)
+                applicaPrivacy()
+                aviso(if (Repo.privacy) "Importi nascosti" else "Importi visibili")
+                return true
+            }
+        })
+    }
+
+    private fun preparaPrivacy() {
+        vista<View>(R.id.schedaRiep).setOnTouchListener { _, e ->
+            gestoPrivacy.onTouchEvent(e)
+            true
+        }
+        applicaPrivacy()
+    }
+
+    private fun applicaPrivacy() {
+        val raggio = 12f * resources.displayMetrics.density
+        for (id in listOf(R.id.rEntrate, R.id.rUscite, R.id.rSaldo, R.id.blocco503020)) {
+            val v = vista<View>(id)
+            if (Build.VERSION.SDK_INT >= 31) {
+                v.setRenderEffect(
+                    if (Repo.privacy) android.graphics.RenderEffect.createBlurEffect(raggio, raggio, android.graphics.Shader.TileMode.CLAMP) else null
+                )
+            } else {
+                v.alpha = if (Repo.privacy) 0.08f else 1f
+            }
+        }
     }
 
     private fun riepilogoHome() {
