@@ -584,7 +584,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun lockEtichetta(): String = when {
         !Repo.lockOn -> "no"
-        Repo.lockSec < 60 -> Repo.lockSec.toString() + " sec"
+        Repo.lockSec < 60 -> Repo.lockSec.toString() + "s"
         else -> (Repo.lockSec / 60).toString() + " min"
     }
 
