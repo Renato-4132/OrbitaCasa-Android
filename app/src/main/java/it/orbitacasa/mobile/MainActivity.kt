@@ -2611,31 +2611,18 @@ class MainActivity : AppCompatActivity() {
     private fun condividiConfronto(l1: String, l2: String, c1: Map<String, CfTot>, c2: Map<String, CfTot>) {
         val cats = (c1.keys + c2.keys).sortedBy { it.lowercase() }
         if (cats.isEmpty()) { aviso("Nessun movimento da condividere"); return }
-        val sb = StringBuilder()
-        sb.append("Confronto tra ").append(l1).append(" e ").append(l2).append("\n\n")
-        for (c in cats) {
-            val t1 = c1[c] ?: CfTot()
-            val t2 = c2[c] ?: CfTot()
-            sb.append(c.ifBlank { "Senza categoria" }).append('\n')
-            sb.append("  ").append(l1).append(": entrate ").append(euro(t1.ent)).append(" · uscite ").append(euro(t1.usc)).append('\n')
-            sb.append("  ").append(l2).append(": entrate ").append(euro(t2.ent)).append(" · uscite ").append(euro(t2.usc)).append('\n')
-            sb.append("  Δ entrate ").append(anSaldo(t2.ent - t1.ent)).append(" · Δ uscite ").append(anSaldo(t2.usc - t1.usc)).append("\n\n")
+        val dati = cats.map {
+            val t1 = c1[it] ?: CfTot()
+            val t2 = c2[it] ?: CfTot()
+            ConfrontoPdf.Riga(it, t1.ent, t1.usc, t2.ent, t2.usc)
         }
-        val e1 = c1.values.sumOf { it.ent }
-        val u1 = c1.values.sumOf { it.usc }
-        val e2 = c2.values.sumOf { it.ent }
-        val u2 = c2.values.sumOf { it.usc }
-        sb.append("TOTALI\n")
-        sb.append("  ").append(l1).append(": entrate ").append(euro(e1)).append(" · uscite ").append(euro(u1)).append('\n')
-        sb.append("  ").append(l2).append(": entrate ").append(euro(e2)).append(" · uscite ").append(euro(u2)).append('\n')
-        sb.append("RISPARMIO NETTO\n")
-        sb.append("  ").append(l1).append(": ").append(anSaldo(e1 - u1)).append('\n')
-        sb.append("  ").append(l2).append(": ").append(anSaldo(e2 - u2)).append('\n')
-        val i = Intent(Intent.ACTION_SEND)
-            .setType("text/plain")
-            .putExtra(Intent.EXTRA_TEXT, sb.toString())
-            .putExtra(Intent.EXTRA_SUBJECT, "Confronto " + l1 + " / " + l2)
-        startActivity(Intent.createChooser(i, "Condividi confronto"))
+        val f = try {
+            ConfrontoPdf.crea(this, l1, l2, dati)
+        } catch (e: Exception) {
+            aviso("Errore nella creazione del PDF: " + e.message)
+            return
+        }
+        ConfrontoPdf.condividi(this, f, l1, l2)
     }
 
     private class AnAgg(var num: Int = 0, var usc: Double = 0.0, var ent: Double = 0.0, var max: Double = 0.0) {

@@ -7,6 +7,9 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsAnimationCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -55,7 +58,7 @@ class OcBuilder(private val ctx: Context) : MaterialAlertDialogBuilder(ctx) {
         try {
             val lv = dlg.listView ?: return
             val dp = ctx.resources.displayMetrics.density
-            val v = (8 * dp).toInt()
+            val v = (11.5 * dp).toInt()
             val adatta = { c: View ->
                 c.minimumHeight = 0
                 if (c is TextView) c.minHeight = 0
@@ -73,8 +76,30 @@ class OcBuilder(private val ctx: Context) : MaterialAlertDialogBuilder(ctx) {
         }
     }
 
+    private fun rilayoutTastiera(dlg: AlertDialog) {
+        try {
+            val d = dlg.window?.decorView ?: return
+            ViewCompat.setWindowInsetsAnimationCallback(
+                d,
+                object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+                    override fun onProgress(
+                        insets: WindowInsetsCompat,
+                        runningAnimations: List<WindowInsetsAnimationCompat>
+                    ) = insets
+
+                    override fun onEnd(animation: WindowInsetsAnimationCompat) {
+                        d.requestLayout()
+                        d.post { d.requestLayout() }
+                    }
+                }
+            )
+        } catch (_: Exception) {
+        }
+    }
+
     private fun tasti(dlg: AlertDialog) {
         compattaLista(dlg)
+        rilayoutTastiera(dlg)
         try {
             val primo: View = listOf(
                 AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL
