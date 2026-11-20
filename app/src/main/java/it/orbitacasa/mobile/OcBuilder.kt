@@ -11,6 +11,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 class OcBuilder(private val ctx: Context) : MaterialAlertDialogBuilder(ctx) {
     override fun create(): AlertDialog {
         val dlg = super.create()
+        dlg.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         dlg.setOnShowListener { tasti(dlg) }
         return dlg
     }
