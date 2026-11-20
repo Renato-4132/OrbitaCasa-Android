@@ -574,6 +574,16 @@ class MainActivity : AppCompatActivity() {
         prompt.authenticate(info.build())
     }
 
+    private fun bloccaOra() {
+        if (!Repo.lockOn) {
+            aviso("Attiva prima il Blocco App")
+            return
+        }
+        sbloccata = false
+        mostraBlocco(true)
+        chiediAutenticazione()
+    }
+
     private val LOCK_OPZIONI = listOf(
         "Disattivato" to 0,
         "Dopo 30 secondi" to 30,
@@ -759,6 +769,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("ℹ️", "Info e Contatti") { mostra(Pagina.INFO) },
                 Tessera("🧭", "Personalizza") { dialogBarra() },
                 Tessera("🔒", "Blocco App: " + lockEtichetta()) { cambiaBlocco() },
+                Tessera("🔐", "Blocca ora") { bloccaOra() },
                 Tessera("💡", "SmartCat: " + if (Repo.smartCatOn) "attiva" else "no") {
                     Repo.setSmartCat(!Repo.smartCatOn)
                     renderHome()
