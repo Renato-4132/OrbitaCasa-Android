@@ -51,7 +51,30 @@ class OcBuilder(private val ctx: Context) : MaterialAlertDialogBuilder(ctx) {
         return dlg
     }
 
+    private fun compattaLista(dlg: AlertDialog) {
+        try {
+            val lv = dlg.listView ?: return
+            val dp = ctx.resources.displayMetrics.density
+            val v = (8 * dp).toInt()
+            val adatta = { c: View ->
+                c.minimumHeight = 0
+                if (c is TextView) c.minHeight = 0
+                c.setPadding(c.paddingLeft, v, c.paddingRight, v)
+            }
+            lv.setOnHierarchyChangeListener(object : android.view.ViewGroup.OnHierarchyChangeListener {
+                override fun onChildViewAdded(parent: View?, child: View?) {
+                    child?.let(adatta)
+                }
+
+                override fun onChildViewRemoved(parent: View?, child: View?) {}
+            })
+            for (i in 0 until lv.childCount) adatta(lv.getChildAt(i))
+        } catch (_: Exception) {
+        }
+    }
+
     private fun tasti(dlg: AlertDialog) {
+        compattaLista(dlg)
         try {
             val primo: View = listOf(
                 AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL
