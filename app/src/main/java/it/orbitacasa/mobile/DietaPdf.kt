@@ -177,6 +177,40 @@ object DietaPdf {
         return f
     }
 
+    fun analisi(act: Activity, titolo: String, testo: String): File {
+        val pulisci = { t: String -> t.replace(Regex("[\\uD800-\\uDFFF\\uFE0F\\u200D]"), "").trim() }
+        val w = Scrittore()
+        val largo = W - ML - MR
+        w.nuova()
+        w.titolo("Analisi dieta", VERDE)
+        w.testo(pulisci(titolo), ML, w.y, 10f, VERDE2)
+        w.y += 10f
+        w.filetto(VERDE)
+        for (riga in testo.lines().map { pulisci(it) }) {
+            if (riga.isEmpty()) {
+                w.y += 6f
+                continue
+            }
+            val titoloSez = riga.length <= 80 && riga.any { it.isLetter() } && riga == riga.uppercase()
+            val size = if (titoloSez) 10f else 9f
+            if (titoloSez) w.y += 4f
+            for (r in w.righe(riga, size, titoloSez, largo)) {
+                w.serve(14f)
+                w.testo(r, ML, w.y + 9f, size, if (titoloSez) VERDE else Color.BLACK, titoloSez)
+                w.y += 13f
+            }
+        }
+        w.chiudi()
+        val dir = File(act.cacheDir, "pdf").apply { mkdirs() }
+        val f = File(dir, "analisi_dieta_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".pdf")
+        try {
+            FileOutputStream(f).use { w.doc.writeTo(it) }
+        } finally {
+            w.doc.close()
+        }
+        return f
+    }
+
     fun condividi(act: Activity, f: File) = PensionePdf.condividi(act, f, "Piano dieta")
 
     private fun settimana(w: Scrittore, s: Dieta.Sett, info: String) {

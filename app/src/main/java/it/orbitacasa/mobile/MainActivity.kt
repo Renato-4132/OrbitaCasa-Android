@@ -5016,13 +5016,6 @@ class MainActivity : AppCompatActivity() {
                         aviso("Errore PDF: " + e.message)
                     }
                 }
-                .setNeutralButton("TXT") { _, _ ->
-                    val i = Intent(Intent.ACTION_SEND)
-                        .setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT, testo)
-                        .putExtra(Intent.EXTRA_SUBJECT, "Controllo estratto")
-                    startActivity(Intent.createChooser(i, "Condividi controllo estratto"))
-                }
                 .setNegativeButton("Chiudi", null)
                 .show()
         }
@@ -8359,10 +8352,13 @@ class MainActivity : AppCompatActivity() {
             .setView(view)
             .setPositiveButton("Chiudi", null)
             .setNeutralButton("Condividi") { _, _ ->
-                val i = Intent(Intent.ACTION_SEND)
-                i.type = "text/plain"
-                i.putExtra(Intent.EXTRA_TEXT, testo)
-                startActivity(Intent.createChooser(i, "Condividi analisi"))
+                val f = try {
+                    DietaPdf.analisi(this, titolo, testo)
+                } catch (e: Exception) {
+                    aviso("Errore nella creazione del PDF: " + e.message)
+                    return@setNeutralButton
+                }
+                PensionePdf.condividi(this, f, "Analisi dieta")
             }
             .show()
     }
