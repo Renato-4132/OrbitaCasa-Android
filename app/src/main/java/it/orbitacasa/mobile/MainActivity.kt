@@ -1765,6 +1765,11 @@ class MainActivity : AppCompatActivity() {
         }
         val sep = Regex("[\\s,;]+")
         val dp = resources.displayMetrics.density
+        var ancora: android.view.View = et
+        while (ancora !is com.google.android.material.textfield.TextInputLayout) {
+            ancora = (ancora.parent as? android.view.View) ?: break
+        }
+        if (ancora !is com.google.android.material.textfield.TextInputLayout) ancora = et
         val pop = android.widget.PopupWindow(et.context)
         pop.isFocusable = false
         pop.isOutsideTouchable = false
@@ -1816,7 +1821,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 val h = box.measuredHeight
                 val pos = IntArray(2)
-                et.getLocationOnScreen(pos)
+                ancora.getLocationOnScreen(pos)
                 pop.dismiss()
                 pop.contentView = box
                 pop.width = w
