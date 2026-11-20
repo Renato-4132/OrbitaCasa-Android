@@ -769,7 +769,6 @@ class MainActivity : AppCompatActivity() {
                 Tessera("ℹ️", "Info e Contatti") { mostra(Pagina.INFO) },
                 Tessera("🧭", "Personalizza") { dialogBarra() },
                 Tessera("🔒", "Blocco App: " + lockEtichetta()) { cambiaBlocco() },
-                Tessera("🔐", "Blocca ora") { bloccaOra() },
                 Tessera("💡", "SmartCat: " + if (Repo.smartCatOn) "attiva" else "no") {
                     Repo.setSmartCat(!Repo.smartCatOn)
                     renderHome()
@@ -932,6 +931,8 @@ class MainActivity : AppCompatActivity() {
         Dest(Pagina.CASACARE, "🛠️", "CasaCare"),
     )
 
+    private val BARRA_BLOCCA = "BLOCCA"
+
     private fun apriDest(p: Pagina) {
         if (schedaDi(p) != null) schedaAperta = null
         mostra(p)
@@ -973,6 +974,10 @@ class MainActivity : AppCompatActivity() {
 
         voce("🏠", "Home", pagina == Pagina.HOME, { mostra(Pagina.HOME) }, { aviso("La Home è fissa") })
         Repo.barra.forEachIndexed { slot, nome ->
+            if (nome == BARRA_BLOCCA) {
+                voce("🔐", "Blocca", false, { bloccaOra() }, { dialogSceltaBarra(slot) })
+                return@forEachIndexed
+            }
             val d = destinazioni.firstOrNull { it.pag.name == nome } ?: return@forEachIndexed
             voce(d.ico, d.lbl, pagina == d.pag, { apriDest(d.pag) }, { dialogSceltaBarra(slot) })
         }
@@ -1011,10 +1016,11 @@ class MainActivity : AppCompatActivity() {
     private fun dialogSceltaBarra(slot: Int) {
         val coll = java.text.Collator.getInstance(Locale.ITALY).apply { strength = java.text.Collator.PRIMARY }
         val ordinate = destinazioni.sortedWith { a, b -> coll.compare(a.lbl, b.lbl) }
+            .map { Triple(it.pag.name, it.ico, it.lbl) } + Triple(BARRA_BLOCCA, "🔐", "Blocca ora")
         OcBuilder(this)
-            .setCustomTitle(titoloSpiegato("Posizione " + (slot + 1) + " della barra", "Scegli la pagina da mostrare in questa posizione. Se è già nella barra, le due pagine si scambiano di posto."))
-            .setItems(ordinate.map { it.ico + "  " + it.lbl }.toTypedArray()) { _, k ->
-                val nuova = ordinate[k].pag.name
+            .setCustomTitle(titoloSpiegato("Posizione " + (slot + 1) + " della barra", "Scegli la pagina o l'azione da mostrare in questa posizione. Se è già nella barra, le due pagine si scambiano di posto."))
+            .setItems(ordinate.map { it.second + "  " + it.third }.toTypedArray()) { _, k ->
+                val nuova = ordinate[k].first
                 val l = Repo.barra.toMutableList()
                 val gia = l.indexOf(nuova)
                 if (gia >= 0) l[gia] = l[slot]
@@ -1029,7 +1035,7 @@ class MainActivity : AppCompatActivity() {
     private fun dialogBarra() {
         val voci = Repo.barra.mapIndexed { i, nome ->
             val d = destinazioni.firstOrNull { it.pag.name == nome }
-            (i + 1).toString() + " · " + (d?.let { it.ico + " " + it.lbl } ?: nome)
+            (i + 1).toString() + " · " + (d?.let { it.ico + " " + it.lbl } ?: if (nome == BARRA_BLOCCA) "🔐 Blocca ora" else nome)
         }
         OcBuilder(this)
             .setCustomTitle(titoloSpiegato("Personalizza barra", "Tocca una posizione per cambiarne la pagina. La Home resta sempre la prima. Scorciatoia: tieni premuta un'icona direttamente nella barra."))
