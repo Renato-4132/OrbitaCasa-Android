@@ -3525,7 +3525,7 @@ class MainActivity : AppCompatActivity() {
             .setMultiChoiceItems(etichette, sel) { _, i, on -> sel[i] = on }
             .setNegativeButton("Annulla", null)
             .setNeutralButton("Tutte", null)
-            .setPositiveButton("Aggiungi selezionate") { _, _ ->
+            .setPositiveButton("Aggiungi") { _, _ ->
                 val scelte = mancanti.filterIndexed { i, _ -> sel[i] }
                 if (scelte.isEmpty()) {
                     aviso("Seleziona almeno una categoria")
