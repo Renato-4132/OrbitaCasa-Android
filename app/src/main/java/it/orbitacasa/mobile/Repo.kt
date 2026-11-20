@@ -145,6 +145,8 @@ object Repo {
         private set
     var lockOn = false
         private set
+    var lockSec = 30
+        private set
     var targetMese = 0.0
         private set
     var targetAnno = 0.0
@@ -201,6 +203,7 @@ object Repo {
         Notif.init(dir)
         prefs = ctx.getSharedPreferences("orbita", Context.MODE_PRIVATE)
         lockOn = prefs.getBoolean("lock", false)
+        lockSec = prefs.getInt("lock_sec", 30)
         load()
         caricaImpostazioni()
     }
@@ -362,6 +365,11 @@ object Repo {
     fun setLock(on: Boolean) {
         lockOn = on
         prefs.edit().putBoolean("lock", on).apply()
+    }
+
+    fun setLockSec(sec: Int) {
+        lockSec = sec
+        prefs.edit().putInt("lock_sec", sec).apply()
     }
 
     fun ricarica() {

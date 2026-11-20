@@ -459,7 +459,7 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         Notif.osservatore = { runOnUiThread { if (pagina == Pagina.NOTIFICHE || pagina == Pagina.HOME) refresh() } }
         if (Repo.lockOn && sbloccata && ultimoStop > 0 &&
-            SystemClock.elapsedRealtime() - ultimoStop > 30_000
+            SystemClock.elapsedRealtime() - ultimoStop > Repo.lockSec * 1000L
         ) {
             sbloccata = false
             mostraBlocco(true)
@@ -574,16 +574,42 @@ class MainActivity : AppCompatActivity() {
         prompt.authenticate(info.build())
     }
 
+    private val LOCK_OPZIONI = listOf(
+        "Disattivato" to 0,
+        "Dopo 30 secondi" to 30,
+        "Dopo 1 minuto" to 60,
+        "Dopo 2 minuti" to 120,
+        "Dopo 3 minuti" to 180,
+    )
+
+    private fun lockEtichetta(): String = when {
+        !Repo.lockOn -> "no"
+        Repo.lockSec < 60 -> Repo.lockSec.toString() + " sec"
+        else -> (Repo.lockSec / 60).toString() + " min"
+    }
+
     private fun cambiaBlocco() {
-        if (Repo.lockOn) {
-            Repo.setLock(false)
-        } else if (Lock.disponibile(this)) {
-            Repo.setLock(true)
-            sbloccata = true
-        } else {
-            aviso("Imposta prima un'impronta o un blocco schermo sul telefono")
-        }
-        renderHome()
+        val corrente = if (Repo.lockOn) Repo.lockSec else 0
+        OcBuilder(this)
+            .setTitle("Blocco app")
+            .setItems(
+                LOCK_OPZIONI.map { (if (it.second == corrente) "● " else "○ ") + it.first }.toTypedArray()
+            ) { _, i ->
+                val sec = LOCK_OPZIONI[i].second
+                if (sec == 0) {
+                    Repo.setLock(false)
+                } else if (Lock.disponibile(this)) {
+                    val eraAttivo = Repo.lockOn
+                    Repo.setLockSec(sec)
+                    Repo.setLock(true)
+                    if (!eraAttivo) sbloccata = true
+                } else {
+                    aviso("Imposta prima un'impronta o un blocco schermo sul telefono")
+                }
+                renderHome()
+            }
+            .setNegativeButton("Chiudi", null)
+            .show()
     }
 
     private fun mostra(p: Pagina) {
@@ -732,7 +758,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🔄", "Aggiornamenti") { cercaAggiornamenti() },
                 Tessera("ℹ️", "Info e Contatti") { mostra(Pagina.INFO) },
                 Tessera("🧭", "Personalizza") { dialogBarra() },
-                Tessera("🔒", "Blocco App: " + if (Repo.lockOn) "attivo" else "no") { cambiaBlocco() },
+                Tessera("🔒", "Blocco App: " + lockEtichetta()) { cambiaBlocco() },
                 Tessera("💡", "SmartCat: " + if (Repo.smartCatOn) "attiva" else "no") {
                     Repo.setSmartCat(!Repo.smartCatOn)
                     renderHome()
