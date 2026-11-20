@@ -150,6 +150,8 @@ object Repo {
     var targetAnno = 0.0
         private set
     var smartCatOn = true
+    var checkDoppi = false
+        private set
         private set
     var smartCatToll = 15.0
         private set
@@ -211,6 +213,7 @@ object Repo {
                 targetMese = o.optDouble("target_mese", 0.0).coerceAtLeast(0.0)
                 targetAnno = o.optDouble("target_anno", 0.0).coerceAtLeast(0.0)
                 smartCatOn = o.optBoolean("smartcat_enabled", true)
+                checkDoppi = o.optBoolean("check_double", false)
                 smartCatToll = o.optDouble("smartcat_toll", 15.0).coerceAtLeast(0.0)
                 nomeGestore = o.optString("fairshare_gestore", "")
                 checkMese = o.optBoolean("check_mese", true)
@@ -259,6 +262,11 @@ object Repo {
 
     fun setSmartCat(on: Boolean) {
         smartCatOn = on
+        salvaImpostazioni()
+    }
+
+    fun setCheckDoppi(on: Boolean) {
+        checkDoppi = on
         salvaImpostazioni()
     }
 
@@ -334,6 +342,7 @@ object Repo {
                     .put("target_mese", targetMese)
                     .put("target_anno", targetAnno)
                     .put("smartcat_enabled", smartCatOn)
+                    .put("check_double", checkDoppi)
                     .put("smartcat_toll", smartCatToll)
                     .put("fairshare_gestore", nomeGestore)
                     .put("check_mese", checkMese)
@@ -1737,6 +1746,7 @@ object Repo {
         targetMese = 0.0
         targetAnno = 0.0
         smartCatOn = true
+        checkDoppi = false
         smartCatToll = 15.0
         nomeGestore = ""
         checkMese = true

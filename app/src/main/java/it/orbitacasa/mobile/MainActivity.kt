@@ -737,6 +737,10 @@ class MainActivity : AppCompatActivity() {
                     Repo.setSmartCat(!Repo.smartCatOn)
                     renderHome()
                 },
+                Tessera("🔁", "Controllo duplicati: " + if (Repo.checkDoppi) "attivo" else "no") {
+                    Repo.setCheckDoppi(!Repo.checkDoppi)
+                    renderHome()
+                },
             )
         )
         tabsHome(cont)
@@ -1294,6 +1298,31 @@ class MainActivity : AppCompatActivity() {
             val docCollegato = if (v != null) Doc.documentoDiSpesa(v) else null
             val descNuova = etDescr.text.toString().trim()
             val dataNuova = data
+            val gemella = if (Repo.checkDoppi && v == null) {
+                Repo.voci().firstOrNull {
+                    it.data.year == data.year && it.data.monthValue == data.monthValue &&
+                        it.categoria == cat && it.tipo == tipo && Math.abs(it.importo - imp) < 0.005
+                }
+            } else null
+            if (gemella != null) {
+                OcBuilder(this)
+                    .setTitle("Duplicato mensile")
+                    .setMessage("Esiste già un movimento identico in data " + gemella.data.format(FMT_DATA) + ".\nVuoi procedere comunque?")
+                    .setNegativeButton("Annulla", null)
+                    .setPositiveButton("Procedi") { _, _ ->
+                        Repo.salvaVoce(null, data, cat, descNuova, imp, tipo, metodoSel, tags, contoSel)
+                        if (pagina == Pagina.MOVIMENTI) mese = YearMonth.from(data)
+                        if (pagina == Pagina.CALENDARIO) {
+                            meseCal = YearMonth.from(data)
+                            giornoCal = data
+                        }
+                        dlg.dismiss()
+                        refresh()
+                        aviso("Operazione salvata")
+                    }
+                    .show()
+                return@setOnClickListener
+            }
             Repo.salvaVoce(v?.id, data, cat, descNuova, imp, tipo, metodoSel, tags, contoSel)
             if (v != null && docCollegato != null &&
                 (dataNuova != v.data || cat != v.categoria || descNuova != v.descrizione ||
