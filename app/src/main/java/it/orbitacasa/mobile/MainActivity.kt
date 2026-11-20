@@ -1820,15 +1820,14 @@ class MainActivity : AppCompatActivity() {
                     android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
                 )
                 val h = box.measuredHeight
-                val pos = IntArray(2)
-                ancora.getLocationOnScreen(pos)
                 pop.dismiss()
                 pop.contentView = box
                 pop.width = w
                 pop.height = ViewGroup.LayoutParams.WRAP_CONTENT
-                pop.showAtLocation(et, android.view.Gravity.NO_GRAVITY, pos[0], (pos[1] - h).coerceAtLeast(0))
+                pop.isClippingEnabled = false
+                pop.showAsDropDown(ancora, 0, -(ancora.height + h))
                 box.post {
-                    if (pop.isShowing) pop.update(pos[0], (pos[1] - box.height).coerceAtLeast(0), -1, -1)
+                    if (pop.isShowing) pop.update(ancora, 0, -(ancora.height + box.height), -1, -1)
                 }
             }
         })
