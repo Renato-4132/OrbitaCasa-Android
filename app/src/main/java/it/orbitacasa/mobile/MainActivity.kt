@@ -1765,18 +1765,15 @@ class MainActivity : AppCompatActivity() {
         }
         val sep = Regex("[\\s,;]+")
         val dp = resources.displayMetrics.density
-        var til: android.view.View = et
-        while (til !is com.google.android.material.textfield.TextInputLayout) {
-            til = (til.parent as? android.view.View) ?: break
-        }
-        val contenitore = til.parent as? android.view.ViewGroup ?: return
-        val scroll = android.widget.HorizontalScrollView(et.context)
-        scroll.isHorizontalScrollBarEnabled = false
-        scroll.visibility = android.view.View.GONE
-        val riga = LinearLayout(et.context)
-        riga.orientation = LinearLayout.HORIZONTAL
-        scroll.addView(riga)
-        contenitore.addView(scroll, contenitore.indexOfChild(til) + 1)
+        val pop = android.widget.PopupWindow(et.context)
+        pop.isFocusable = false
+        pop.isOutsideTouchable = false
+        pop.setInputMethodMode(android.widget.PopupWindow.INPUT_METHOD_NOT_NEEDED)
+        pop.elevation = 8 * dp
+        et.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: android.view.View) {}
+            override fun onViewDetachedFromWindow(v: android.view.View) { pop.dismiss() }
+        })
         et.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -1784,26 +1781,45 @@ class MainActivity : AppCompatActivity() {
                 val t = s?.toString() ?: ""
                 val parola = t.split(sep).lastOrNull() ?: ""
                 val ult = parola.trimStart('#')
-                riga.removeAllViews()
-                val sug = if (ult.isEmpty() || !et.hasFocus()) emptyList()
-                else tutti.filter { it.startsWith(ult, true) && !it.equals(ult, true) }.take(8)
+                val sug = if (ult.isEmpty() || !et.hasFocus() || !et.isAttachedToWindow) emptyList()
+                else tutti.filter { it.startsWith(ult, true) && !it.equals(ult, true) }.take(5)
                 if (sug.isEmpty()) {
-                    scroll.visibility = android.view.View.GONE
+                    pop.dismiss()
                     return
                 }
+                val box = LinearLayout(et.context)
+                box.orientation = LinearLayout.VERTICAL
+                val sfondo = android.graphics.drawable.GradientDrawable()
+                sfondo.setColor(ContextCompat.getColor(et.context, R.color.oc_surface))
+                sfondo.setStroke((1 * dp).toInt().coerceAtLeast(1), ContextCompat.getColor(et.context, R.color.oc_border))
+                sfondo.cornerRadius = 8 * dp
+                box.background = sfondo
                 for (x in sug) {
-                    val chip = com.google.android.material.chip.Chip(et.context)
-                    chip.text = "#" + x
-                    chip.setOnClickListener {
+                    val tv = TextView(et.context)
+                    tv.text = "#" + x
+                    tv.textSize = 16f
+                    tv.setTextColor(ContextCompat.getColor(et.context, R.color.oc_text))
+                    tv.setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+                    tv.setOnClickListener {
                         val base = t.substring(0, t.length - parola.length)
                         et.setText(base + "#" + x + " ")
                         et.setSelection(et.text?.length ?: 0)
                     }
-                    val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                    lp.marginEnd = (6 * dp).toInt()
-                    riga.addView(chip, lp)
+                    box.addView(tv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
                 }
-                scroll.visibility = android.view.View.VISIBLE
+                val w = et.width.coerceAtLeast((200 * dp).toInt())
+                box.measure(
+                    android.view.View.MeasureSpec.makeMeasureSpec(w, android.view.View.MeasureSpec.EXACTLY),
+                    android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+                )
+                val h = box.measuredHeight
+                val pos = IntArray(2)
+                et.getLocationOnScreen(pos)
+                pop.dismiss()
+                pop.contentView = box
+                pop.width = w
+                pop.height = h
+                pop.showAtLocation(et, android.view.Gravity.NO_GRAVITY, pos[0], (pos[1] - h).coerceAtLeast(0))
             }
         })
     }
