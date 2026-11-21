@@ -4060,7 +4060,7 @@ class MainActivity : AppCompatActivity() {
         piede.setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
         aggiungiPiede(piede, "Chiudi" to { dlg.dismiss() })
         root.addView(piede)
-        dlg = dialogGrande("💡 Possibili ricorrenze", root)
+        dlg = OcBuilder(this).setTitle("💡 Possibili ricorrenze").setView(root).show()
     }
 
     private fun dialogRicorrenza(sug: RicAuto.Sugg? = null) {
