@@ -778,6 +778,11 @@ class MainActivity : AppCompatActivity() {
                     Repo.setCheckDoppi(!Repo.checkDoppi)
                     renderHome()
                 },
+                Tessera("🙈", "Blur saldi: " + if (Repo.privacy) "attivo" else "no") {
+                    Repo.setPrivacy(!Repo.privacy)
+                    renderHome()
+                    applicaPrivacy()
+                },
             )
         )
         tabsHome(cont)
