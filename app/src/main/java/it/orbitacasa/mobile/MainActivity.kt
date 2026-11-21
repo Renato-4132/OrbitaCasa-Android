@@ -924,6 +924,60 @@ class MainActivity : AppCompatActivity() {
             if (Repo.targetAnno > 0) rigaTarget("Target anno", spesoAnno, Repo.targetAnno)
             box.addView(tgt)
         }
+
+        val pr = Fondo.analizza(tutte, 0.0, emptyList())
+        if (pr.attendibile && (pr.eProj > 0 || pr.uProj > 0)) {
+            val pctPr = if (pr.uProj > 0) (pr.eProj / pr.uProj).coerceIn(0.0, 1.0) else 1.0
+            val colPr = ContextCompat.getColor(
+                this, when { pctPr >= 1.0 -> R.color.oc_green; pctPr >= 0.5 -> R.color.oc_orange; else -> R.color.oc_red }
+            )
+            val tess = LinearLayout(this)
+            tess.orientation = LinearLayout.VERTICAL
+            val lpP = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lpP.topMargin = (10 * dp).toInt()
+            tess.layoutParams = lpP
+            tess.setOnClickListener { mostra(Pagina.FONDO) }
+            val testaP = LinearLayout(this)
+            testaP.orientation = LinearLayout.HORIZONTAL
+            val tlP = TextView(this)
+            tlP.text = "Previsione " + LocalDate.now().year
+            tlP.textSize = 12f
+            tlP.setTypeface(null, Typeface.BOLD)
+            tlP.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            val trP = TextView(this)
+            trP.text = segnoEuro(pr.rProj)
+            trP.textSize = 12f
+            trP.setTypeface(null, Typeface.BOLD)
+            trP.setTextColor(if (pr.rProj >= 0) verde else rosso)
+            testaP.addView(tlP)
+            testaP.addView(trP)
+            tess.addView(testaP)
+            val pbP = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
+            pbP.max = 100
+            pbP.progress = (pctPr * 100).toInt()
+            pbP.progressTintList = ColorStateList.valueOf(colPr)
+            val plpP = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (8 * dp).toInt())
+            plpP.topMargin = (3 * dp).toInt()
+            plpP.bottomMargin = (3 * dp).toInt()
+            pbP.layoutParams = plpP
+            tess.addView(pbP)
+            val pieP = LinearLayout(this)
+            pieP.orientation = LinearLayout.HORIZONTAL
+            val plP = TextView(this)
+            plP.text = "entrate " + euro(pr.eProj) + " · uscite " + euro(pr.uProj)
+            plP.textSize = 11f
+            plP.maxLines = 1
+            plP.setTextColor(medio)
+            plP.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            val prP = TextView(this)
+            prP.text = "risparmio"
+            prP.textSize = 11f
+            prP.setTextColor(medio)
+            pieP.addView(plP)
+            pieP.addView(prP)
+            tess.addView(pieP)
+            box.addView(tess)
+        }
     }
 
     private class Dest(val pag: Pagina, val ico: String, val lbl: String)
@@ -1487,23 +1541,23 @@ class MainActivity : AppCompatActivity() {
         val verde = ContextCompat.getColor(this, R.color.oc_green)
         fun pct(v: Double) = String.format(Locale.ITALY, "%.0f", v) + "%"
 
-        sezioneForte(cont, "PREVISIONE FINE MESE · " + maiuscola(oggi.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALY))).uppercase())
+        sezioneForte(cont, "USCITE DEL MESE · " + maiuscola(oggi.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALY))).uppercase())
         if (es.righe.isEmpty()) {
             vuoto(cont, "Nessuna uscita registrata questo mese: niente da prevedere.")
             previsioneAnno(cont, oggi)
             return
         }
+        val fino = es.righe.sumOf { it.finoAOggi }
         riga(
-            cont, "Uscite previste a fine mese",
-            "Speso finora " + euro(es.totSpeso) + " · giorno " + es.giorno + " di " + es.giorniMese,
-            euro(es.totPrevisione), null, null
+            cont, "Uscite del mese",
+            "Già speso " + euro(fino) + " · in programma " + euro(es.totSpeso - fino),
+            euro(es.totSpeso), null, null
         )
         if (es.totBudget > 0) {
-            val sforo = es.previstoConBudget > es.totBudget
+            val sforo = es.spesoConBudget > es.totBudget
             riga(
                 cont, "Categorie con budget",
-                "Speso " + euro(es.spesoConBudget) + " · previsione " + euro(es.previstoConBudget) +
-                    " · budget " + euro(es.totBudget),
+                "Speso e in programma " + euro(es.spesoConBudget) + " · budget " + euro(es.totBudget),
                 pct(es.spesoConBudget / es.totBudget * 100.0), if (sforo) rosso else verde, null
             )
         }
@@ -1512,14 +1566,14 @@ class MainActivity : AppCompatActivity() {
         for (r in es.righe) {
             val sotto = if (r.budget > 0)
                 "Speso " + euro(r.speso) + " · budget " + euro(r.budget) + " (" + pct(r.speso / r.budget * 100.0) + ")" +
-                    (if (r.previsione > r.budget) " · oltre budget a fine mese" else "")
+                    (if (r.speso > r.budget) " · oltre budget" else "")
             else "Speso " + euro(r.speso) + " · senza budget"
             val col = when {
-                r.budget > 0 && r.previsione > r.budget -> rosso
-                r.budget > 0 && r.previsione >= r.budget * 0.8 -> arancio
+                r.budget > 0 && r.speso > r.budget -> rosso
+                r.budget > 0 && r.speso >= r.budget * 0.8 -> arancio
                 else -> null
             }
-            riga(cont, r.categoria, sotto, (if (r.budget > 0 && r.previsione > r.budget) "▲ " else "") + euro(r.previsione), col) {
+            riga(cont, r.categoria, sotto, (if (r.budget > 0 && r.speso > r.budget) "▲ " else "") + euro(r.speso), col) {
                 rc.azzera()
                 rc.categoria = r.categoria
                 rc.tipo = "Uscita"
@@ -1531,9 +1585,8 @@ class MainActivity : AppCompatActivity() {
         }
         vuoto(
             cont,
-            "Stima lineare per categoria: speso fino a oggi ÷ giorno " + es.giorno + " × " + es.giorniMese +
-                " giorni, mai sotto quanto già registrato (comprese le operazioni future del mese)." +
-                (if (es.giorno <= 3) " Nei primi giorni del mese la stima è poco affidabile." else "")
+            "Importi registrati nel mese, comprese le operazioni future (Pianifica, ricorrenze). " +
+                "Nessuna proiezione: sono dati certi."
         )
         previsioneAnno(cont, oggi)
     }
@@ -1549,11 +1602,11 @@ class MainActivity : AppCompatActivity() {
         sezioneForte(cont, "PREVISIONE FINE ANNO · " + oggi.year)
         val proiez = an.proiezione
         if (proiez == null) {
-            riga(cont, "Registrato nell'anno", "Nessun mese chiuso: la proiezione parte da febbraio.", euro(an.totale), null, null)
+            riga(cont, "Registrato nell'anno", "Servono almeno 3 mesi di dati o l'anno scorso per la stima.", euro(an.totale), null, null)
         } else {
             riga(
                 cont, "Uscite previste a fine anno",
-                "Registrato " + euro(an.totale) + " · media mesi chiusi " + euro(an.media ?: 0.0) + "/mese",
+                "Registrato " + euro(an.totale) + " · media " + euro(an.media ?: 0.0) + "/mese",
                 euro(proiez), null, null
             )
             if (ta > 0) {
@@ -1570,7 +1623,7 @@ class MainActivity : AppCompatActivity() {
             riga(cont, "Mesi oltre il target mensile", "Target mese " + euro(tm) + " (solo mesi già iniziati)", sopra.toString(), if (sopra > 0) rosso else verde, null)
         }
         for (m in an.mesi) {
-            val stima = proiez != null && m.mese >= oggi.monthValue
+            val stima = proiez != null && m.futuro
             val valore = if (stima) m.stimato else m.uscite
             val p = if (tm > 0) valore / tm * 100.0 else null
             val col = when {
@@ -1581,8 +1634,8 @@ class MainActivity : AppCompatActivity() {
             }
             val nome = maiuscola(Ricerca.MESI[m.mese - 1])
             val sotto = when {
-                m.mese == oggi.monthValue && stima -> "In corso · registrato " + euro(m.uscite)
-                m.futuro && stima -> "Stima" + if (m.uscite > 0) " · già registrato " + euro(m.uscite) else ""
+                stima -> "Stima" + if (m.uscite > 0) " · già registrato " + euro(m.uscite) else ""
+                m.mese == oggi.monthValue -> "In corso · " + m.num + " operazioni"
                 m.num == 0 -> "Nessuna operazione"
                 else -> m.num.toString() + " operazioni"
             }
@@ -1593,8 +1646,8 @@ class MainActivity : AppCompatActivity() {
         }
         vuoto(
             cont,
-            "Proiezione: mesi chiusi + per ogni mese restante il maggiore tra il registrato e la media dei mesi chiusi. " +
-                "Il segno ~ indica una stima."
+            "Come nel Fondo risparmio: mesi con dati reali (ultimi 365 giorni), poi lo stesso mese dell'anno scorso, " +
+                "poi la media. Il segno ~ indica una stima."
         )
     }
 

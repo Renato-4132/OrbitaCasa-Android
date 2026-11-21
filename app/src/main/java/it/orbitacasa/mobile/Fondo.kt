@@ -115,10 +115,13 @@ object Fondo {
         val fe3: Double, val fe6: Double, val fe12: Double,
         val rataMensile: Double, val diffObj: Double, val pctObj: Double,
         val obiettivi: List<ObiettivoStato>,
+        val attendibile: Boolean = true,
     ) {
         val risparmio365 get() = entrate365 - uscite365
         val rProj get() = eProj - uProj
     }
+
+    const val SOGLIA_MESI_PROIEZIONE = 3
 
     fun analizza(voci: List<Voce>, obiettivoAnnuale: Double, obiettivi: List<Obiettivo>): Analisi {
         val oggi = LocalDate.now()
@@ -150,7 +153,9 @@ object Fondo {
             val reale = mesiDati[ym]
             val x = if (reale != null) Mese(ym, reale[0], reale[1], false) else {
                 val p = prec[m]
-                if (p != null) Mese(ym, p[0], p[1], true) else Mese(ym, mediaE, mediaU, true)
+                if (p != null) Mese(ym, p[0], p[1], true)
+                else if (nMesi >= SOGLIA_MESI_PROIEZIONE) Mese(ym, mediaE, mediaU, true)
+                else Mese(ym, 0.0, 0.0, true)
             }
             proj.add(x)
             eProj += x.e
@@ -178,6 +183,7 @@ object Fondo {
             e365, u365, mediaE, mediaU, mediaR, proj, eProj, uProj, ultimi,
             ultimi.maxByOrNull { it.r }, ultimi.minByOrNull { it.r },
             mediaU * 3, mediaU * 6, mediaU * 12, rata, mediaR - rata, pctObj, stati,
+            nMesi >= SOGLIA_MESI_PROIEZIONE || prec.isNotEmpty(),
         )
     }
 

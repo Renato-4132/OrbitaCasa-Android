@@ -40,8 +40,7 @@ object Previsione {
             val s = speso[k] ?: 0.0
             val f = fino[k] ?: 0.0
             if (s <= 0.0 && f <= 0.0) continue
-            val prev = maxOf(s, f / oggi.dayOfMonth * gg)
-            righe.add(Riga(nome, s, f, prev, budget(nome)))
+            righe.add(Riga(nome, s, f, s, budget(nome)))
         }
         righe.sortByDescending { it.previsione }
         val conBud = righe.filter { it.budget > 0 }
@@ -69,14 +68,13 @@ object Previsione {
             u[v.data.monthValue] += v.importo
             n[v.data.monthValue]++
         }
-        val chiusi = (1 until oggi.monthValue).map { u[it] }
-        val media = if (chiusi.isEmpty()) null else chiusi.sum() / chiusi.size
-        val mesi = (1..12).map { m ->
-            val futuro = m > oggi.monthValue
-            val stim = if (media != null && m >= oggi.monthValue) maxOf(u[m], media) else u[m]
-            Mese(m, n[m], u[m], stim, futuro)
+        val f = Fondo.analizza(voci, 0.0, emptyList())
+        val mesi = f.proiezione.map { p ->
+            val m = p.ym.monthValue
+            Mese(m, n[m], if (p.futuro) u[m] else p.u, p.u, p.futuro)
         }
-        val proiezione = media?.let { chiusi.sum() + (oggi.monthValue..12).sumOf { m -> maxOf(u[m], it) } }
+        val proiezione = if (f.attendibile) f.uProj else null
+        val media = if (f.attendibile) f.mediaU else null
         return Anno(mesi, u.sum(), media, proiezione)
     }
 }
