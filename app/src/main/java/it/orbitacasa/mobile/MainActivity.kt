@@ -958,24 +958,8 @@ class MainActivity : AppCompatActivity() {
             pbP.progressTintList = ColorStateList.valueOf(colPr)
             val plpP = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (8 * dp).toInt())
             plpP.topMargin = (3 * dp).toInt()
-            plpP.bottomMargin = (3 * dp).toInt()
             pbP.layoutParams = plpP
             tess.addView(pbP)
-            val pieP = LinearLayout(this)
-            pieP.orientation = LinearLayout.HORIZONTAL
-            val plP = TextView(this)
-            plP.text = "entrate " + euro(pr.eProj) + " · uscite " + euro(pr.uProj)
-            plP.textSize = 11f
-            plP.maxLines = 1
-            plP.setTextColor(medio)
-            plP.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            val prP = TextView(this)
-            prP.text = "risparmio"
-            prP.textSize = 11f
-            prP.setTextColor(medio)
-            pieP.addView(plP)
-            pieP.addView(prP)
-            tess.addView(pieP)
             box.addView(tess)
         }
     }
