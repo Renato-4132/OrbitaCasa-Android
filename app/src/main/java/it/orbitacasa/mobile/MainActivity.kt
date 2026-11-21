@@ -705,6 +705,7 @@ class MainActivity : AppCompatActivity() {
                 Tessera("📈", "Movimenti Mese") { mostra(Pagina.MOVIMENTI) },
                 Tessera("🗓️", "Calendario") { mostra(Pagina.CALENDARIO) },
                 Tessera("📌", "Pianifica") { mostra(Pagina.PIANIFICA) },
+                Tessera("🔁", "Ricorrenze" + if (RicAuto.trova(Repo.voci(), Repo.ricorrenze(), LocalDate.now()).isNotEmpty()) " 💡" else "") { mostra(Pagina.RICORRENZE) },
                 Tessera("🔔", "Promemoria" + Prom.conteggio().totale.let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.PROMEMORIA) },
                 Tessera("📩", "Notifiche" + Notif.nAttesa().let { if (it > 0) " ($it)" else "" }) { mostra(Pagina.NOTIFICHE) },
                 Tessera("🔎", "Cerca Operazioni") { mostra(Pagina.RICERCA) },
@@ -729,7 +730,6 @@ class MainActivity : AppCompatActivity() {
                 Tessera("🏦", "Conti") { mostra(Pagina.CONTI) },
                 Tessera("🏷️", "Categorie") { mostra(Pagina.CATEGORIE) },
                 Tessera("🎯", "Target") { mostra(Pagina.TARGET) },
-                Tessera("🔁", "Ricorrenze") { mostra(Pagina.RICORRENZE) },
                 Tessera("💶", "Finanziamenti") { mostra(Pagina.FINANZIAMENTI) },
                 Tessera("💰", "Fondo Risparmio") { mostra(Pagina.FONDO) },
                 Tessera("🏖️", "Fondo Pensione") { mostra(Pagina.PENSIONE) },
@@ -3953,6 +3953,13 @@ class MainActivity : AppCompatActivity() {
         intestaLista("🔁 Ricorrenze", "➕  Nuova ricorrenza")
         val cont = vista<LinearLayout>(R.id.listaGen)
         val lista = Repo.ricorrenze()
+        val sug = RicAuto.trova(Repo.voci(), lista, LocalDate.now())
+        if (sug.isNotEmpty()) {
+            riga(
+                cont, "💡 " + sug.size + (if (sug.size == 1) " possibile ricorrenza" else " possibili ricorrenze"),
+                "Trovate nello storico, entrate e uscite. Tocca per vedere", "", null
+            ) { dialogSuggerimenti(sug) }
+        }
         if (lista.isEmpty()) {
             vuoto(cont, "Nessuna ricorrenza. Ogni ricorrenza genera subito tutte le sue operazioni.")
             return
@@ -3998,19 +4005,31 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun dialogRicorrenza() {
+    private fun dialogSuggerimenti(sug: List<RicAuto.Sugg>) {
+        val righe = sug.map {
+            (if (it.tipo == "Entrata") "+" else "−") + euro(it.imp) + " · " + it.desc.ifBlank { it.cat } +
+                " · giorno " + it.giorno + " · " + it.mesi + " mesi"
+        }.toTypedArray()
+        OcBuilder(this)
+            .setTitle("Possibili ricorrenze")
+            .setItems(righe) { _, i -> dialogRicorrenza(sug[i]) }
+            .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun dialogRicorrenza(sug: RicAuto.Sugg? = null) {
         val periodi = listOf("Ogni giorno", "Ogni mese", "Ogni anno")
         var periodo = "Ogni mese"
-        var tipo = "Uscita"
-        var data = LocalDate.now()
-        var metodo = ""
-        var conto = Repo.contoPrincipale()?.nome ?: ""
+        var tipo = sug?.tipo ?: "Uscita"
+        var data = sug?.prossima ?: LocalDate.now()
+        var metodo = sug?.metodo ?: ""
+        var conto = if (sug != null && sug.conto.isNotBlank()) sug.conto else (Repo.contoPrincipale()?.nome ?: "")
 
         fun categorieTipo(): List<String> {
             val base = Repo.categorie().filter { Repo.tipoCategoria(it) == tipo }
             return base.ifEmpty { Repo.categorie() }
         }
-        var cat = categorieTipo().firstOrNull() ?: "Generica"
+        var cat = sug?.cat ?: categorieTipo().firstOrNull() ?: "Generica"
 
         val (view, corpo) = corpoDialogo()
         val grp = MaterialButtonToggleGroup(this)
@@ -4034,7 +4053,9 @@ class MainActivity : AppCompatActivity() {
         grp.addView(bE, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         corpo.addView(grp)
 
-        val etImp = campoTesto(corpo, "Importo (€)", "", TIPO_DECIMALE, 12)
+        val etImp = campoTesto(
+            corpo, "Importo (€)", if (sug != null) String.format(Locale.ITALY, "%.2f", sug.imp) else "", TIPO_DECIMALE, 12
+        )
         Calc.collega(this, etImp)
         val tvSmart = TextView(this)
         tvSmart.textSize = 12f
@@ -4053,7 +4074,11 @@ class MainActivity : AppCompatActivity() {
                 acCat.setText(cat, false)
             }
         }
-        grp.check(bU.id)
+        grp.check(if (tipo == "Entrata") bE.id else bU.id)
+        if (sug != null) {
+            cat = sug.cat
+            acCat.setText(cat, false)
+        }
 
         if (Repo.smartCatOn) {
             val idx = Repo.smartCatIndice()
@@ -4093,10 +4118,13 @@ class MainActivity : AppCompatActivity() {
         val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lp.topMargin = 16
         corpo.addView(btnData, lp)
-        val etDescr = campoTesto(corpo, "Descrizione", "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+        val etDescr = campoTesto(corpo, "Descrizione", sug?.desc ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
 
         val nomiMetodi = listOf("") + Repo.METODI.map { it.first }
-        campoMenu(corpo, "Metodo di pagamento", nomiMetodi.map { if (it.isBlank()) "Nessuno" else Repo.metodoConEmoji(it) }, "Nessuno") {
+        campoMenu(
+            corpo, "Metodo di pagamento", nomiMetodi.map { if (it.isBlank()) "Nessuno" else Repo.metodoConEmoji(it) },
+            if (metodo.isBlank()) "Nessuno" else Repo.metodoConEmoji(metodo)
+        ) {
             metodo = nomiMetodi[it]
         }
         val nomiConti = listOf("") + Repo.conti().map { it.nome }
@@ -4105,7 +4133,7 @@ class MainActivity : AppCompatActivity() {
                 conto = nomiConti[it]
             }
         } else conto = ""
-        val etTag = campoTesto(corpo, "Tag (separati da spazio)", "", InputType.TYPE_CLASS_TEXT)
+        val etTag = campoTesto(corpo, "Tag (separati da spazio)", sug?.tag?.joinToString(" ") ?: "", InputType.TYPE_CLASS_TEXT)
         suggerimentiTag(etTag)
 
         val dlg = OcBuilder(this)
