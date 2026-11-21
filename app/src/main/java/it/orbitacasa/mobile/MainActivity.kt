@@ -803,7 +803,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applicaPrivacy() {
-        val raggio = 12f * resources.displayMetrics.density
+        val raggio = 3f * resources.displayMetrics.density
         for (id in listOf(R.id.rEntrate, R.id.rUscite, R.id.rSaldo, R.id.blocco503020)) {
             val v = vista<View>(id)
             if (Build.VERSION.SDK_INT >= 31) {
