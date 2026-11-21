@@ -4281,6 +4281,15 @@ class MainActivity : AppCompatActivity() {
             cont.addView(t)
         }
 
+        fun apriPeriodo(i: Int) {
+            rc.azzera()
+            if (grafConto.isNotEmpty()) rc.conto = grafConto
+            if (grafSempre) rc.anno = serie.lab[i] else { rc.anno = grafAnno.toString(); rc.mese = i + 1 }
+            rcTesto = ""
+            rcFuturi = grafSempre || grafFuturi
+            mostra(Pagina.RICERCA)
+        }
+
         fun grafico(modo: GraficoView.Modo, a: List<Double?>, b: List<Double?>, dettaglio: (Int) -> String) {
             val g = GraficoView(this)
             g.imposta(
@@ -4293,8 +4302,15 @@ class MainActivity : AppCompatActivity() {
             det.setPadding(4, (6 * dp).toInt(), 4, (6 * dp).toInt())
             det.text = "Tocca il grafico per vedere i dettagli."
             det.setTextColor(grigio)
-            g.alSelezionare = { i -> det.text = dettaglio(i); det.setTextColor(ContextCompat.getColor(this, R.color.oc_text)) }
-            det.minLines = 3
+            var selI = -1
+            g.alSelezionare = { i ->
+                val ha = serie.e.getOrNull(i) != null
+                selI = if (ha) i else -1
+                det.text = dettaglio(i) + if (ha) "\n👉 Tocca qui per i movimenti" else ""
+                det.setTextColor(ContextCompat.getColor(this, R.color.oc_text))
+            }
+            det.setOnClickListener { if (selI >= 0) apriPeriodo(selI) }
+            det.minLines = 4
             cont.addView(g, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (140 * dp).toInt()))
             cont.addView(det)
             fun adatta() {
@@ -4360,7 +4376,7 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 val righe = Stat.categorie(voci, if (grafSempre) null else grafAnno)
                 val tot = righe.sumOf { it.v }
-                riga(cont, "Uscite totali", "", eur0(tot), rosso, null)
+                riga(cont, "Uscite totali", "Tocca una categoria per vedere i movimenti", eur0(tot), rosso, null)
                 if (righe.isEmpty()) {
                     vuoto(cont, "Nessuna spesa in questo periodo.")
                     return
@@ -4400,6 +4416,16 @@ class MainActivity : AppCompatActivity() {
                         s.textSize = 12f
                         s.setTextColor(if (over) rosso else grigio)
                         box.addView(s)
+                    }
+                    box.setOnClickListener {
+                        rc.azzera()
+                        rc.tipo = "Uscita"
+                        rc.categoria = r.nome
+                        if (grafConto.isNotEmpty()) rc.conto = grafConto
+                        if (!grafSempre) rc.anno = grafAnno.toString()
+                        rcTesto = ""
+                        rcFuturi = true
+                        mostra(Pagina.RICERCA)
                     }
                     cont.addView(box)
                 }
