@@ -4006,15 +4006,61 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dialogSuggerimenti(sug: List<RicAuto.Sugg>) {
-        val righe = sug.map {
-            (if (it.tipo == "Entrata") "+" else "−") + euro(it.imp) + " · " + it.desc.ifBlank { it.cat } +
-                " · giorno " + it.giorno + " · " + it.mesi + " mesi"
-        }.toTypedArray()
-        OcBuilder(this)
-            .setTitle("Possibili ricorrenze")
-            .setItems(righe) { _, i -> dialogRicorrenza(sug[i]) }
-            .setNegativeButton("Chiudi", null)
-            .show()
+        val dp = resources.displayMetrics.density
+        val verde = ContextCompat.getColor(this, R.color.oc_green)
+        val rosso = ContextCompat.getColor(this, R.color.oc_red)
+        val grigio = ContextCompat.getColor(this, R.color.oc_text_mid)
+        lateinit var dlg: androidx.appcompat.app.AlertDialog
+        val root = LinearLayout(ctxDialogo)
+        root.orientation = LinearLayout.VERTICAL
+        val scroll = android.widget.ScrollView(ctxDialogo)
+        val lista = LinearLayout(ctxDialogo)
+        lista.orientation = LinearLayout.VERTICAL
+        lista.setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (8 * dp).toInt())
+        scroll.addView(lista)
+        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        for (sg in sug) {
+            val riga = LinearLayout(ctxDialogo)
+            riga.orientation = LinearLayout.VERTICAL
+            riga.setBackgroundResource(R.drawable.bg_tile)
+            riga.setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
+            val testa = LinearLayout(ctxDialogo)
+            testa.orientation = LinearLayout.HORIZONTAL
+            val tit = TextView(ctxDialogo)
+            tit.text = sg.desc.ifBlank { sg.cat }
+            tit.textSize = 17f
+            tit.setTypeface(null, Typeface.BOLD)
+            tit.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            val imp = TextView(ctxDialogo)
+            val entrata = sg.tipo == "Entrata"
+            imp.text = (if (entrata) "+" else "−") + euro(sg.imp)
+            imp.textSize = 17f
+            imp.setTypeface(null, Typeface.BOLD)
+            imp.setTextColor(if (entrata) verde else rosso)
+            testa.addView(tit)
+            testa.addView(imp)
+            val sub = TextView(ctxDialogo)
+            sub.text = sg.cat + " · giorno " + sg.giorno + " · " + sg.mesi + " mesi di fila · prossima " + sg.prossima.format(FMT_DATA)
+            sub.textSize = 13f
+            sub.setTextColor(grigio)
+            sub.setPadding(0, (4 * dp).toInt(), 0, 0)
+            riga.addView(testa)
+            riga.addView(sub)
+            riga.setOnClickListener {
+                dlg.dismiss()
+                dialogRicorrenza(sg)
+            }
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = (6 * dp).toInt()
+            lp.bottomMargin = (6 * dp).toInt()
+            lista.addView(riga, lp)
+        }
+        val piede = LinearLayout(ctxDialogo)
+        piede.orientation = LinearLayout.HORIZONTAL
+        piede.setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+        aggiungiPiede(piede, "Chiudi" to { dlg.dismiss() })
+        root.addView(piede)
+        dlg = dialogGrande("💡 Possibili ricorrenze", root)
     }
 
     private fun dialogRicorrenza(sug: RicAuto.Sugg? = null) {
