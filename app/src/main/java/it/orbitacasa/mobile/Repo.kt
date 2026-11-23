@@ -1892,12 +1892,12 @@ object Repo {
 
     fun elencaSnapshot(ctx: Context): List<Snap> =
         Backup.elenca(ctx)
-            .filter { it.nome.endsWith(Backup.SUFFISSO_SNAP) }
+            .filter { Backup.eSnapshot(it.nome) }
             .sortedByDescending { it.modificato }
             .map { Snap(it.nome, it.modificato, "copia", it.dimensione) }
 
     fun eliminaSnapshot(ctx: Context, nome: String): Boolean {
-        if (nome.contains('/') || nome.contains('\\') || !nome.endsWith(Backup.SUFFISSO_SNAP)) return false
+        if (nome.contains('/') || nome.contains('\\') || !Backup.eSnapshot(nome)) return false
         return Backup.elimina(ctx, nome)
     }
 
@@ -1905,7 +1905,7 @@ object Repo {
         val validi = (FILES + SETT).toSet()
         val letti = LinkedHashMap<String, ByteArray>()
         for (nome in nomi) {
-            val originale = nome.split('-', limit = 4).getOrNull(3) ?: throw IllegalStateException("Nome non valido: $nome")
+            val originale = Backup.base(nome).split('-', limit = 4).getOrNull(3) ?: throw IllegalStateException("Nome non valido: $nome")
             if (originale !in validi) throw IllegalStateException("«$originale» non è gestito")
             val ingresso = Backup.apri(ctx, nome) ?: throw IllegalStateException("Copia non trovata: $nome")
             val b = ingresso.use { it.readBytes() }

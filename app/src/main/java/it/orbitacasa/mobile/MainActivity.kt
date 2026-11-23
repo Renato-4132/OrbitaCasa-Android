@@ -13460,7 +13460,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
         var tutte = Backup.elenca(this).sortedByDescending { it.modificato }
-        val date = listOf("Tutte") + tutte.map { Backup.data(it) }.distinct()
+        fun dateDisp(solo: Boolean) = listOf("Tutte") + tutte.filter { !solo || Backup.eSnapshot(it.nome) }.map { Backup.data(it) }.distinct()
+        val date = dateDisp(soloSnap)
         val dp = resources.displayMetrics.density
         val radice = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -13481,7 +13482,7 @@ class MainActivity : AppCompatActivity() {
         fun ricarica() {
             val d = spin.selectedItem as? String ?: "Tutte"
             visibili = tutte.filter {
-                (!chk.isChecked || it.nome.endsWith(Backup.SUFFISSO_SNAP)) && (d == "Tutte" || Backup.data(it) == d)
+                (!chk.isChecked || Backup.eSnapshot(it.nome)) && (d == "Tutte" || Backup.data(it) == d)
             }
             val testi = visibili.map {
                 val dim = if (it.dimensione < 1048576) "${maxOf(1L, it.dimensione / 1024)} KB" else "%.1f MB".format(it.dimensione / 1048576.0)
@@ -13512,13 +13513,20 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = ricarica()
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
         }
-        chk.setOnCheckedChangeListener { _, _ -> ricarica() }
+        fun rileggiDate() {
+            val prec = spin.selectedItem as? String ?: "Tutte"
+            val nuove = dateDisp(chk.isChecked)
+            spin.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, nuove)
+            spin.setSelection(nuove.indexOf(prec).coerceAtLeast(0))
+            ricarica()
+        }
+        chk.setOnCheckedChangeListener { _, _ -> rileggiDate() }
         fun scelti(): List<String> = (0 until visibili.size).filter { lista.isItemChecked(it) }.map { visibili[it].nome }
 
         fun rileggi() {
             tutte = Backup.elenca(this@MainActivity).sortedByDescending { it.modificato }
             val prec = spin.selectedItem as? String ?: "Tutte"
-            val nuove = listOf("Tutte") + tutte.map { Backup.data(it) }.distinct()
+            val nuove = dateDisp(chk.isChecked)
             spin.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, nuove)
             spin.setSelection(nuove.indexOf(prec).coerceAtLeast(0))
             ricarica()
@@ -13611,7 +13619,7 @@ class MainActivity : AppCompatActivity() {
             dialogCopie()
             return
         }
-        val snap = zip.firstOrNull()?.endsWith(Backup.SUFFISSO_SNAP) == true
+        val snap = zip.firstOrNull()?.let { Backup.eSnapshot(it) } == true
         val msg = when {
             snap -> "Ripristinare lo snapshot «${nomi[0]}»? I dati attuali vengono sostituiti e ne resta una copia. I documenti dello snapshot tornano nelle cartelle dell'app, sovrascrivendo quelli con lo stesso nome."
             zip.isNotEmpty() -> "Ripristinare l'archivio «${nomi[0]}»? I file dei documenti tornano nelle cartelle dell'app, sovrascrivendo quelli con lo stesso nome."

@@ -55,7 +55,17 @@ object Backup {
         return out
     }
 
-    private fun trova(ctx: Context, nome: String): Voce? = elenca(ctx).firstOrNull { it.nome == nome }
+    private val RE_DUP = Regex(" \\(\\d+\\)(\\.[^.]+)?$")
+
+    fun base(nome: String): String = RE_DUP.replace(nome) { it.groupValues[1] }
+
+    fun eSnapshot(nome: String): Boolean = base(nome).endsWith(SUFFISSO_SNAP)
+
+    private fun trova(ctx: Context, nome: String): Voce? {
+        val tutti = elenca(ctx)
+        return tutti.firstOrNull { it.nome == nome }
+            ?: tutti.filter { base(it.nome) == nome }.maxByOrNull { it.modificato }
+    }
 
     fun apri(ctx: Context, nome: String): InputStream? {
         val v = trova(ctx, nome) ?: return null
@@ -216,7 +226,7 @@ object Backup {
                 tmpSnap.delete()
             }
         }
-        pota(ctx, MAX_SNAP) { it.endsWith(SUFFISSO_SNAP) }
+        pota(ctx, MAX_SNAP) { eSnapshot(it) }
 
         var okFile = 0
         var totFile = 0
@@ -226,7 +236,7 @@ object Backup {
             totFile++
             if (salva(ctx, oggi() + "-" + nome, "application/json", f)) {
                 okFile++
-                pota(ctx, MAX_FILE) { Regex("^\\d{2}-\\d{2}-\\d{4}-(.+)$").matchEntire(it)?.groupValues?.get(1) == nome }
+                pota(ctx, MAX_FILE) { Regex("^\\d{2}-\\d{2}-\\d{4}-(.+)$").matchEntire(base(it))?.groupValues?.get(1) == nome }
             }
         }
         var r = "snapshot ok, file $okFile/$totFile"
@@ -243,10 +253,10 @@ object Backup {
     fun eZip(nome: String): Boolean = nome.endsWith(".zip")
 
     fun tipo(nome: String): String = when {
-        nome.endsWith(SUFFISSO_SNAP) -> "Snapshot DB Completo"
+        eSnapshot(nome) -> "Snapshot DB Completo"
         nome.startsWith(PREF_PERSONALI) -> "Docs Personali (ZIP)"
         nome.startsWith(PREF_CONTABILI) -> "Docs Contabili (ZIP)"
-        else -> nome.split('-', limit = 4).getOrNull(3) ?: nome
+        else -> base(nome).split('-', limit = 4).getOrNull(3) ?: nome
     }
 
     fun data(v: Voce): String {
