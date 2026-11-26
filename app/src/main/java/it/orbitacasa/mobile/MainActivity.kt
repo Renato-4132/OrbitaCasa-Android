@@ -12285,6 +12285,7 @@ class MainActivity : AppCompatActivity() {
     private fun menuScheda(v: JSONObject) {
         val s = sc
         val voci = arrayOf(
+            "📥  Importa dalle spese",
             "📤  Esporta voci nei movimenti",
             "↩️  Rimuovi il segno di esportazione",
             "🗑️  Elimina più voci",
@@ -12294,7 +12295,8 @@ class MainActivity : AppCompatActivity() {
             .setTitle(v.optString("nome"))
             .setItems(voci) { _, i ->
                 when (i) {
-                    0 -> scegliMovScheda(v, "Esporta", false) { ids ->
+                    0 -> importaDaSpese(v)
+                    1 -> scegliMovScheda(v, "Esporta", false) { ids ->
                         OcBuilder(this)
                             .setTitle("Come esportare?")
                             .setItems(arrayOf("Un solo saldo", "Una riga per voce")) { _, k ->
@@ -12304,10 +12306,10 @@ class MainActivity : AppCompatActivity() {
                             .setNegativeButton("Annulla", null)
                             .show()
                     }
-                    1 -> scegliMovScheda(v, "Rimuovi segno", true) { ids ->
+                    2 -> scegliMovScheda(v, "Rimuovi segno", true) { ids ->
                         esitoScheda(s.smarca(v.optString("id"), ids), "Segno di esportazione rimosso")
                     }
-                    2 -> scegliMovScheda(v, "Elimina", null) { ids ->
+                    3 -> scegliMovScheda(v, "Elimina", null) { ids ->
                         OcBuilder(this)
                             .setTitle("Eliminare " + ids.size + " voci?")
                             .setNegativeButton("Annulla", null)
@@ -12316,7 +12318,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             .show()
                     }
-                    3 -> OcBuilder(this)
+                    4 -> OcBuilder(this)
                         .setTitle("Eliminare " + s.cfg.art + s.cfg.sing + "?")
                         .setMessage("Verranno eliminate anche tutte le sue voci. I movimenti già esportati restano.")
                         .setNegativeButton("Annulla", null)
@@ -12330,6 +12332,60 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton("Chiudi", null)
+            .show()
+    }
+
+    private fun importaDaSpese(v: JSONObject) {
+        val s = sc
+        val cand = Repo.voci()
+            .filter { it.id.isNotBlank() && (it.tipo == "Uscita" || (s.cfg.tipoMov && it.tipo == "Entrata")) }
+            .filter { x -> x.hashtag.none { h -> h.equals(s.cfg.tag, ignoreCase = true) } }
+            .sortedByDescending { it.data }
+        if (cand.isEmpty()) {
+            aviso("Nessuna spesa da importare")
+            return
+        }
+        val cats = listOf("Tutte") + cand.map { it.categoria }.distinct().sortedBy { it.lowercase() }
+        OcBuilder(this)
+            .setTitle("Categoria spesa originale")
+            .setItems(cats.toTypedArray()) { _, k ->
+                val lista = cand.filter { k == 0 || it.categoria == cats[k] }.take(150)
+                scegliSpeseDaImportare(v, lista)
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun scegliSpeseDaImportare(v: JSONObject, lista: List<Voce>) {
+        val s = sc
+        val etichette = lista.map {
+            s.dataIt(it.data) + " · " + it.categoria + " · " +
+                (if (it.descrizione.isNotBlank()) it.descrizione.take(24) + " · " else "") +
+                euro(it.importo) + (if (it.tipo == "Entrata") " (entrata)" else "")
+        }.toTypedArray()
+        val sel = BooleanArray(lista.size) { false }
+        OcBuilder(this)
+            .setTitle("Importa dalle spese")
+            .setMultiChoiceItems(etichette, sel) { _, i, c -> sel[i] = c }
+            .setPositiveButton("Avanti") { _, _ ->
+                val ids = lista.filterIndexed { i, _ -> sel[i] }.map { it.id }.toSet()
+                if (ids.isEmpty()) {
+                    aviso("Nessuna voce selezionata")
+                } else {
+                    val propri = v.optJSONArray("categorie")?.let { a -> (0 until a.length()).map { a.optString(it) } }
+                        ?.filter { it.isNotBlank() }
+                    val cats = (if (propri.isNullOrEmpty()) s.cfg.categorie else propri).toTypedArray()
+                    OcBuilder(this)
+                        .setTitle("Categoria in " + s.cfg.titolo)
+                        .setItems(cats) { _, k ->
+                            val (msg, err) = s.importa(v.optString("id"), ids, cats[k])
+                            esitoScheda(err, msg ?: "Importato")
+                        }
+                        .setNegativeButton("Annulla", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Annulla", null)
             .show()
     }
 

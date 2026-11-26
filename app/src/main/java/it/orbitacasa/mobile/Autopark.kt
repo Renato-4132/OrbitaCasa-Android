@@ -346,6 +346,31 @@ class Scheda(val cfg: SchedaCfg) {
         return err
     }
 
+    fun importa(idScheda: String, ids: Set<String>, catDest: String): Pair<String?, String?> {
+        var msg: String? = null
+        val cand = Repo.voci().filter { it.id in ids && it.hashtag.none { h -> h.equals(cfg.tag, ignoreCase = true) } }
+        val err = conScheda(idScheda) { v ->
+            if (cand.isEmpty()) return@conScheda "Le voci selezionate risultano già importate."
+            val lista = v.optJSONArray(cfg.mov) ?: JSONArray().also { v.put(cfg.mov, it) }
+            val nome = v.optString("nome").ifBlank { cap }
+            for (x in cand) {
+                val eid = idNuovo()
+                val r = JSONObject()
+                    .put("id", idNuovo()).put("data", dataIt(x.data)).put("categoria", catDest)
+                    .put("descrizione", x.descrizione).put("importo", x.importo)
+                for (e in cfg.extra) r.put(e.k, "")
+                if (cfg.tipoMov) r.put("tipo", if (x.tipo == "Entrata") "Entrata" else "Uscita")
+                r.put("esportato", eid)
+                lista.put(r)
+                Repo.salvaVoce(x.id, x.data, x.categoria, x.descrizione, x.importo, x.tipo, x.metodo, x.hashtag + listOf(cfg.tag, cfg.tagExp + eid), x.conto)
+            }
+            val saltate = ids.size - cand.size
+            msg = "Importate ${cand.size} spese in $nome (categoria: $catDest)" + if (saltate > 0) ", $saltate già importate saltate" else ""
+            null
+        }
+        return msg to err
+    }
+
     fun esporta(idScheda: String, ids: Set<String>, righe: Boolean): Pair<String?, String?> {
         var msg: String? = null
         val err = conScheda(idScheda) { v ->
