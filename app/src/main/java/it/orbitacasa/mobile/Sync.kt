@@ -1073,7 +1073,6 @@ object Sync {
                 }
             } else if (s != null) {
                 if (Repo.retentionEsclude(id, s.data)) {
-                    // fuori dalla finestra di retention: resta sul desktop, non si scarica
                 } else if (st == null) scarica.add(id)
                 else if (st.optString("h") == s.h) elimina[id] = s.h
                 else scarica.add(id)
@@ -1131,6 +1130,7 @@ object Sync {
                         }
                     }
                     Repo.syncImpostaVoce(d, e)
+                    if (l == null) ImportLog.scriviDaEntry(ImportLog.SYNC, d, e)
                     toccato = true
                     nuoviH[id] = hs
                     c.inc("voci_giu")

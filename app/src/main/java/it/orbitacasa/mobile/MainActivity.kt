@@ -5055,7 +5055,7 @@ class MainActivity : AppCompatActivity() {
                 nuove.add(Repo.NuovaVoce(r.data, cat, desc, abs(imp), tipo, r.metodo, parseTags(r.tag), r.conto))
                 mem.put(desc.trim().uppercase(), cat)
             }
-            Repo.salvaVociBlocco(nuove)
+            Repo.salvaVociBlocco(nuove, ImportLog.ESTRATTO)
             try { Repo.salvaMemoriaCategorie(mem) } catch (_: Exception) { }
             dlg.dismiss()
             refresh()
@@ -13502,12 +13502,65 @@ class MainActivity : AppCompatActivity() {
     private fun dialogImportaEsporta() {
         OcBuilder(this)
             .setTitle("Importa / Esporta dati")
-            .setItems(arrayOf("📥  Importa dati", "📤  Esporta dati")) { _, k ->
+            .setItems(arrayOf("📥  Importa dati", "📤  Esporta dati", "📋  Log importazioni")) { _, k ->
                 if (k == 0) confermaImporta()
-                else creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip")
+                else if (k == 1) creaZip.launch("OrbitaCasa-" + LocalDate.now() + ".zip")
+                else dialogLogImportazioni()
             }
             .setNegativeButton("Annulla", null)
             .show()
+    }
+
+    private fun dialogLogImportazioni() {
+        val d = resources.displayMetrics.density
+        val filtri = listOf("Tutti", "Estratti", "Sync", "Notifiche")
+        val codici = listOf<String?>(null, ImportLog.ESTRATTO, ImportLog.SYNC, ImportLog.NOTIF)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((12 * d).toInt(), (8 * d).toInt(), (12 * d).toInt(), (8 * d).toInt())
+        }
+        val spin = android.widget.Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, filtri)
+        }
+        root.addView(spin)
+        val info = TextView(this).apply { textSize = 12f; setPadding(0, (4 * d).toInt(), 0, (4 * d).toInt()) }
+        root.addView(info)
+        val lista = android.widget.ListView(this)
+        root.addView(lista, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        val piede = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        root.addView(piede, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val dlg = dialogGrande("Log importazioni", root)
+        fun carica() {
+            val righe = ImportLog.leggi(codici[spin.selectedItemPosition])
+            info.text = if (righe.isEmpty()) "Nessun record" else righe.size.toString() + " movimenti importati"
+            val testi = righe.map {
+                val tipo = when (it.tipo) {
+                    ImportLog.ESTRATTO -> "Estratto"
+                    ImportLog.SYNC -> "Sync"
+                    ImportLog.NOTIF -> "Notifica"
+                    else -> it.tipo
+                }
+                it.data + " · " + it.desc + "\n" + (if (it.direzione.startsWith("Usc", true)) "−" else "+") + it.importo +
+                    " · " + it.categoria + (if (it.conto != "—" && it.conto.isNotBlank()) " · " + it.conto else "") +
+                    "\n" + tipo + " · " + it.quando
+            }
+            lista.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, testi)
+        }
+        spin.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = carica()
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
+        aggiungiPiede(
+            piede,
+            "🗑 Svuota" to {
+                stuConferma("Svuota log", "Cancellare le righe del log mostrato? I movimenti non vengono toccati.", "Svuota") {
+                    ImportLog.svuota(codici[spin.selectedItemPosition])
+                    carica()
+                }
+            },
+            "Chiudi" to { dlg.dismiss() },
+        )
+        carica()
     }
 
     private fun dialogCopie(soloSnap: Boolean = false, dataSel: String = "Tutte") {

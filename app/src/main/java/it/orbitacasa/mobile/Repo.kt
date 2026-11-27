@@ -708,7 +708,7 @@ object Repo {
         val conto: String,
     )
 
-    fun salvaVociBlocco(l: List<NuovaVoce>) {
+    fun salvaVociBlocco(l: List<NuovaVoce>, logTipo: String? = null) {
         if (l.isEmpty()) return
         val ora = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
         for (n in l) {
@@ -721,6 +721,7 @@ object Repo {
             setOpt(e, "conto", n.conto)
             if (n.hashtag.isNotEmpty()) e.put("hashtag", JSONArray(conCancelletto(n.hashtag)))
             inserisciEntry(n.data, e)
+            if (logTipo != null) ImportLog.scrivi(logTipo, n.data, n.descrizione, n.importo, n.tipo, n.categoria, n.conto, n.metodo, conCancelletto(n.hashtag).joinToString(" "), e.optString("id_spesa"))
         }
         save()
     }
