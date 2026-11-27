@@ -59,6 +59,12 @@ object ImportLog {
         )
     }
 
+    private fun parse(r: String): Riga {
+        val p = r.split("|").map { it.trim() }.toMutableList()
+        while (p.size < 11) p.add("")
+        return Riga(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10])
+    }
+
     fun leggi(tipo: String? = null): List<Riga> {
         val out = ArrayList<Riga>()
         try {
@@ -67,15 +73,41 @@ object ImportLog {
                 if (!f.isFile) return out
                 for (r in f.readLines(Charsets.UTF_8)) {
                     if (r.isBlank()) continue
-                    val p = r.split("|").map { it.trim() }.toMutableList()
-                    while (p.size < 11) p.add("")
-                    if (tipo != null && !p[1].equals(tipo, true)) continue
-                    out.add(Riga(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10]))
+                    val riga = parse(r)
+                    if (tipo != null && !riga.tipo.equals(tipo, true)) continue
+                    out.add(riga)
                 }
             }
         } catch (_: Exception) {
         }
         return out.reversed()
+    }
+
+    private fun importoNum(s: String): Double? =
+        s.replace("€", "").trim().replace(".", "").replace(",", ".").toDoubleOrNull()
+
+    fun trova(r: Riga, voci: List<Voce>): Voce? {
+        if (r.id.isNotEmpty()) return voci.firstOrNull { it.id == r.id }
+        val imp = importoNum(r.importo) ?: return null
+        val dir = r.direzione.take(3).lowercase()
+        return voci.firstOrNull { v ->
+            v.data.format(FMT_D) == r.data && pulisci(v.descrizione) == r.desc &&
+                Math.abs(Math.abs(v.importo) - imp) < 0.01 && v.tipo.take(3).lowercase() == dir
+        }
+    }
+
+    fun contaOrfane(voci: List<Voce>): Int = synchronized(lock) {
+        val f = file()
+        if (!f.isFile) 0 else f.readLines(Charsets.UTF_8).count { it.isNotBlank() && trova(parse(it), voci) == null }
+    }
+
+    fun togliOrfane(voci: List<Voce>): Int = synchronized(lock) {
+        val f = file()
+        if (!f.isFile) return 0
+        val righe = f.readLines(Charsets.UTF_8).filter { it.isNotBlank() }
+        val resta = righe.filter { trova(parse(it), voci) != null }
+        f.writeText(if (resta.isEmpty()) "" else resta.joinToString("\n") + "\n", Charsets.UTF_8)
+        righe.size - resta.size
     }
 
     fun svuota(tipo: String? = null): Int {

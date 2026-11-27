@@ -13530,8 +13530,10 @@ class MainActivity : AppCompatActivity() {
         val piede = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         root.addView(piede, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         val dlg = dialogGrande("Log importazioni", root)
+        var correnti: List<ImportLog.Riga> = emptyList()
         fun carica() {
             val righe = ImportLog.leggi(codici[spin.selectedItemPosition])
+            correnti = righe
             info.text = if (righe.isEmpty()) "Nessun record" else righe.size.toString() + " movimenti importati"
             val testi = righe.map {
                 val tipo = when (it.tipo) {
@@ -13546,6 +13548,11 @@ class MainActivity : AppCompatActivity() {
             }
             lista.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, testi)
         }
+        lista.setOnItemClickListener { _, _, pos, _ ->
+            val v = correnti.getOrNull(pos)?.let { ImportLog.trova(it, Repo.voci()) }
+            if (v == null) Toast.makeText(this, "Movimento non trovato", Toast.LENGTH_SHORT).show()
+            else dialogVoce(v)
+        }
         spin.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = carica()
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
@@ -13555,6 +13562,14 @@ class MainActivity : AppCompatActivity() {
             "🗑 Svuota" to {
                 stuConferma("Svuota log", "Cancellare le righe del log mostrato? I movimenti non vengono toccati.", "Svuota") {
                     ImportLog.svuota(codici[spin.selectedItemPosition])
+                    carica()
+                }
+            },
+            "🧹 Orfane" to {
+                val n = ImportLog.contaOrfane(Repo.voci())
+                if (n == 0) Toast.makeText(this, "Nessuna riga orfana", Toast.LENGTH_SHORT).show()
+                else stuConferma("Pulisci orfane", n.toString() + " righe puntano a movimenti non più presenti. Toglierle dal log?", "Pulisci") {
+                    ImportLog.togliOrfane(Repo.voci())
                     carica()
                 }
             },

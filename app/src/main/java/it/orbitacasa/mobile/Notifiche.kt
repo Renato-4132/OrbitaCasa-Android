@@ -443,7 +443,7 @@ object Notif {
             return false
         }
         Repo.salvaVoce(null, data, cat, d, imp, tipo, metodo, tags, conto)
-        ImportLog.scrivi(ImportLog.NOTIF, data, d, imp, tipo, cat, conto, metodo, tags.joinToString(" "))
+        ImportLog.scrivi(ImportLog.NOTIF, data, d, imp, tipo, cat, conto, metodo, tags.joinToString(" "), Repo.ultimoId)
         ricordaApp(p.app, Ricordo(cat, conto, metodo, tags.joinToString(" ")))
         if (ricordaDesc) ricordaDescrizione(d, cat)
         imposta(p.id, "confermata")

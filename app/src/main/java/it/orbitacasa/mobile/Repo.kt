@@ -667,6 +667,8 @@ object Repo {
         if (v.isBlank()) o.remove(k) else o.put(k, v)
     }
 
+    var ultimoId: String = ""
+
     fun salvaVoce(
         id: String?,
         data: LocalDate,
@@ -690,6 +692,7 @@ object Repo {
         setOpt(e, "conto", conto)
         if (hashtag.isEmpty()) e.remove("hashtag") else e.put("hashtag", JSONArray(conCancelletto(hashtag)))
 
+        ultimoId = e.optString("id_spesa")
         inserisciEntry(data, e)
         save()
     }
